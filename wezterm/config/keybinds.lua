@@ -11,6 +11,8 @@ function M.setup(config)
     { key = "k", mods = "LEADER", action = wezterm.action.ActivatePaneDirection("Up") },
     { key = "l", mods = "LEADER", action = wezterm.action.ActivatePaneDirection("Right") },
     { key = "x", mods = "LEADER", action = wezterm.action.CloseCurrentPane({ confirm = true }) },
+    -- ライト/ダーク配色を瞬時に切り替え
+    { key = "t", mods = "LEADER", action = wezterm.action.EmitEvent("toggle-color-scheme") },
   }
 end
 
