@@ -31,6 +31,37 @@ require("lazy").setup({
         })
       end,
     },
+    {
+      "mason-org/mason.nvim",
+      config = function()
+        require("mason").setup()
+      end,
+    },
+    {
+      "mason-org/mason-lspconfig.nvim",
+      dependencies = { "mason-org/mason.nvim", "neovim/nvim-lspconfig" },
+      config = function()
+        require("mason-lspconfig").setup({
+          ensure_installed = { "clangd", "pyright", "lua_ls" },
+        })
+      end,
+    },
+    {
+      "neovim/nvim-lspconfig",
+      config = function()
+        vim.lsp.enable({ "clangd", "pyright", "lua_ls" })
+
+	-- LSPが有効化されたバッファで自動補完を有効にする
+	vim.api.nvim_create_autocmd("LspAttach", {
+          callback = function(args)
+            local client = vim.lsp.get_client_by_id(args.data.client_id)
+            if client and client:supports_method("textDocument/completion") then
+              vim.lsp.completion.enable(true, client.id, args.buf, { autotrigger = true })
+            end
+          end,
+        })
+      end,
+    },
   },
   install = { colorscheme = { "habamax" } },
   checker = { enabled = false },
