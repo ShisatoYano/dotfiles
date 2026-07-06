@@ -1,7 +1,7 @@
 local wezterm = require("wezterm")
 local M = {}
 
-M.dark_scheme = "Monokai (Gogh)"
+M.dark_scheme = "Monokai Pro (Pro)"
 M.light_scheme = "Github (Gogh)"
 
 wezterm.on("toggle-color-scheme", function(window, pane)
