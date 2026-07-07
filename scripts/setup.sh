@@ -141,6 +141,11 @@ if [ ! -e ~/.config/nvim ]; then
   ln -s ~/dotfiles/nvim ~/.config/nvim
   echo "nvim設定をリンクしました"
 fi
+mkdir -p ~/.config/lazygit
+if [ ! -e ~/.config/lazygit/config.yml ]; then
+  ln -s ~/dotfiles/lazygit/config.yml ~/.config/lazygit/config.yml
+  echo "lazygit設定をリンクしました"
+fi
 
 echo "=== セットアップ完了 ==="
 echo "ターミナルを再起動するか、'nvim' と 'wezterm' を起動して動作確認してください。"
