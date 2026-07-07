@@ -1,0 +1,6 @@
+customCommands:
+  - key: "<c-g>"
+    context: "files"
+    description: "git-czでコミット(規約に沿った対話形式)"
+    command: "git cz"
+    output: terminal
