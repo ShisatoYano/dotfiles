@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "=== 事前準備 (apt update) ==="
+sudo apt update
+
+# ---------------------------------------------
+# WezTerm
+# ---------------------------------------------
+echo "=== WezTerm ==="
+if ! command -v wezterm &> /dev/null; then
+  sudo mkdir -p /etc/apt/keyrings
+  curl -fsSL https://apt.fury.io/wez/gpg.key | sudo gpg --yes --dearmor -o /etc/apt/keyrings/wezterm-fury.gpg
+  echo 'deb [signed-by=/etc/apt/keyrings/wezterm-fury.gpg] https://apt.fury.io/wez/ * *' | sudo tee /etc/apt/sources.list.d/wezterm.list
+  sudo apt update
+  sudo apt install -y wezterm
+else
+  echo "wezterm はインストール済みです。スキップします。"
+fi
+
+echo "=== Nerd Font (JetBrains Mono) ==="
+sudo apt install -y fonts-jetbrains-mono
+
+# ---------------------------------------------
+# Neovim
+# ---------------------------------------------
+echo "=== Neovim ==="
+if ! command -v nvim &> /dev/null; then
+  curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+  sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz
+  sudo ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
+  rm nvim-linux-x86_64.tar.gz
+else
+  echo "nvim はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
+# Treesitter用: build-essential + tree-sitter CLI
+# ---------------------------------------------
+echo "=== build-essential ==="
+sudo apt install -y build-essential unzip
+
+echo "=== tree-sitter CLI ==="
+if ! command -v tree-sitter &> /dev/null; then
+  curl -LO https://github.com/tree-sitter/tree-sitter/releases/latest/download/tree-sitter-cli-linux-x64.zip
+  unzip -o tree-sitter-cli-linux-x64.zip
+  sudo mv tree-sitter /usr/local/bin/tree-sitter
+  sudo chmod +x /usr/local/bin/tree-sitter
+  rm tree-sitter-cli-linux-x64.zip
+else
+  echo "tree-sitter はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
+# Node.js / npm (pyright, git-cz用)
+# ---------------------------------------------
+echo "=== Node.js ==="
+if ! command -v node &> /dev/null; then
+  curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+  sudo apt install -y nodejs
+else
+  echo "node はインストール済みです。スキップします。"
+fi
+
+echo "=== git-cz ==="
+if ! command -v git-cz &> /dev/null; then
+  sudo npm install -g git-cz
+else
+  echo "git-cz はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
+# Python (debugpy用)
+# ---------------------------------------------
+echo "=== python3-venv ==="
+sudo apt install -y python3-venv
+
+# ---------------------------------------------
+# 検索系: ripgrep, fd-find
+# ---------------------------------------------
+echo "=== ripgrep / fd-find ==="
+sudo apt install -y ripgrep fd-find
+
+# ---------------------------------------------
+# gh (GitHub CLI)
+# ---------------------------------------------
+echo "=== gh ==="
+if ! command -v gh &> /dev/null; then
+  (type -p wget >/dev/null || (sudo apt update && sudo apt install -y wget)) \
+  && sudo mkdir -p -m 755 /etc/apt/keyrings \
+  && out=$(mktemp) && wget -nv -O"$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+  && cat "$out" | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+  && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+  && sudo mkdir -p -m 755 /etc/apt/sources.list.d \
+  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+  && sudo apt update \
+  && sudo apt install -y gh
+else
+  echo "gh はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
+# ghq
+# ---------------------------------------------
+echo "=== ghq ==="
+if ! command -v ghq &> /dev/null; then
+  curl -LO https://github.com/x-motemen/ghq/releases/latest/download/ghq_linux_amd64.zip
+  unzip -o ghq_linux_amd64.zip
+  sudo mv ghq_linux_amd64/ghq /usr/local/bin/ghq
+  sudo chmod +x /usr/local/bin/ghq
+  rm -rf ghq_linux_amd64.zip ghq_linux_amd64
+  git config --global ghq.root '~/ghq'
+else
+  echo "ghq はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
+# lazygit
+# ---------------------------------------------
+echo "=== lazygit ==="
+if ! command -v lazygit &> /dev/null; then
+  LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
+  curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
+  tar xf lazygit.tar.gz lazygit
+  sudo install lazygit /usr/local/bin
+  rm lazygit.tar.gz lazygit
+else
+  echo "lazygit はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
+# dotfilesのシンボリックリンク
+# ---------------------------------------------
+echo "=== dotfilesのリンク設定 ==="
+mkdir -p ~/.config
+if [ ! -e ~/.config/wezterm ]; then
+  ln -s ~/dotfiles/wezterm ~/.config/wezterm
+  echo "wezterm設定をリンクしました"
+fi
+if [ ! -e ~/.config/nvim ]; then
+  ln -s ~/dotfiles/nvim ~/.config/nvim
+  echo "nvim設定をリンクしました"
+fi
+
+echo "=== セットアップ完了 ==="
+echo "ターミナルを再起動するか、'nvim' と 'wezterm' を起動して動作確認してください。"
