@@ -1,15 +1,16 @@
 return {
   "neovim/nvim-lspconfig",
+  dependencies = { "saghen/blink.cmp" },
   config = function()
+    -- blink.cmpの補完機能をLSPサーバーに伝える
+    vim.lsp.config("*", {
+      capabilities = require("blink.cmp").get_lsp_capabilities(),
+    })
+
     vim.lsp.enable({ "clangd", "pyright", "lua_ls" })
 
     vim.api.nvim_create_autocmd("LspAttach", {
       callback = function(args)
-        local client = vim.lsp.get_client_by_id(args.data.client_id)
-        if client and client:supports_method("textDocument/completion") then
-          vim.lsp.completion.enable(true, client.id, args.buf, { autotrigger = true })
-        end
-
         require("config.keymaps").on_lsp_attach(args)
       end,
     })
