@@ -7,5 +7,8 @@ return {
     vim.keymap.set("n", "<leader>fg", builtin.live_grep, { desc = "Grep in project" })
     vim.keymap.set("n", "<leader>fb", builtin.buffers, { desc = "List open buffers" })
     vim.keymap.set("n", "<leader>fd", builtin.diagnostics, { desc = "List diagnostics (errors/warnings)" })
+    vim.keymap.set("n", "<leader>?", function()
+      require("telescope.builtin").keymaps()
+    end, { desc = "Show all keymaps" })
   end,
 }
