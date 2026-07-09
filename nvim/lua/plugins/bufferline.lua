@@ -12,6 +12,15 @@ return {
             separator = true,
           },
         },
+        -- 名前が空で未編集の(=中身が空の)バッファはタブに表示しない
+        custom_filter = function(buf_number)
+          local name = vim.api.nvim_buf_get_name(buf_number)
+          local modified = vim.api.nvim_buf_get_option(buf_number, "modified")
+          if name == "" and not modified then
+            return false
+          end
+          return true
+        end,
       },
     })
 
