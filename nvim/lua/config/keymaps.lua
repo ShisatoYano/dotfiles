@@ -6,6 +6,11 @@ function M.on_lsp_attach(args)
   vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
   vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
   vim.keymap.set("n", "gi", vim.lsp.buf.implementation, opts)
-end
 
+  vim.keymap.set("n", "<leader>v", "<cmd>vsplit<CR>", { desc = "Split window vertically" })
+  vim.keymap.set("n", "<leader>s", "<cmd>split<CR>", { desc = "Split window horizontally" })
+  vim.keymap.set("n", "<leader>x", "<cmd>close<CR>", { desc = "Close current split" })
+
+  vim.keymap.set("n", "<leader>r", "<cmd>nohlsearch<CR><cmd>diffupdate<CR><cmd>redraw!<CR>", { desc = "Clear and redraw screen" })
+end
 return M
