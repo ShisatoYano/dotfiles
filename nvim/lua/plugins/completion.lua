@@ -1,6 +1,7 @@
 return {
   "saghen/blink.cmp",
   version = "1.*",
+  dependencies = { "windwp/nvim-autopairs" },
   opts = {
     keymap = {
       preset = "default",
