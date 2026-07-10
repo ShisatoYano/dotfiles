@@ -12,5 +12,8 @@ function M.on_lsp_attach(args)
   vim.keymap.set("n", "<leader>x", "<cmd>close<CR>", { desc = "Close current split" })
 
   vim.keymap.set("n", "<leader>r", "<cmd>nohlsearch<CR><cmd>diffupdate<CR><cmd>redraw!<CR>", { desc = "Clear and redraw screen" })
+
+  -- Git関連チートシートをすぐ開く
+  vim.keymap.set("n", "<leader>gh", "<cmd>edit ~/dotfiles/docs/git-cheatsheet.md<CR>", { desc = "Open git cheatsheet" })
 end
 return M
