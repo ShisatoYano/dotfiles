@@ -184,6 +184,29 @@ else
 fi
 
 # ---------------------------------------------
+# delta(git diffを見やすくするページャー)
+# ---------------------------------------------
+echo "=== git-delta ==="
+if ! command -v delta &> /dev/null; then
+  sudo apt install -y git-delta
+else
+  echo "delta はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
+# gibo(.gitignoreテンプレート生成CLI)
+# ---------------------------------------------
+echo "=== gibo ==="
+if ! command -v gibo &> /dev/null; then
+  curl -Lo gibo.tar.gz "https://github.com/simonwhitaker/gibo/releases/latest/download/gibo_Linux_x86_64.tar.gz"
+  tar xf gibo.tar.gz gibo
+  sudo install gibo /usr/local/bin
+  rm gibo.tar.gz gibo
+else
+  echo "gibo はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
 # クリップボード連携
 # ---------------------------------------------
 echo "=== クリップボード連携ツール ==="
