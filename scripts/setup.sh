@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
 echo "=== 事前準備 (apt update) ==="
 sudo apt update
@@ -62,9 +62,22 @@ else
   echo "node はインストール済みです。スキップします。"
 fi
 
+# npmのグローバルインストール先をユーザー領域に変更(sudoなしでグローバルインストールできるようにする)
+echo "=== npmのグローバルインストール先を設定 ==="
+if [ "$(npm config get prefix)" != "$HOME/.npm-global" ]; then
+  mkdir -p ~/.npm-global
+  npm config set prefix "$HOME/.npm-global"
+  if ! grep -q "npm-global" ~/.bashrc; then
+    echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
+  fi
+  export PATH="$HOME/.npm-global/bin:$PATH"
+else
+  echo "npmのプレフィックスは設定済みです。スキップします。"
+fi
+
 echo "=== git-cz ==="
 if ! command -v git-cz &> /dev/null; then
-  sudo npm install -g git-cz
+  npm install -g git-cz
 else
   echo "git-cz はインストール済みです。スキップします。"
 fi
@@ -99,6 +112,48 @@ else
   echo "gh はインストール済みです。スキップします。"
 fi
 
+
+# ---------------------------------------------
+# fzf(公式インストーラー、apt版は機能が古いため使わない)
+# ---------------------------------------------
+echo "=== fzf ==="
+if [ ! -d ~/.fzf ]; then
+  git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+  ~/.fzf/install --all
+else
+  echo "fzf はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
+# Go(ccsession等のGo製CLIツールのビルド用)
+# ---------------------------------------------
+echo "=== Go ==="
+if ! command -v go &> /dev/null; then
+  sudo apt install -y golang-go
+else
+  echo "go はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
+# Claude Code
+# ---------------------------------------------
+echo "=== Claude Code ==="
+if ! command -v claude &> /dev/null; then
+  npm install -g @anthropic-ai/claude-code
+else
+  echo "claude はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
+# ccsession(Claude Codeセッション検索)
+# ---------------------------------------------
+echo "=== ccsession ==="
+if ! command -v ccsession &> /dev/null; then
+  go install github.com/sorafujitani/ccsession/cmd/ccsession@latest
+else
+  echo "ccsession はインストール済みです。スキップします。"
+fi
+
 # ---------------------------------------------
 # ghq
 # ---------------------------------------------
@@ -126,6 +181,18 @@ if ! command -v lazygit &> /dev/null; then
   rm lazygit.tar.gz lazygit
 else
   echo "lazygit はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
+# クリップボード連携
+# ---------------------------------------------
+echo "=== クリップボード連携ツール ==="
+if [ "$XDG_SESSION_TYPE" = "wayland" ]; then
+  sudo apt install -y wl-clipboard
+elif [ "$XDG_SESSION_TYPE" = "x11" ]; then
+  sudo apt install -y xclip
+else
+  echo "セッションタイプを自動検出できませんでした。手動でクリップボードツール(wl-clipboardまたはxclip)を入れてください。"
 fi
 
 # ---------------------------------------------

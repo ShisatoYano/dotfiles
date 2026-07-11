@@ -16,6 +16,7 @@ function M.setup(config)
     bottom = 5,
   }
   config.automatically_reload_config = true
+  config.exit_behavior = "Hold"
 end
 
 return M
