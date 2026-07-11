@@ -70,3 +70,10 @@
 | `ghq list` | 管理下のリポジトリ一覧 |
 | `ghq list -p` | フルパス付きで一覧 |
 | `cd $(ghq list -p \| fzf)` / `gcd` | あいまい検索してリポジトリへ移動(要fzf) |
+
+## gibo(.gitignore生成)
+| コマンド | 動作 |
+|---|---|
+| `gibo dump macOS >> .gitignore` | 指定テンプレートを`.gitignore`に追記 |
+| `gibo list` | 利用可能なテンプレート一覧 |
+| `gibo dump $(gibo list \| fzf) >> .gitignore` | fzfでテンプレートを選んで追記 |

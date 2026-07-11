@@ -16,7 +16,7 @@ git clone git@github.com:あなたのユーザー名/dotfiles.git ~/dotfiles
 - tree-sitter CLI（Neovimのシンタックスハイライト用）
 - Node.js / npm（LSP, git-cz用）
 - ripgrep, fd-find（Neovimのファイル検索用）
-- gh, ghq, git-cz, lazygit
+- gh, ghq, git-cz, lazygit, git-delta, gibo
 - `~/.config/wezterm`, `~/.config/nvim` へのシンボリックリンク
 
 ## 補足
