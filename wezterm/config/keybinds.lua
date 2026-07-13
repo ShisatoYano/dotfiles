@@ -13,6 +13,8 @@ function M.setup(config)
     { key = "x", mods = "LEADER", action = wezterm.action.CloseCurrentPane({ confirm = true }) },
     -- ライト/ダーク配色を瞬時に切り替え
     { key = "t", mods = "LEADER", action = wezterm.action.EmitEvent("toggle-color-scheme") },
+    -- WezTermを終了(全ウィンドウ/タブを閉じる)
+    { key = "q", mods = "LEADER", action = wezterm.action.QuitApplication },
   }
 end
 
