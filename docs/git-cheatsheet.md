@@ -10,15 +10,13 @@
 | `<leader>hs` / `<leader>hu` | その変更箇所をステージ/アンステージ |
 | `<leader>hb` | 行末blame表示のON/OFF |
 
-## vim-flog(コミットグラフ、`<leader>gl`で起動)
+## gitgraph.nvim(コミットグラフ、`<leader>gl`で起動)
 | キー | 動作 |
 |---|---|
-| `j` / `k` | コミット間を移動(右の差分も連動) |
-| `gq` | 閉じる |
-| `cc` | チェックアウト |
-| `crc` | revert |
-| `ca` | amend |
-| `?` | flog専用ヘルプ |
+| `j` / `k` | コミット間を移動 |
+| `<CR>` | そのコミットの差分をDiffviewで開く |
+| ビジュアルモードで範囲選択して`<CR>` | 選択した2コミット間の差分をDiffviewで開く |
+| `:q` | 閉じる |
 
 ## lazygit(`<leader>gg`で起動)
 | キー | 動作 |

@@ -5,7 +5,7 @@ local M = {}
 function M.setup(config)
   monokai_pro.register_color_schemes(config)
 
-  config.font = wezterm.font("JetBrains Mono")
+  config.font = wezterm.font("JetBrainsMono Nerd Font Mono")
   config.font_size = 12.0
   config.color_scheme = "Monokai Pro (Pro)"
   config.window_decorations = "RESIZE"
