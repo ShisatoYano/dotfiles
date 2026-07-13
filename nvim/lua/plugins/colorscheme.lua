@@ -4,38 +4,36 @@ return {
     lazy = false,
     priority = 1000,
     config = function()
-      require("monokai-pro").setup()
-    end,
-  },
-  {
-    "projekt0n/github-nvim-theme",
-    lazy = false,
-    priority = 1000,
-    config = function()
-      require("github-theme").setup()
-    end,
-  },
-  {
-    -- テーマ切り替え用のダミー要素(依存プラグインが読み込まれた後に実行するため)
-    "loctvl842/monokai-pro.nvim",
-    name = "theme-toggle",
-    lazy = false,
-    priority = 900,
-    config = function()
+      -- filterとtransparent_backgroundを同時に切り替えて再適用する
+      local function apply(filter, transparent)
+        require("monokai-pro.config").extend({ filter = filter, transparent_background = transparent })
+        require("monokai-pro.theme").clear_cache()
+        require("monokai-pro").load()
+      end
+
+      require("monokai-pro").setup({
+        filter = "pro",
+        transparent_background = true, -- WezTermの背景透過を活かすため(ダークのみ)
+      })
       vim.cmd("colorscheme monokai-pro")
 
       local M = { is_dark = true }
 
       function M.toggle()
         if M.is_dark then
-          vim.cmd("colorscheme github_light")
+          apply("light", false)
         else
-          vim.cmd("colorscheme monokai-pro")
+          apply("pro", true)
         end
         M.is_dark = not M.is_dark
       end
 
       vim.keymap.set("n", "<leader>t", M.toggle, { desc = "Toggle light/dark colorscheme" })
     end,
+  },
+  {
+    -- 現在は未使用だが、今後のために起動時ロードはせずインストールだけ残す
+    "projekt0n/github-nvim-theme",
+    lazy = true,
   },
 }
