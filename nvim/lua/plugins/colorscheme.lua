@@ -9,13 +9,19 @@ return {
         require("monokai-pro.config").extend({ filter = filter, transparent_background = transparent })
         require("monokai-pro.theme").clear_cache()
         require("monokai-pro").load()
+
+        if transparent then
+          -- 透過時は背景越しに他アプリの明るい色が見えることがあり、
+          -- 標準のコメント色(dimmed3相当)だと読みにくいので明るめに上書きする
+          vim.api.nvim_set_hl(0, "Comment", { fg = "#9d9b9d", italic = true })
+        end
       end
 
       require("monokai-pro").setup({
         filter = "pro",
         transparent_background = true, -- WezTermの背景透過を活かすため(ダークのみ)
       })
-      vim.cmd("colorscheme monokai-pro")
+      apply("pro", true)
 
       local M = { is_dark = true }
 
