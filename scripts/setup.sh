@@ -18,8 +18,16 @@ else
   echo "wezterm はインストール済みです。スキップします。"
 fi
 
-echo "=== Nerd Font (JetBrains Mono) ==="
-sudo apt install -y fonts-jetbrains-mono
+echo "=== Nerd Font (JetBrainsMono Nerd Font) ==="
+if [ ! -d ~/.local/share/fonts/JetBrainsMonoNerdFont ]; then
+  mkdir -p ~/.local/share/fonts/JetBrainsMonoNerdFont
+  curl -Lo /tmp/JetBrainsMono.zip "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip"
+  unzip -o /tmp/JetBrainsMono.zip -d ~/.local/share/fonts/JetBrainsMonoNerdFont > /dev/null
+  rm /tmp/JetBrainsMono.zip
+  fc-cache -f ~/.local/share/fonts > /dev/null
+else
+  echo "JetBrainsMono Nerd Font はインストール済みです。スキップします。"
+fi
 
 # ---------------------------------------------
 # Neovim
@@ -235,6 +243,14 @@ mkdir -p ~/.config/lazygit
 if [ ! -e ~/.config/lazygit/config.yml ]; then
   ln -s ~/dotfiles/lazygit/config.yml ~/.config/lazygit/config.yml
   echo "lazygit設定をリンクしました"
+fi
+
+echo "=== シェルエイリアス(gcd等)の読み込み設定 ==="
+if ! grep -q "dotfiles/shell/aliases.sh" ~/.bashrc; then
+  echo 'source ~/dotfiles/shell/aliases.sh' >> ~/.bashrc
+  echo "shell/aliases.shの読み込みを~/.bashrcに追記しました"
+else
+  echo "shell/aliases.shは読み込み設定済みです。スキップします。"
 fi
 
 echo "=== セットアップ完了 ==="
