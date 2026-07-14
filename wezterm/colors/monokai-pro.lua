@@ -4,6 +4,14 @@
 local wezterm = require("wezterm")
 local module = {}
 
+-- "#RRGGBB"をWezTermの"rgba: R G B A%"形式に変換する(アルファチャンネル指定用)
+local function hex_to_rgba(hex, alpha_percent)
+  local r = tonumber(hex:sub(2, 3), 16)
+  local g = tonumber(hex:sub(4, 5), 16)
+  local b = tonumber(hex:sub(6, 7), 16)
+  return string.format("rgba: %d %d %d %d%%", r, g, b, alpha_percent)
+end
+
 -- Helper function to create a theme variant
 local function create_theme(name, palette)
   return {
@@ -43,9 +51,14 @@ local function create_theme(name, palette)
     background = palette.background,
 
     -- Tab bar colors
+    -- window_background_opacity(0.9)と同程度の透過度をバーにも持たせつつ、
+    -- 色そのものはターミナル背景と一致させる
     tab_bar = {
-      background = palette.dark1,
-      
+      background = hex_to_rgba(palette.background, 90),
+
+      -- タブ間の境界線もバー背景と同化させて見えなくする
+      inactive_tab_edge = hex_to_rgba(palette.background, 90),
+
       active_tab = {
         bg_color = palette.background,
         fg_color = palette.accent3,
