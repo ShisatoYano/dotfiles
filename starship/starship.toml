@@ -1,0 +1,78 @@
+# Monokai Pro (Pro)の配色に合わせたStarshipプロンプト設定
+# パレットは wezterm/colors/monokai-pro.lua の "pro" と揃えている
+
+format = """
+$directory\
+[ ](fg:accent6 bg:dimmed5)\
+$git_branch\
+$git_status\
+[ ](fg:dimmed5)\
+$fill\
+$cmd_duration\
+$time\
+\n$character
+"""
+
+# コマンドラインに1行分のスペースを入れる
+add_newline = true
+
+palette = "monokai_pro"
+
+[palettes.monokai_pro]
+background = "#2d2a2e"
+text = "#fcfcfa"
+accent1 = "#ff6188" # red/pink
+accent2 = "#fc9867" # orange
+accent4 = "#a9dc76" # green
+accent5 = "#78dce8" # cyan
+accent6 = "#ab9df2" # purple
+dimmed1 = "#c1c0c0"
+dimmed5 = "#403e41"
+
+# ディレクトリ/Git行の右端を埋める(cmd_duration/timeを右寄せするため)
+[fill]
+symbol = " "
+
+[directory]
+style = "fg:background bg:accent5 bold"
+truncation_length = 10
+truncate_to_repo = false
+truncation_symbol = "…/"
+read_only = " 󰌾 "
+read_only_style = "fg:accent1 bg:dimmed5"
+format = "[ $path ]($style)[$read_only]($read_only_style)"
+
+[directory.substitutions]
+"Documents" = "󰈙 "
+"Downloads" = " "
+"Music" = " "
+"Pictures" = " "
+
+[aws]
+disabled = true
+[gcloud]
+disabled = true
+
+[git_branch]
+symbol = ""
+style = "bg:dimmed5"
+format = "[[ $symbol $branch ](fg:accent6 bg:dimmed5)]($style)"
+
+[git_status]
+style = "bg:dimmed5"
+format = "[[($all_status$ahead_behind )](fg:accent6 bg:dimmed5)]($style)"
+
+[cmd_duration]
+min_time = 1
+style = "fg:accent2"
+format = "[$duration]($style)"
+
+[time]
+disabled = false
+time_format = "%R"
+format = "[  $time ](fg:dimmed1)"
+
+[character]
+success_symbol = "[❯](bold accent4)"
+error_symbol = "[❯](bold accent1)"
+vimcmd_symbol = "[V](bold accent4) "
