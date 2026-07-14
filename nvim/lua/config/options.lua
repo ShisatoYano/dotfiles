@@ -10,8 +10,13 @@ vim.opt.relativenumber = true
 
 -- 長い行を折り返さない(コードは横スクロールで見る方が読みやすいため)
 vim.opt.wrap = false
-vim.opt.listchars = { extends = "…", precedes = "…" }
+vim.opt.listchars = { extends = "…", precedes = "…", tab = "  " }
 vim.opt.list = true
+
+-- Tabキーでタブ文字ではなくスペースを挿入する(このリポジトリは2スペースインデント)
+vim.opt.expandtab = true
+vim.opt.shiftwidth = 2
+vim.opt.tabstop = 2
 
 -- Markdownなど文章系のファイルだけ折り返しを有効にする
 vim.api.nvim_create_autocmd("FileType", {
