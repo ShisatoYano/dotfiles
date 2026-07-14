@@ -39,6 +39,19 @@ local function basename(path)
   return string.gsub(path or "", "(.*[/\\])(.*)", "%2")
 end
 
+-- タイトルに紛れ込むエスケープシーケンスや制御文字を除去する
+-- (Claude Code等がOSCでタイトルを設定する際、まれに表示が崩れることがあるため)
+local function sanitize_title(s)
+  if not s or s == "" then
+    return s
+  end
+  s = s:gsub("\27%][^\7\27]*\7", "")
+  s = s:gsub("\27%][^\27]*\27\\", "")
+  s = s:gsub("\27%[[%d;]*%a", "")
+  s = s:gsub("[%z\1-\8\11\12\14-\31\127]", "")
+  return s
+end
+
 local function is_ssh_process(process_name, cmdline, user_vars)
   if user_vars.ssh_host and user_vars.ssh_host ~= "" then
     return true, user_vars.ssh_host
@@ -143,7 +156,7 @@ function M.setup(config)
     local pane = tab.active_pane
     local pane_id = pane.pane_id
     local process_name = basename(pane.foreground_process_name)
-    local pane_title = pane.title or ""
+    local pane_title = sanitize_title(pane.title or "")
     local cmdline = pane.foreground_process_name or ""
     local user_vars = pane.user_vars or {}
     local cached_cwd = title_cache[pane_id] or ""
@@ -162,13 +175,27 @@ function M.setup(config)
     local edge_foreground = background
 
     local title_text
-    local custom = M.custom_title[tab.tab_id] or (tab.tab_title ~= "" and tab.tab_title or nil)
+    local custom = M.custom_title[tab.tab_id] or (tab.tab_title ~= "" and sanitize_title(tab.tab_title) or nil)
     if custom then
       title_text = custom
     elseif is_ssh then
       title_text = ssh_host_cache[pane_id] or "ssh"
     else
-      title_text = title_cache[pane_id] or cached_cwd or "-"
+      -- update-statusのキャッシュを待たず、current_working_dirから同期的に算出する
+      -- (切り替え直後の一瞬キャッシュが無い状態で表示が空になるのを防ぐ)
+      local ok, cwd_url = pcall(function()
+        return pane.current_working_dir
+      end)
+      local live_cwd = ok and cwd_url and cwd_url.file_path or nil
+      if live_cwd then
+        title_text = extract_project_name(live_cwd)
+      elseif title_cache[pane_id] and title_cache[pane_id] ~= "" then
+        title_text = title_cache[pane_id]
+      elseif cached_cwd ~= "" then
+        title_text = cached_cwd
+      else
+        title_text = "-"
+      end
     end
 
     local claude_suffix = ""
