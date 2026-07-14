@@ -4,9 +4,24 @@ return {
     lazy = false,
     priority = 1000,
     config = function()
+      -- monokai-pro.nvimのデフォルト値(このリストが無いと上書きされて消えてしまう)
+      local default_background_clear = { "toggleterm", "telescope", "renamer", "notify" }
+
       -- filterとtransparent_backgroundを同時に切り替えて再適用する
       local function apply(filter, transparent)
-        require("monokai-pro.config").extend({ filter = filter, transparent_background = transparent })
+        local background_clear = vim.deepcopy(default_background_clear)
+        if transparent then
+          -- transparent_background = trueだけではnvim-tree/bufferlineの背景は
+          -- 透過されないため、background_clearに明示的に加える必要がある
+          table.insert(background_clear, "nvim-tree")
+          table.insert(background_clear, "bufferline")
+        end
+
+        require("monokai-pro.config").extend({
+          filter = filter,
+          transparent_background = transparent,
+          background_clear = background_clear,
+        })
         require("monokai-pro.theme").clear_cache()
         require("monokai-pro").load()
 
