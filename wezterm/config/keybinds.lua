@@ -1,4 +1,5 @@
 local wezterm = require("wezterm")
+local tab_title = require("config.tab_title")
 local M = {}
 
 function M.setup(config)
@@ -15,8 +16,8 @@ function M.setup(config)
     { key = "t", mods = "LEADER", action = wezterm.action.EmitEvent("toggle-color-scheme") },
     -- WezTermを終了(全ウィンドウ/タブを閉じる)
     { key = "q", mods = "LEADER", action = wezterm.action.QuitApplication },
-    -- タブ一覧を表示して選択切り替え
-    { key = "g", mods = "LEADER", action = wezterm.action.ShowTabNavigator },
+    -- タブ一覧を表示して選択切り替え(プロジェクト名がわかる自作ピッカー)
+    { key = "g", mods = "LEADER", action = tab_title.tab_picker() },
   }
 end
 
