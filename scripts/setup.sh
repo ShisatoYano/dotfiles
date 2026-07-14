@@ -139,6 +139,17 @@ else
 fi
 
 # ---------------------------------------------
+# starship(プロンプト、公式インストーラーでユーザー領域にインストール)
+# ---------------------------------------------
+echo "=== starship ==="
+if ! command -v starship &> /dev/null; then
+  mkdir -p ~/.local/bin
+  curl -sS https://starship.rs/install.sh | sh -s -- -y -b ~/.local/bin
+else
+  echo "starship はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
 # Go(ccsession等のGo製CLIツールのビルド用)
 # ---------------------------------------------
 echo "=== Go ==="
@@ -250,6 +261,10 @@ if [ ! -e ~/.config/lazygit/config.yml ]; then
   ln -s ~/dotfiles/lazygit/config.yml ~/.config/lazygit/config.yml
   echo "lazygit設定をリンクしました"
 fi
+if [ ! -e ~/.config/starship.toml ]; then
+  ln -s ~/dotfiles/starship/starship.toml ~/.config/starship.toml
+  echo "starship設定をリンクしました"
+fi
 
 echo "=== シェルエイリアス(gcd等)の読み込み設定 ==="
 if ! grep -q "dotfiles/shell/aliases.sh" ~/.bashrc; then
@@ -257,6 +272,14 @@ if ! grep -q "dotfiles/shell/aliases.sh" ~/.bashrc; then
   echo "shell/aliases.shの読み込みを~/.bashrcに追記しました"
 else
   echo "shell/aliases.shは読み込み設定済みです。スキップします。"
+fi
+
+echo "=== starshipプロンプトの初期化設定 ==="
+if ! grep -q "starship init bash" ~/.bashrc; then
+  echo 'eval "$(starship init bash)"' >> ~/.bashrc
+  echo "starship initを~/.bashrcに追記しました"
+else
+  echo "starship initは設定済みです。スキップします。"
 fi
 
 echo "=== セットアップ完了 ==="
