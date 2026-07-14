@@ -122,6 +122,65 @@ local function has_zoomed_pane(panes)
   return false
 end
 
+-- ShowTabNavigator(組み込み)はプロセス名しか出せないため、
+-- プロジェクト名が分かる自作のタブ選択ピッカーを用意する
+-- (setup()実行前に他モジュールから参照されても良いようトップレベルで定義する)
+function M.tab_picker()
+  return wezterm.action_callback(function(window, pane)
+    local mux_window = window:mux_window()
+    local tabs = mux_window:tabs()
+    local choices = {}
+
+    for index, tab in ipairs(tabs) do
+      local active_pane = tab:active_pane()
+      local tab_id = tab:tab_id()
+      local custom = M.custom_title[tab_id]
+
+      local label
+      if custom then
+        label = custom
+      else
+        local ok, cwd_url = pcall(function()
+          return active_pane:get_current_working_dir()
+        end)
+        local cwd = ok and cwd_url and cwd_url.file_path or nil
+        label = extract_project_name(cwd)
+      end
+
+      local process = active_pane:get_foreground_process_name() or ""
+      local process_name = basename(process)
+      if process_name == "" then
+        process_name = "?"
+      end
+
+      table.insert(choices, {
+        id = tostring(tab_id),
+        label = string.format("%d: %s  (%s)", index, label, process_name),
+      })
+    end
+
+    window:perform_action(
+      wezterm.action.InputSelector({
+        title = "タブを選択",
+        fuzzy = true,
+        choices = choices,
+        action = wezterm.action_callback(function(_, _, id, _)
+          if not id then
+            return
+          end
+          for _, tab in ipairs(mux_window:tabs()) do
+            if tostring(tab:tab_id()) == id then
+              tab:activate()
+              break
+            end
+          end
+        end),
+      }),
+      pane
+    )
+  end)
+end
+
 function M.setup(config)
   local title_cache = {}
   local raw_cwd_cache = {}
