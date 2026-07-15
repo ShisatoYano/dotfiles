@@ -139,6 +139,23 @@ else
 fi
 
 # ---------------------------------------------
+# pipx / buku(CLIブックマーク管理、fzf連携はshell/aliases.shのbb関数)
+# ---------------------------------------------
+echo "=== pipx ==="
+if ! command -v pipx &> /dev/null; then
+  sudo apt install -y pipx
+else
+  echo "pipx はインストール済みです。スキップします。"
+fi
+
+echo "=== buku ==="
+if ! command -v buku &> /dev/null; then
+  pipx install buku
+else
+  echo "buku はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
 # starship(プロンプト、公式インストーラーでユーザー領域にインストール)
 # ---------------------------------------------
 echo "=== starship ==="
