@@ -7,6 +7,7 @@ vim.keymap.set("n", "<leader>x", "<cmd>close<CR>", { desc = "Close current split
 vim.keymap.set("n", "<leader>r", "<cmd>nohlsearch<CR><cmd>diffupdate<CR><cmd>redraw!<CR>", { desc = "Clear and redraw screen" })
 vim.keymap.set("n", "<leader>gh", "<cmd>edit ~/dotfiles/docs/git-cheatsheet.md<CR>", { desc = "Open git cheatsheet" })
 vim.keymap.set("n", "<leader>nh", "<cmd>edit ~/dotfiles/docs/nvim-cheatsheet.md<CR>", { desc = "Open nvim cheatsheet" })
+vim.keymap.set("n", "<leader>wh", "<cmd>edit ~/dotfiles/docs/terminal-cheatsheet.md<CR>", { desc = "Open terminal cheatsheet" })
 
 -- LSPがバッファにアタッチされたときに呼ばれるキーマップ設定
 function M.on_lsp_attach(args)
