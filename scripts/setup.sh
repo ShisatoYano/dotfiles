@@ -212,6 +212,24 @@ else
 fi
 
 # ---------------------------------------------
+# tabctl(ブラウザタブをCLI操作、fzf連携はshell/aliases.shのta/tc/tabarchive関数)
+# ---------------------------------------------
+echo "=== tabctl ==="
+if ! command -v tabctl &> /dev/null; then
+  ghq get https://github.com/slastra/tabctl
+  TABCTL_DIR="$(ghq root)/github.com/slastra/tabctl"
+  (cd "$TABCTL_DIR" && go build -o tabctl ./cmd/tabctl && go build -o tabctl-mediator ./cmd/tabctl-mediator)
+  mkdir -p ~/.local/bin
+  cp "$TABCTL_DIR/tabctl" "$TABCTL_DIR/tabctl-mediator" ~/.local/bin/
+  tabctl install
+  echo "ブラウザ拡張のインストールとブラウザの再起動が必要です:"
+  echo "  Chrome系: https://chromewebstore.google.com/detail/tabctl/baomblllgemcgbignhpbipgiofmjdhpn"
+  echo "  Firefox系: https://addons.mozilla.org/en-US/firefox/addon/tabctl1/"
+else
+  echo "tabctl はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
 # lazygit
 # ---------------------------------------------
 echo "=== lazygit ==="
