@@ -19,15 +19,30 @@ return {
           return
         end
         local target = dir .. "/" .. filename
+        local err_file = vim.fn.tempname()
         -- PNGはNULバイトを含むため、Luaの文字列として取り込む(vim.fn.system)と
         -- NULバイトが壊れる。シェルリダイレクトで直接ファイルへ書き出す
-        os.execute("wl-paste --type image/png > " .. vim.fn.shellescape(target) .. " 2>/dev/null")
+        -- 標準入力(fd 0)がNeovim側のジョブ実行状況によって閉じたままになっていることがあり、
+        -- その状態でwl-pasteを起動すると安全機構で強制終了してしまうため、明示的に/dev/nullを渡す
+        os.execute(
+          "wl-paste --type image/png < /dev/null > "
+            .. vim.fn.shellescape(target)
+            .. " 2>"
+            .. vim.fn.shellescape(err_file)
+        )
 
         if vim.fn.getfsize(target) <= 0 then
           vim.fn.delete(target)
-          vim.notify("クリップボードに画像がありません", vim.log.levels.WARN)
+          local err = table.concat(vim.fn.readfile(err_file), "\n")
+          vim.fn.delete(err_file)
+          if err ~= "" then
+            vim.notify("画像の保存に失敗しました: " .. err, vim.log.levels.ERROR)
+          else
+            vim.notify("クリップボードに画像がありません", vim.log.levels.WARN)
+          end
           return
         end
+        vim.fn.delete(err_file)
         vim.notify("画像を保存しました: " .. target)
         api.tree.reload()
       end)
