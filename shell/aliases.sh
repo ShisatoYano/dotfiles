@@ -52,3 +52,12 @@ tabarchive() {
 tabarchive-all() {
   tabctl list | _tabarchive_process
 }
+
+# 自分に関するPRを横断で確認する(自分が出したもの/レビュー依頼が来ているもの)
+prs() {
+  echo "=== 自分が出したPR ==="
+  gh search prs --author @me --state open
+  echo
+  echo "=== 自分がレビュアーのPR ==="
+  gh search prs --review-requested @me --state open
+}
