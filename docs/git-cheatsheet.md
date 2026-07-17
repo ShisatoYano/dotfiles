@@ -51,21 +51,33 @@
 | `gh issue view 番号 --web` | ブラウザで開く |
 
 ### PR
+`--repo owner/repo`は、そのリポジトリのローカルクローンに`cd`(または`gcd`)していれば省略できる。
+PR番号はリポジトリごとの採番なので、別のディレクトリから見るときは`--repo`必須。
+
 | コマンド | 動作 |
 |---|---|
 | `gh pr create` | PR作成 |
 | `gh pr list` | PR一覧 |
-| `gh pr status` | 自分に関連するPRの状況を一覧(レビュー待ち・自分が出したPR等) |
-| `gh pr view 番号 --web` | ブラウザで開く |
+| `gh pr status` | 自分に関連するPRの状況を一覧(レビュー待ち・自分が出したPR等、今いるリポジトリのみ) |
+| `prs`(shell/aliases.sh) | 自分に関するPRをリポジトリ横断で確認(`gh search prs --author @me`等) |
 | `gh pr checkout 番号` | ローカルにそのブランチを取得 |
-| `gh pr diff 番号` | 差分をターミナルで確認 |
+| `gh pr view 番号` | タイトル・レビュアー状況・Description本文を表示 |
+| `gh pr view 番号 --comments` | 会話コメントも含めて表示 |
+| `gh pr view 番号 --web` | ブラウザで開く(行単位コメントや動画の確認はこちらが必要) |
+| `gh pr diff 番号` | 差分をターミナルで確認(deltaで色付き表示) |
 | `gh pr checks` | CI/CDのチェック状況を確認 |
 | `gh pr merge 番号` | マージ(squash/rebase等を対話形式で選択) |
-| `gh pr checkout 番号` | レビュー対象のブランチを取得 |
+| `gh pr comment 番号 --body "..."` | 通常のコメントを残す |
 | `gh pr review 番号 --approve` | 承認 |
 | `gh pr review 番号 --request-changes --body "..."` | 変更要求 |
-| `gh pr review 番号 --comment --body "..."` | コメントのみ |
-| `gh pr view 番号 --web` | ブラウザで開く(行単位コメントはこちらが必要) |
+| `gh pr review 番号 --comment --body "..."` | 正式なレビューとしてコメント |
+
+添付画像をターミナルで見る場合(WezTerm):
+```bash
+curl -sL -H "Authorization: Bearer $(gh auth token)" "<画像URL>" -o /tmp/pr-image.png
+wezterm imgcat /tmp/pr-image.png
+```
+`github.com/user-attachments/assets/...`形式のURLは認証なしのcurlだと`Not Found`になるため、`gh auth token`のトークンをAuthorizationヘッダーに付ける必要がある。
 
 ### リポジトリ
 | コマンド | 動作 |
