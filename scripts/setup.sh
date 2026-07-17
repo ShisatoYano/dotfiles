@@ -301,6 +301,18 @@ if [ ! -e ~/.config/starship.toml ]; then
   echo "starship設定をリンクしました"
 fi
 
+echo "=== notion-check(bukuのURLを定期的にタブで開く/アクティブにする) ==="
+mkdir -p ~/.config/systemd/user
+if [ ! -e ~/.config/systemd/user/notion-check.service ]; then
+  ln -s ~/dotfiles/systemd/notion-check.service ~/.config/systemd/user/notion-check.service
+  ln -s ~/dotfiles/systemd/notion-check.timer ~/.config/systemd/user/notion-check.timer
+  systemctl --user daemon-reload
+  systemctl --user enable --now notion-check.timer
+  echo "notion-check.timerを有効化しました(bukuで対象URLに'notion_check'タグを付けてください)"
+else
+  echo "notion-check.timer はリンク済みです。スキップします。"
+fi
+
 echo "=== シェルエイリアス(gcd等)の読み込み設定 ==="
 if ! grep -q "dotfiles/shell/aliases.sh" ~/.bashrc; then
   echo 'source ~/dotfiles/shell/aliases.sh' >> ~/.bashrc
