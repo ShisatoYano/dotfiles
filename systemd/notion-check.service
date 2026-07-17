@@ -3,4 +3,4 @@ Description=bukuに登録したNotionのURLを確認し、タブを開く/アク
 
 [Service]
 Type=oneshot
-ExecStart=%h/dotfiles/scripts/notion-check.sh
+ExecStart=%h/dotfiles/scripts/tab-check.sh notion_check
