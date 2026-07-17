@@ -300,18 +300,25 @@ if [ ! -e ~/.config/starship.toml ]; then
   ln -s ~/dotfiles/starship/starship.toml ~/.config/starship.toml
   echo "starship設定をリンクしました"
 fi
-
-echo "=== notion-check(bukuのURLを定期的にタブで開く/アクティブにする) ==="
-mkdir -p ~/.config/systemd/user
-if [ ! -e ~/.config/systemd/user/notion-check.service ]; then
-  ln -s ~/dotfiles/systemd/notion-check.service ~/.config/systemd/user/notion-check.service
-  ln -s ~/dotfiles/systemd/notion-check.timer ~/.config/systemd/user/notion-check.timer
-  systemctl --user daemon-reload
-  systemctl --user enable --now notion-check.timer
-  echo "notion-check.timerを有効化しました(bukuで対象URLに'notion_check'タグを付けてください)"
-else
-  echo "notion-check.timer はリンク済みです。スキップします。"
+if [ ! -e ~/.gitconfig ]; then
+  ln -s ~/dotfiles/git/gitconfig ~/.gitconfig
+  echo "git設定(delta等)をリンクしました"
 fi
+
+echo "=== tab-check(bukuのURLを定期的にタブで開く/アクティブにする) ==="
+mkdir -p ~/.config/systemd/user
+for unit in notion-check attendance-check; do
+  if [ ! -e ~/.config/systemd/user/"$unit".service ]; then
+    ln -s ~/dotfiles/systemd/"$unit".service ~/.config/systemd/user/"$unit".service
+    ln -s ~/dotfiles/systemd/"$unit".timer ~/.config/systemd/user/"$unit".timer
+    systemctl --user daemon-reload
+    systemctl --user enable --now "$unit".timer
+    echo "$unit.timerを有効化しました"
+  else
+    echo "$unit.timer はリンク済みです。スキップします。"
+  fi
+done
+echo "(bukuで対象URLに'notion_check'/'attendance_check'タグを付けてください)"
 
 echo "=== シェルエイリアス(gcd等)の読み込み設定 ==="
 if ! grep -q "dotfiles/shell/aliases.sh" ~/.bashrc; then

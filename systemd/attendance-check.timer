@@ -1,0 +1,9 @@
+[Unit]
+Description=attendance-check.serviceを平日10時・19時に実行するタイマー
+
+[Timer]
+OnCalendar=Mon..Fri 10,19:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

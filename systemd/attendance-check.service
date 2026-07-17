@@ -1,0 +1,6 @@
+[Unit]
+Description=bukuに登録した勤怠システムのURLを確認し、タブを開く/アクティブにする
+
+[Service]
+Type=oneshot
+ExecStart=%h/dotfiles/scripts/tab-check.sh attendance_check
