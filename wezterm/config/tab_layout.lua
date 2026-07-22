@@ -1,11 +1,13 @@
 local wezterm = require("wezterm")
 local M = {}
 
--- 与えられたペインを、右側30%・左側は上下7:3に分割する
+-- 与えられたペインを、右側40列・左側は下部10行に分割する
+-- (割合(0〜1)だとモニター切替で解像度/フォントサイズが変わった際にサイズが崩れやすいため、
+--  1以上の値を指定してセル数(列数/行数)固定にする)
 -- (WezTerm起動時の最初のタブにも、新規タブ作成時にも使う共通ロジック)
 function M.apply_layout(pane)
-  pane:split({ direction = "Right", size = 0.3 })
-  pane:split({ direction = "Bottom", size = 0.3 })
+  pane:split({ direction = "Right", size = 40 })
+  pane:split({ direction = "Bottom", size = 10 })
 end
 
 -- 新規タブを、上記レイアウトが適用された状態で作成する
