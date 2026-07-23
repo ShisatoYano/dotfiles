@@ -307,7 +307,7 @@ fi
 
 echo "=== tab-check(bukuのURLを定期的にタブで開く/アクティブにする) ==="
 mkdir -p ~/.config/systemd/user
-for unit in notion-check attendance-check; do
+for unit in notion-check attendance-check slack-check schedule-check; do
   if [ ! -e ~/.config/systemd/user/"$unit".service ]; then
     ln -s ~/dotfiles/systemd/"$unit".service ~/.config/systemd/user/"$unit".service
     ln -s ~/dotfiles/systemd/"$unit".timer ~/.config/systemd/user/"$unit".timer
@@ -318,7 +318,18 @@ for unit in notion-check attendance-check; do
     echo "$unit.timer はリンク済みです。スキップします。"
   fi
 done
-echo "(bukuで対象URLに'notion_check'/'attendance_check'タグを付けてください)"
+echo "(bukuで対象URLに'notion_check'/'attendance_check'/'slack_check'/'schedule_check'タグを付けてください)"
+
+echo "=== ログイン時の自動起動(WezTerm/Chrome) ==="
+mkdir -p ~/.config/autostart
+for app in wezterm google-chrome; do
+  if [ ! -e ~/.config/autostart/"$app".desktop ]; then
+    ln -s ~/dotfiles/autostart/"$app".desktop ~/.config/autostart/"$app".desktop
+    echo "$app.desktopをリンクしました"
+  else
+    echo "$app.desktop はリンク済みです。スキップします。"
+  fi
+done
 
 echo "=== シェルエイリアス(gcd等)の読み込み設定 ==="
 if ! grep -q "dotfiles/shell/aliases.sh" ~/.bashrc; then
