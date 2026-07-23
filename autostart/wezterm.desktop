@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=WezTerm
+Exec=wezterm start --cwd .
+X-GNOME-Autostart-enabled=true
