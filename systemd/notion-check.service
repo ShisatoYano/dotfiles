@@ -3,4 +3,7 @@ Description=bukuに登録したNotionのURLを確認し、タブを開く/アク
 
 [Service]
 Type=oneshot
+# 起動直後(Persistent=trueによるcatch-up実行)はセッションのPATHがまだ
+# ~/.local/binを含んでいないことがあるため明示指定する
+Environment=PATH=%h/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=%h/dotfiles/scripts/tab-check.sh notion_check
