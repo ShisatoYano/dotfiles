@@ -3,10 +3,10 @@
 
 format = """
 $directory\
-[ ](fg:accent6 bg:dimmed5)\
+[](fg:accent5 bg:dimmed5)\
 $git_branch\
 $git_status\
-[ ](fg:dimmed5)\
+[](fg:dimmed5)\
 $fill\
 $cmd_duration\
 $time\
