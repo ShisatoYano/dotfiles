@@ -3,11 +3,9 @@
 
 format = """
 $directory\
-[](fg:accent5 bg:dimmed5)\
+[](fg:accent5 bg:accent4)\
 $git_branch\
 $git_status\
-[](fg:dimmed5)\
-$fill\
 $cmd_duration\
 $time\
 \n$character
@@ -28,10 +26,6 @@ accent5 = "#78dce8" # cyan
 accent6 = "#ab9df2" # purple
 dimmed1 = "#c1c0c0"
 dimmed5 = "#403e41"
-
-# ディレクトリ/Git行の右端を埋める(cmd_duration/timeを右寄せするため)
-[fill]
-symbol = " "
 
 [directory]
 style = "fg:background bg:accent5 bold"
@@ -55,22 +49,23 @@ disabled = true
 
 [git_branch]
 symbol = ""
-style = "bg:dimmed5"
-format = "[[ $symbol $branch ](fg:accent6 bg:dimmed5)]($style)"
+style = "bg:accent4"
+format = "[[ $symbol $branch ](fg:background bg:accent4)]($style)"
 
 [git_status]
-style = "bg:dimmed5"
-format = "[[($all_status$ahead_behind )](fg:accent6 bg:dimmed5)]($style)"
+style = "bg:accent4"
+format = "[[($all_status$ahead_behind )](fg:background bg:accent4)]($style)[](fg:accent4 bg:dimmed5)"
 
 [cmd_duration]
 min_time = 1
-style = "fg:accent2"
-format = "[$duration]($style)"
+style = "fg:background bg:accent2 bold"
+format = "[](fg:dimmed5 bg:accent2)[ $duration ]($style)[](fg:accent2 bg:dimmed5)"
 
 [time]
 disabled = false
 time_format = "%R"
-format = "[  $time ](fg:dimmed1)"
+style = "fg:dimmed1 bg:dimmed5"
+format = "[ $time ]($style)"
 
 [character]
 success_symbol = "[❯](bold accent4)"
