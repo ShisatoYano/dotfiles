@@ -53,6 +53,13 @@ tabarchive-all() {
   tabctl list | _tabarchive_process
 }
 
+# 指定ディレクトリ以下のファイルをfdfindで再帰的に検索し、fzfで選んだパスを出力する
+# (省略時はカレントディレクトリ以下)
+ff() {
+  local dir="${1:-.}"
+  fdfind --type f . "$dir" | fzf
+}
+
 # 自分に関するPRを横断で確認する(自分が出したもの/レビュー依頼が来ているもの)
 prs() {
   echo "=== 自分が出したPR ==="
