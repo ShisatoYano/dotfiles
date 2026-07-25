@@ -24,4 +24,14 @@ return {
       })
     end,
   },
+  {
+    -- LSP/DAP以外のツール(リンター等)をMason経由でインストールする
+    "WhoIsSethDaniel/mason-tool-installer.nvim",
+    dependencies = { "mason-org/mason.nvim" },
+    config = function()
+      require("mason-tool-installer").setup({
+        ensure_installed = { "typos" }, -- タイポ検出(nvim-lintと連携)
+      })
+    end,
+  },
 }
