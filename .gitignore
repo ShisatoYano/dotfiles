@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+
+# エディタ/OSが生成する一時ファイル
+*.swp
+*.swo
+*~
+.DS_Store
