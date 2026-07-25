@@ -5,7 +5,6 @@ require("config.theme") -- toggle-color-schemeイベントを登録するため�
 require("config.appearance").setup(config)
 require("config.keybinds").setup(config)
 require("config.cmdpicker").setup(config)
-require("config.tab_layout").setup(config)
 require("config.tab_title").setup(config)
 require("config.sessions").setup(config)
 

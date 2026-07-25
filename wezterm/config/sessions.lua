@@ -1,6 +1,5 @@
 local wezterm = require("wezterm")
 local sessions = wezterm.plugin.require("https://github.com/abidibo/wezterm-sessions")
-local tab_layout = require("config.tab_layout")
 local M = {}
 
 local STATE_DIR = wezterm.home_dir .. "/.local/share/wezterm-sessions/state/"
@@ -28,16 +27,11 @@ local function on_gui_ready(attempt)
     local window = gui_windows[1]
     local workspace_name = window:active_workspace()
 
-    -- 最大化(タスクバー等は隠さない)してから復元/レイアウト適用する
-    -- (ペインの分割割合は最終的なウィンドウサイズを基準に計算されるため)
+    -- 最大化(タスクバー等は隠さない)してから復元する
     window:maximize()
 
     if has_saved_state(workspace_name) then
       sessions.restore_state(window)
-    else
-      -- 保存済みの状態が無い場合(初回起動時など)は、既定のペインレイアウトを適用する
-      local pane = window:mux_window():active_pane()
-      tab_layout.apply_layout(pane)
     end
 
     sessions.start_autosave(window)
