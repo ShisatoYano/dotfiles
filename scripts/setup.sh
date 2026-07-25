@@ -60,27 +60,32 @@ else
 fi
 
 # ---------------------------------------------
-# Node.js / npm (pyright, git-cz用)
+# Node.js / npm (nvm経由)
 # ---------------------------------------------
-echo "=== Node.js ==="
+echo "=== nvm / Node.js ==="
+if [ ! -d "$HOME/.nvm" ]; then
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+fi
+export NVM_DIR="$HOME/.nvm"
+# shellcheck source=/dev/null
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
+if ! grep -q "NVM_DIR" ~/.bashrc; then
+  cat >> ~/.bashrc << 'EOF'
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+EOF
+  echo "nvm の読み込み設定を .bashrc に追加しました。"
+else
+  echo "nvm はインストール済みです。スキップします。"
+fi
 if ! command -v node &> /dev/null; then
-  curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-  sudo apt install -y nodejs
+  nvm install --lts
+  nvm use --lts
 else
   echo "node はインストール済みです。スキップします。"
-fi
-
-# npmのグローバルインストール先をユーザー領域に変更(sudoなしでグローバルインストールできるようにする)
-echo "=== npmのグローバルインストール先を設定 ==="
-if [ "$(npm config get prefix)" != "$HOME/.npm-global" ]; then
-  mkdir -p ~/.npm-global
-  npm config set prefix "$HOME/.npm-global"
-  if ! grep -q "npm-global" ~/.bashrc; then
-    echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
-  fi
-  export PATH="$HOME/.npm-global/bin:$PATH"
-else
-  echo "npmのプレフィックスは設定済みです。スキップします。"
 fi
 
 echo "=== git-cz ==="
@@ -101,6 +106,12 @@ sudo apt install -y imagemagick
 # ---------------------------------------------
 echo "=== python3-venv ==="
 sudo apt install -y python3-venv
+
+# ---------------------------------------------
+# notify-relay(Slack/Calendar/Gmailの通知をD-Bus上で観測してログに記録)
+# ---------------------------------------------
+echo "=== python3-dbus / python3-gi(notify-relay用) ==="
+sudo apt install -y python3-dbus python3-gi
 
 # ---------------------------------------------
 # 検索系: ripgrep, fd-find
@@ -319,6 +330,18 @@ for unit in notion-check attendance-check slack-check schedule-check; do
   fi
 done
 echo "(bukuで対象URLに'notion_check'/'attendance_check'/'slack_check'/'schedule_check'タグを付けてください)"
+
+echo "=== notify-relay(Slack/Calendar/Gmailの通知をログに記録する常駐サービス) ==="
+mkdir -p ~/.config/systemd/user
+if [ ! -e ~/.config/systemd/user/notify-relay.service ]; then
+  ln -s ~/dotfiles/systemd/notify-relay.service ~/.config/systemd/user/notify-relay.service
+  systemctl --user daemon-reload
+  systemctl --user enable --now notify-relay.service
+  echo "notify-relay.serviceを有効化しました"
+else
+  echo "notify-relay.service はリンク済みです。スキップします。"
+fi
+echo "(ログは ~/.local/state/notify-relay/notify.log 、判定用の生データは debug.log)"
 
 echo "=== ログイン時の自動起動(WezTerm/Chrome) ==="
 mkdir -p ~/.config/autostart
