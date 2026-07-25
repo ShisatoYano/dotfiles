@@ -1,0 +1,12 @@
+[Unit]
+Description=Slack/Calendar/Gmailの通知をログに記録する(D-Bus通知の横取り観測)
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/dotfiles/scripts/notify-relay.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target
