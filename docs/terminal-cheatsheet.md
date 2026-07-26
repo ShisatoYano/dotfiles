@@ -32,10 +32,9 @@ WezTermのキーバインド、シェル関数、Claude Code操作など、nvim�
 | `tabarchive` | 選んだタブをbukuに保存してから閉じる(Tabで複数選択可、既存URLは保存をスキップ) |
 | `tabarchive-all` | 開いている全タブをbukuに保存してから閉じる |
 | `ff [ディレクトリ]` | 指定ディレクトリ以下(省略時はカレント)のファイルをあいまい検索し、パスを出力 |
-| `dc` | `docker compose`の短縮形(`dc up -d`、`dc exec <service> bash`等) |
-| `dexec` | 起動中のコンテナをあいまい検索して`bash`で入る |
-| `dstop` | 起動中のコンテナをあいまい検索して停止(Tabで複数選択可) |
 | `prs` | 自分に関するPR(自分が出したもの/レビュー依頼が来ているもの)を横断で確認(fzf不要) |
+
+Docker関連(`dc`/`dexec`/`dstop`等)は`docs/docker-cheatsheet.md`(`<leader>dh`)を参照。
 
 ## tab-check(bukuのURLを定期的にタブで開く/アクティブにする)
 bukuに特定のタグを付けたURLを、systemdユーザータイマーが決まった時間に確認する。
@@ -76,12 +75,10 @@ Chrome経由の通知は`app_name`が常に"Google Chrome"になり判別に使�
   含まれていないため、`gh pr view`でPRの実際の状態(OPEN/MERGED/CLOSED/DRAFT)を問い合わせて
   `[MERGED]`のように付与する
 - Slackはブラウザ版(Chrome)・ネイティブアプリのどちらの通知でも同様に拾う(ソースは区別しない)
-- Slackはネイティブアプリ経由(`app_name`が`Slack`)の通知だけを拾い、ブラウザ版(`Google Chrome`)は
-  同じ内容が重複するため無視する(`classify()`内で`is_chrome`判定)
 
 | コマンド | 動作 |
 |---|---|
-| `tail -f ~/.local/state/notify-relay/notify.log` | 該当した通知をリアルタイムに表示 |
+| `nrlog` | 該当した通知をリアルタイムに表示(`tail -f ~/.local/state/notify-relay/notify.log`) |
 | `tail -f ~/.local/state/notify-relay/debug.log` | 判定結果に関わらず全通知の生データを表示(キーワード調整用) |
 | `systemctl --user status notify-relay.service` | 常駐状態を確認 |
 | `systemctl --user restart notify-relay.service` | `KEYWORDS`変更後などに再起動して反映 |
