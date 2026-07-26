@@ -7,7 +7,7 @@ function M.setup(config)
 
   config.font = wezterm.font("JetBrainsMono Nerd Font Mono")
   config.font_size = 10.0
-  config.color_scheme = "Monokai Pro (Pro)"
+  config.color_scheme = "Tokyo Night Moon"
   config.window_decorations = "RESIZE"
   config.window_padding = {
     left = 5,
@@ -22,9 +22,6 @@ function M.setup(config)
   config.window_frame = {
     inactive_titlebar_bg = "none",
     active_titlebar_bg = "none",
-  }
-  config.window_background_gradient = {
-    colors = {"#2D2A2E"}
   }
   config.tab_bar_at_bottom = true -- タブバーを画面下部に表示
   config.tab_max_width = 40 -- タブタイトルが途中で切れないよう広めに確保
