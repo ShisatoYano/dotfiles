@@ -7,6 +7,7 @@ customCommands:
 gui:
   language: "ja"
   showIcons: true
+  nerdFontsVersion: "3"
 git:
   pagers:
     - colorArg: always
