@@ -1,56 +1,55 @@
 return {
   {
-    "loctvl842/monokai-pro.nvim",
+    "folke/tokyonight.nvim",
     lazy = false,
     priority = 1000,
     config = function()
-      -- monokai-pro.nvimのデフォルト値(このリストが無いと上書きされて消えてしまう)
-      local default_background_clear = { "toggleterm", "telescope", "renamer", "notify" }
+      -- ダークはTokyo Night (Moon)、ライトはMonokai Pro (Light)の方が見やすいため、
+      -- ライトのときだけmonokai-pro.nvim(lazyインストール済み)を使う
+      local function apply_dark()
+        vim.o.background = "dark"
+        require("tokyonight").setup({
+          style = "moon",
+          transparent = true, -- WezTermの背景透過を活かすため
+          styles = {
+            sidebars = "transparent",
+            floats = "transparent",
+          },
+        })
+        vim.cmd.colorscheme("tokyonight")
+      end
 
-      -- filterとtransparent_backgroundを同時に切り替えて再適用する
-      local function apply(filter, transparent)
-        local background_clear = vim.deepcopy(default_background_clear)
-        if transparent then
-          -- transparent_background = trueだけではnvim-tree/bufferlineの背景は
-          -- 透過されないため、background_clearに明示的に加える必要がある
-          table.insert(background_clear, "nvim-tree")
-          table.insert(background_clear, "bufferline")
-        end
-
+      local function apply_light()
+        vim.o.background = "light"
         require("monokai-pro.config").extend({
-          filter = filter,
-          transparent_background = transparent,
-          background_clear = background_clear,
+          filter = "light",
+          transparent_background = false,
+          background_clear = { "toggleterm", "telescope", "renamer", "notify" },
         })
         require("monokai-pro.theme").clear_cache()
         require("monokai-pro").load()
-
-        if transparent then
-          -- 透過時は背景越しに他アプリの明るい色が見えることがあり、
-          -- 標準のコメント色(dimmed3相当)だと読みにくいので明るめに上書きする
-          vim.api.nvim_set_hl(0, "Comment", { fg = "#9d9b9d", italic = true })
-        end
       end
 
-      require("monokai-pro").setup({
-        filter = "pro",
-        transparent_background = true, -- WezTermの背景透過を活かすため(ダークのみ)
-      })
-      apply("pro", true)
+      apply_dark()
 
       local M = { is_dark = true }
 
       function M.toggle()
         if M.is_dark then
-          apply("light", false)
+          apply_light()
         else
-          apply("pro", true)
+          apply_dark()
         end
         M.is_dark = not M.is_dark
       end
 
       vim.keymap.set("n", "<leader>t", M.toggle, { desc = "Toggle light/dark colorscheme" })
     end,
+  },
+  {
+    -- ライトテーマとして使用(初回requireでlazy.nvimが自動ロードする)
+    "loctvl842/monokai-pro.nvim",
+    lazy = true,
   },
   {
     -- 現在は未使用だが、今後のために起動時ロードはせずインストールだけ残す
