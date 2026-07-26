@@ -32,6 +32,9 @@ WezTermのキーバインド、シェル関数、Claude Code操作など、nvim�
 | `tabarchive` | 選んだタブをbukuに保存してから閉じる(Tabで複数選択可、既存URLは保存をスキップ) |
 | `tabarchive-all` | 開いている全タブをbukuに保存してから閉じる |
 | `ff [ディレクトリ]` | 指定ディレクトリ以下(省略時はカレント)のファイルをあいまい検索し、パスを出力 |
+| `dc` | `docker compose`の短縮形(`dc up -d`、`dc exec <service> bash`等) |
+| `dexec` | 起動中のコンテナをあいまい検索して`bash`で入る |
+| `dstop` | 起動中のコンテナをあいまい検索して停止(Tabで複数選択可) |
 | `prs` | 自分に関するPR(自分が出したもの/レビュー依頼が来ているもの)を横断で確認(fzf不要) |
 
 ## tab-check(bukuのURLを定期的にタブで開く/アクティブにする)

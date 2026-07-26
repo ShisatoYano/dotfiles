@@ -60,6 +60,22 @@ ff() {
   fdfind --type f . "$dir" | fzf
 }
 
+# docker composeの短縮形(dc up -d, dc exec <service> bash, dc down等)
+alias dc="docker compose"
+
+# 起動中のコンテナをfzfであいまい検索してbashで入る
+dexec() {
+  local line container
+  line=$(docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}' | fzf --reverse --header="NAMES	IMAGE	STATUS") || return
+  container=$(cut -f1 <<< "$line")
+  [ -n "$container" ] && docker exec -it "$container" bash
+}
+
+# 起動中のコンテナをfzfであいまい検索して停止する(Tabキーで複数選択可)
+dstop() {
+  docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}' | fzf --reverse --multi --header="NAMES	IMAGE	STATUS" | cut -f1 | xargs -r docker stop
+}
+
 # 自分に関するPRを横断で確認する(自分が出したもの/レビュー依頼が来ているもの)
 prs() {
   echo "=== 自分が出したPR ==="
