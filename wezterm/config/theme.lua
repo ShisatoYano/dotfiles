@@ -1,7 +1,7 @@
 local wezterm = require("wezterm")
 local M = {}
 
-M.dark_scheme = "Monokai Pro (Pro)"
+M.dark_scheme = "Tokyo Night Moon"
 M.light_scheme = "Monokai Pro (Light)"
 -- 背景の透過はダークテーマのときだけ有効にする
 M.dark_opacity = 0.9
