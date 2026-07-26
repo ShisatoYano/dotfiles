@@ -342,9 +342,9 @@ if [ ! -e ~/.gitconfig ]; then
   echo "git設定(delta等)をリンクしました"
 fi
 
-echo "=== tab-check(bukuのURLを定期的にタブで開く/アクティブにする) ==="
+echo "=== tab-check(bukuのURLを決まった時刻にタブで開く/アクティブにする) ==="
 mkdir -p ~/.config/systemd/user
-for unit in notion-check attendance-check slack-check schedule-check; do
+for unit in notion-check attendance-check schedule-check; do
   if [ ! -e ~/.config/systemd/user/"$unit".service ]; then
     ln -s ~/dotfiles/systemd/"$unit".service ~/.config/systemd/user/"$unit".service
     ln -s ~/dotfiles/systemd/"$unit".timer ~/.config/systemd/user/"$unit".timer
@@ -356,6 +356,16 @@ for unit in notion-check attendance-check slack-check schedule-check; do
   fi
 done
 echo "(bukuで対象URLに'notion_check'/'attendance_check'/'slack_check'/'schedule_check'タグを付けてください)"
+
+echo "=== login-tab-check(ログイン時、Chrome自動起動後にbukuのURLを開く/アクティブにする) ==="
+if [ ! -e ~/.config/systemd/user/login-tab-check.service ]; then
+  ln -s ~/dotfiles/systemd/login-tab-check.service ~/.config/systemd/user/login-tab-check.service
+  systemctl --user daemon-reload
+  systemctl --user enable --now login-tab-check.service
+  echo "login-tab-check.serviceを有効化しました"
+else
+  echo "login-tab-check.service はリンク済みです。スキップします。"
+fi
 
 echo "=== notify-relay(Slack/Calendar/Gmailの通知をログに記録する常駐サービス) ==="
 mkdir -p ~/.config/systemd/user
