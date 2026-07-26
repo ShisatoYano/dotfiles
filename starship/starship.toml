@@ -1,11 +1,12 @@
-# Monokai Pro (Pro)の配色に合わせたStarshipプロンプト設定
-# パレットは wezterm/colors/monokai-pro.lua の "pro" と揃えている
+# Starshipプロンプト用の色設定
+# (WezTermのカラースキームとは独立した、プロンプト専用の配色)
 
 format = """
 $directory\
-[](fg:accent5 bg:accent4)\
+$python\
 $git_branch\
 $git_status\
+$fill\
 $cmd_duration\
 $time\
 \n$character
@@ -14,9 +15,13 @@ $time\
 # コマンドラインに1行分のスペースを入れる
 add_newline = true
 
-palette = "monokai_pro"
+palette = "starship_palette"
 
-[palettes.monokai_pro]
+# 右端のcmd_duration/timeまでを横線で埋める
+[fill]
+symbol = "┄"
+
+[palettes.starship_palette]
 background = "#2d2a2e"
 text = "#fcfcfa"
 accent1 = "#ff6188" # red/pink
@@ -34,13 +39,20 @@ truncate_to_repo = false
 truncation_symbol = "…/"
 read_only = " 󰌾 "
 read_only_style = "fg:accent1 bg:dimmed5"
-format = "[ $path ]($style)[$read_only]($read_only_style)"
+format = "[](fg:accent5)[ $path ]($style)[$read_only]($read_only_style)[](fg:accent5)"
 
 [directory.substitutions]
 "Documents" = "󰈙 "
 "Downloads" = " "
 "Music" = " "
 "Pictures" = " "
+
+[python]
+# 仮想環境が常時有効(.bashrcで自動activate)なため、
+# ディレクトリの中身(detect_files/detect_extensions)だけで判定する
+detect_env_vars = []
+style = "fg:background bg:accent6 bold"
+format = "[](fg:accent6)[$symbol$virtualenv ]($style)[](fg:accent6)"
 
 [aws]
 disabled = true
@@ -50,22 +62,21 @@ disabled = true
 [git_branch]
 symbol = ""
 style = "bg:accent4"
-format = "[[ $symbol $branch ](fg:background bg:accent4)]($style)"
+format = "[](fg:accent4)[[ $symbol $branch ](fg:background bg:accent4)]($style)"
 
 [git_status]
 style = "bg:accent4"
-format = "[[($all_status$ahead_behind )](fg:background bg:accent4)]($style)[](fg:accent4 bg:dimmed5)"
+format = "[[($all_status$ahead_behind )](fg:background bg:accent4)]($style)[](fg:accent4)"
 
 [cmd_duration]
 min_time = 1
-style = "fg:background bg:accent2 bold"
-format = "[](fg:dimmed5 bg:accent2)[ $duration ]($style)[](fg:accent2 bg:dimmed5)"
+style = "fg:accent2"
+format = "[$duration]($style)"
 
 [time]
 disabled = false
 time_format = "%R"
-style = "fg:dimmed1 bg:dimmed5"
-format = "[ $time ]($style)"
+format = "[  $time ](fg:dimmed1)"
 
 [character]
 success_symbol = "[❯](bold accent4)"
