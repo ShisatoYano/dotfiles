@@ -1,9 +1,0 @@
-[Unit]
-Description=slack-check.serviceを平日10時に実行するタイマー
-
-[Timer]
-OnCalendar=Mon..Fri 10:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target
