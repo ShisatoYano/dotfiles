@@ -1,8 +1,8 @@
 [Unit]
-Description=attendance-check.serviceを平日10時・19時に実行するタイマー
+Description=attendance-check.serviceを平日19時に実行するタイマー(10時分はログイン時に実行)
 
 [Timer]
-OnCalendar=Mon..Fri 10,19:00
+OnCalendar=Mon..Fri 19:00
 Persistent=true
 
 [Install]
