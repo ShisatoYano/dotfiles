@@ -18,7 +18,6 @@ function M.setup(config)
   config.automatically_reload_config = true
   -- タブバーの見た目調整
   config.show_new_tab_button_in_tab_bar = false -- 新規タブの「+」を消す
-  -- retro形式にすると各タブの「×」ボタン(fancyタブバー固有のUI)が描画されなくなる
   config.window_frame = {
     inactive_titlebar_bg = "none",
     active_titlebar_bg = "none",
