@@ -280,6 +280,32 @@ fi
 # ---------------------------------------------
 # クリップボード連携
 # ---------------------------------------------
+# ---------------------------------------------
+# Docker(devcontainer等のコンテナ開発用)
+# ---------------------------------------------
+echo "=== Docker ==="
+if ! command -v docker &> /dev/null; then
+  sudo apt install -y ca-certificates curl
+  sudo install -m 0755 -d /etc/apt/keyrings
+  sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  sudo chmod a+r /etc/apt/keyrings/docker.asc
+  echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+    | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  sudo apt update
+  sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+else
+  echo "docker はインストール済みです。スキップします。"
+fi
+
+# sudoなしでdockerコマンドを使えるようにする(反映にはログアウト/インし直す必要がある)
+if ! groups | grep -q docker; then
+  sudo usermod -aG docker "$USER"
+  echo "dockerグループに追加しました。反映にはログアウト/インし直してください。"
+else
+  echo "既にdockerグループに所属しています。スキップします。"
+fi
+
 echo "=== クリップボード連携ツール ==="
 if [ "$XDG_SESSION_TYPE" = "wayland" ]; then
   sudo apt install -y wl-clipboard
@@ -343,9 +369,9 @@ else
 fi
 echo "(ログは ~/.local/state/notify-relay/notify.log 、判定用の生データは debug.log)"
 
-echo "=== ログイン時の自動起動(WezTerm/Chrome) ==="
+echo "=== ログイン時の自動起動(WezTerm/Chrome/xhost-docker) ==="
 mkdir -p ~/.config/autostart
-for app in wezterm google-chrome; do
+for app in wezterm google-chrome xhost-docker; do
   if [ ! -e ~/.config/autostart/"$app".desktop ]; then
     ln -s ~/dotfiles/autostart/"$app".desktop ~/.config/autostart/"$app".desktop
     echo "$app.desktopをリンクしました"
