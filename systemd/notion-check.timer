@@ -1,8 +1,8 @@
 [Unit]
-Description=notion-check.serviceを平日10時・13時・16時に実行するタイマー
+Description=notion-check.serviceを平日13時・16時に実行するタイマー(10時分はログイン時に実行)
 
 [Timer]
-OnCalendar=Mon..Fri 10,13,16:00
+OnCalendar=Mon..Fri 13,16:00
 Persistent=true
 
 [Install]
