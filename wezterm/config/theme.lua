@@ -2,7 +2,7 @@ local wezterm = require("wezterm")
 local M = {}
 
 M.dark_scheme = "Dracula (Official)"
-M.light_scheme = "Monokai Pro (Light)"
+M.light_scheme = "Builtin Solarized Light"
 -- 背景の透過はダークテーマのときだけ有効にする
 M.dark_opacity = 0.9
 M.light_opacity = 1.0
