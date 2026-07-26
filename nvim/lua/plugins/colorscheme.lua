@@ -1,22 +1,17 @@
 return {
   {
-    "folke/tokyonight.nvim",
+    "Mofiqul/dracula.nvim",
     lazy = false,
     priority = 1000,
     config = function()
-      -- ダークはTokyo Night (Moon)、ライトはMonokai Pro (Light)の方が見やすいため、
+      -- ダークはDracula、ライトはMonokai Pro (Light)の方が見やすいため、
       -- ライトのときだけmonokai-pro.nvim(lazyインストール済み)を使う
       local function apply_dark()
         vim.o.background = "dark"
-        require("tokyonight").setup({
-          style = "moon",
-          transparent = true, -- WezTermの背景透過を活かすため
-          styles = {
-            sidebars = "transparent",
-            floats = "transparent",
-          },
+        require("dracula").setup({
+          transparent_bg = true, -- WezTermの背景透過を活かすため
         })
-        vim.cmd.colorscheme("tokyonight")
+        vim.cmd.colorscheme("dracula")
       end
 
       local function apply_light()
@@ -54,6 +49,11 @@ return {
   {
     -- 現在は未使用だが、今後のために起動時ロードはせずインストールだけ残す
     "projekt0n/github-nvim-theme",
+    lazy = true,
+  },
+  {
+    -- 現在は未使用だが、今後のために起動時ロードはせずインストールだけ残す
+    "folke/tokyonight.nvim",
     lazy = true,
   },
 }
