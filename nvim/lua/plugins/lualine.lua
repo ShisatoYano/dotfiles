@@ -52,7 +52,7 @@ return {
       sections = {
         lualine_a = { "mode" },
         lualine_b = { "branch", "diff" },
-        lualine_c = { "filename" },
+        lualine_c = { { "filename", path = 1 } }, -- path=1: カレントディレクトリからの相対パス
         lualine_x = { "diagnostics", language_version, "filetype", "encoding" },
         lualine_y = { "progress" },
         lualine_z = { "location" },
