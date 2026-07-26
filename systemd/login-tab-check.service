@@ -1,0 +1,14 @@
+[Unit]
+Description=ログイン時(Chrome自動起動後)にbukuのURLを確認してタブを開く/アクティブにする
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+# 起動直後はセッションのPATHがまだ~/.local/binを含んでいないことがあるため明示指定する
+Environment=PATH=%h/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Chromeの自動起動(autostart)完了とtabctl拡張機能の接続を待つための猶予
+ExecStartPre=/bin/sleep 15
+ExecStart=/bin/sh -c '%h/dotfiles/scripts/tab-check.sh notion_check; %h/dotfiles/scripts/tab-check.sh attendance_check; %h/dotfiles/scripts/tab-check.sh slack_check; %h/dotfiles/scripts/tab-check.sh schedule_check'
+
+[Install]
+WantedBy=graphical-session.target
