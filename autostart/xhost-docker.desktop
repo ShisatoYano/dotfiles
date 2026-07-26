@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=xhost-docker
+Comment=DockerコンテナからホストのX serverへのGUI表示を許可する(devcontainer等のGUIアプリ用)
+Exec=xhost +local:docker
+X-GNOME-Autostart-enabled=true
+NoDisplay=true
