@@ -4,8 +4,7 @@ return {
     lazy = false,
     priority = 1000,
     config = function()
-      -- ダークはDracula、ライトはMonokai Pro (Light)の方が見やすいため、
-      -- ライトのときだけmonokai-pro.nvim(lazyインストール済み)を使う
+      -- ダークはDracula、ライトはSolarized Lightを使う
       local function apply_dark()
         vim.o.background = "dark"
         require("dracula").setup({
@@ -16,13 +15,10 @@ return {
 
       local function apply_light()
         vim.o.background = "light"
-        require("monokai-pro.config").extend({
-          filter = "light",
-          transparent_background = false,
-          background_clear = { "toggleterm", "telescope", "renamer", "notify" },
+        require("solarized").setup({
+          variant = "winter", -- 標準的なSolarized配色
         })
-        require("monokai-pro.theme").clear_cache()
-        require("monokai-pro").load()
+        vim.cmd.colorscheme("solarized")
       end
 
       apply_dark()
@@ -43,17 +39,8 @@ return {
   },
   {
     -- ライトテーマとして使用(初回requireでlazy.nvimが自動ロードする)
-    "loctvl842/monokai-pro.nvim",
-    lazy = true,
-  },
-  {
-    -- 現在は未使用だが、今後のために起動時ロードはせずインストールだけ残す
-    "projekt0n/github-nvim-theme",
-    lazy = true,
-  },
-  {
-    -- 現在は未使用だが、今後のために起動時ロードはせずインストールだけ残す
-    "folke/tokyonight.nvim",
+    "maxmx03/solarized.nvim",
+    name = "solarized",
     lazy = true,
   },
 }
