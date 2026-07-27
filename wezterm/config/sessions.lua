@@ -49,6 +49,13 @@ wezterm.on("gui-startup", function(_)
   on_gui_ready()
 end)
 
+-- 自動保存は一定間隔(auto_save_interval_s)でしか走らないため、
+-- 直前にタブを開閉した直後にウィンドウを閉じると保存が間に合わないことがある。
+-- ウィンドウが閉じられる直前に同期的に保存することで取りこぼしを防ぐ。
+wezterm.on("window-close-requested", function(window, _)
+  sessions.save_state(window, false)
+end)
+
 function M.setup(config)
   -- 手動での保存/復元/一覧選択などのキーバインドも合わせて有効化
   -- ALT+s 保存 / ALT+l 一覧から読み込み / ALT+r 復元 / ALT+a 自動保存トグル / ALT+f フォーク
