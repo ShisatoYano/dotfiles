@@ -79,6 +79,15 @@ dstop() {
 # notify-relayが検知した通知をリアルタイムに表示する
 alias nrlog="tail -f ~/.local/state/notify-relay/notify.log"
 
+# カレンダー関連の通知(📅マーク付き)をあいまい検索し、
+# Googleカレンダーのタブを開く/アクティブにする(実イベントへのリンクは通知に含まれないため)
+nrjump() {
+  grep '📅' ~/.local/state/notify-relay/notify.log 2>/dev/null \
+    | tac \
+    | fzf --reverse --prompt="カレンダー通知> " >/dev/null || return
+  ~/dotfiles/scripts/tab-check.sh schedule_check
+}
+
 # 自分に関するPRを横断で確認する(自分が出したもの/レビュー依頼が来ているもの)
 prs() {
   echo "=== 自分が出したPR ==="
