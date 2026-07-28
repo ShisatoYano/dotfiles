@@ -88,6 +88,24 @@ nrjump() {
   ~/dotfiles/scripts/tab-check.sh schedule_check
 }
 
+# GitHub関連の通知(本文にPR URLが含まれるもの)をあいまい検索し、
+# 既にそのPRのタブが開いていればアクティブに、無ければ新規タブで開く
+ghjump() {
+  local line url tabs id
+  line=$(grep -oE '.*https://github\.com/[^ )]+/pull/[0-9]+.*' ~/.local/state/notify-relay/notify.log 2>/dev/null \
+    | tac \
+    | fzf --reverse --prompt="GitHub通知> ") || return
+  url=$(grep -oE 'https://github\.com/[^ )]+/pull/[0-9]+' <<< "$line" | tail -1)
+  [ -z "$url" ] && return
+  tabs=$(tabctl list 2>/dev/null)
+  id=$(awk -F'\t' -v u="$url" '$3 == u { print $1; exit }' <<< "$tabs")
+  if [ -n "$id" ]; then
+    tabctl activate "$id" >/dev/null 2>&1
+  else
+    tabctl open "$url" >/dev/null 2>&1
+  fi
+}
+
 # 自分に関するPRを横断で確認する(自分が出したもの/レビュー依頼が来ているもの)
 prs() {
   echo "=== 自分が出したPR ==="
