@@ -106,6 +106,15 @@ ghjump() {
   fi
 }
 
+# Slackの通常メッセージ通知(💬マーク付き、GitHub/カレンダー以外)をあいまい検索し、
+# Slackの通知(Activity)受信箱を開く/アクティブにする(投稿個別へのリンクは通知に含まれないため)
+slackjump() {
+  grep '💬' ~/.local/state/notify-relay/notify.log 2>/dev/null \
+    | tac \
+    | fzf --reverse --prompt="Slack通知> " >/dev/null || return
+  ~/dotfiles/scripts/tab-check.sh slack_activity
+}
+
 # 自分に関するPRを横断で確認する(自分が出したもの/レビュー依頼が来ているもの)
 prs() {
   echo "=== 自分が出したPR ==="
