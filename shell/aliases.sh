@@ -115,6 +115,21 @@ slackjump() {
   ~/dotfiles/scripts/tab-check.sh slack_activity
 }
 
+# Gmail通知(GitHub関連はghjump対象なので除く)をあいまい検索し、
+# Notion経由のメール(📝)ならNotionのタブ、それ以外(📧)ならGmail受信トレイを開く/アクティブにする
+mailjump() {
+  local line tag
+  line=$(grep -E '📧|📝' ~/.local/state/notify-relay/notify.log 2>/dev/null \
+    | tac \
+    | fzf --reverse --prompt="Gmail通知> ") || return
+  if [[ "$line" == *"📝"* ]]; then
+    tag="notion_check"
+  else
+    tag="mail_check"
+  fi
+  ~/dotfiles/scripts/tab-check.sh "$tag"
+}
+
 # 自分に関するPRを横断で確認する(自分が出したもの/レビュー依頼が来ているもの)
 prs() {
   echo "=== 自分が出したPR ==="
