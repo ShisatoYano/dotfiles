@@ -18,6 +18,9 @@ function M.setup(config)
   config.automatically_reload_config = true
   -- タブバーの見た目調整
   config.show_new_tab_button_in_tab_bar = false -- 新規タブの「+」を消す
+  -- fancy tab bar(ネイティブの×ボタン/タブ境界線)を無効化し、
+  -- tab_title.luaの丸cap形状だけでタブを表現する(retro描画)
+  config.use_fancy_tab_bar = false
   config.window_frame = {
     inactive_titlebar_bg = "none",
     active_titlebar_bg = "none",
