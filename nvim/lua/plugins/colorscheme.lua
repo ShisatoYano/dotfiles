@@ -9,6 +9,10 @@ return {
         vim.o.background = "dark"
         require("dracula").setup({
           transparent_bg = true, -- WezTermの背景透過を活かすため
+          overrides = {
+            -- 標準のVisual色(#3E4452)は背景(#282A36)に近すぎて選択範囲が見づらいため上書き
+            Visual = { bg = "#6272a4" },
+          },
         })
         vim.cmd.colorscheme("dracula")
       end
