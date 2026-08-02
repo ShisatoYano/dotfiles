@@ -342,6 +342,22 @@ if [ ! -e ~/.gitconfig ]; then
   echo "git設定(delta等)をリンクしました"
 fi
 
+echo "=== Claude Codeのstatusline(モデル名/コンテキスト使用率/利用制限%) ==="
+sudo apt install -y jq
+mkdir -p ~/.claude
+if [ ! -e ~/.claude/statusline-command.sh ]; then
+  ln -s ~/dotfiles/claude/statusline-command.sh ~/.claude/statusline-command.sh
+  echo "statusline用スクリプトをリンクしました"
+fi
+if [ ! -f ~/.claude/settings.json ]; then
+  echo '{}' > ~/.claude/settings.json
+fi
+if ! jq -e '.statusLine' ~/.claude/settings.json >/dev/null 2>&1; then
+  tmp=$(mktemp)
+  jq '.statusLine = {"type": "command", "command": "bash ~/.claude/statusline-command.sh"}' ~/.claude/settings.json > "$tmp" && mv "$tmp" ~/.claude/settings.json
+  echo "settings.jsonにstatusLine設定を追加しました"
+fi
+
 echo "=== tab-check(bukuのURLを決まった時刻にタブで開く/アクティブにする) ==="
 mkdir -p ~/.config/systemd/user
 for unit in notion-check attendance-check schedule-check; do
