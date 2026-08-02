@@ -1,8 +1,13 @@
 customCommands:
   - key: "<c-g>"
     context: "files"
-    description: "git-czでコミット(規約に沿った対話形式)"
-    command: "git cz"
+    description: "AIでtype/subjectを判定してgit-czを開く(scope等は対話入力のまま)"
+    command: "~/dotfiles/scripts/ai-commit-msg.sh"
+    output: terminal
+  - key: "<c-x>"
+    context: "commits"
+    description: "未pushのコミットをAIでスカッシュ+メッセージ生成(元コミット一覧はbodyに残す)"
+    command: "~/dotfiles/scripts/ai-squash-commit.sh"
     output: terminal
 gui:
   language: "ja"

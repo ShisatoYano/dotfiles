@@ -5,34 +5,23 @@ local M = {}
 M.custom_title = {}
 
 local ICONS = {
-  docker = wezterm.nerdfonts.md_docker,
-  neovim = wezterm.nerdfonts.linux_neovim,
-  ssh = wezterm.nerdfonts.md_lan,
-  claude = "✳",
-  fallback = wezterm.nerdfonts.dev_terminal,
   zoom = wezterm.nerdfonts.md_magnify,
 }
 
-local ICON_COLORS = {
-  docker = "#4169e1",
-  neovim = "#57A143",
-  ssh = "#ff6188",
-  claude = "#D97757", -- Claude Codeのブランドカラー
-}
-
--- Monokai Pro (Pro)のパレットに合わせた配色
+-- Dracula(Official)のパレットに合わせた配色
 local TAB_COLORS = {
-  foreground_inactive = "#939293",
-  background_inactive = "none",
-  foreground_active = "#2d2a2e",
-  background_active = "#78dce8",
-  background_ssh_active = "#ff6188",
-  foreground_ssh_active = "#fcfcfa",
+  foreground_inactive = "#f8f8f2",
+  background_inactive = "#6272a4", -- Comment(控えめだが視認できる背景)
+  foreground_active = "#282a36", -- Background(明るい背景の上の文字色に流用)
+  background_active = "#bd93f9", -- Purple(目立つ背景)
+  background_ssh_active = "#ff5555", -- Red
+  foreground_ssh_active = "#f8f8f2", -- Foreground
 }
 
+-- Starshipプロンプトの左右の丸caps([](fg:accent5)[...]の形)と同じグリフに揃える
 local DECORATIONS = {
-  left_circle = wezterm.nerdfonts.ple_left_half_circle_thick,
-  right_circle = wezterm.nerdfonts.ple_right_half_circle_thick,
+  left_circle = "\u{e0ba}",
+  right_circle = "\u{e0bc}",
 }
 
 local function basename(path)
@@ -88,22 +77,6 @@ local function extract_project_name(cwd)
   return cwd:match("([^/]+)$") or cwd
 end
 
-local function get_icon_and_color(process_name, pane_title, cwd, is_ssh, is_claude)
-  if is_ssh then
-    return ICONS.ssh, ICON_COLORS.ssh
-  end
-  if pane_title == "nvim" or process_name == "nvim" then
-    return ICONS.neovim, ICON_COLORS.neovim
-  end
-  if is_claude then
-    return ICONS.claude, ICON_COLORS.claude
-  end
-  if process_name == "docker" or (pane_title and pane_title:find("docker")) then
-    return ICONS.docker, ICON_COLORS.docker
-  end
-  return ICONS.fallback, TAB_COLORS.foreground_inactive
-end
-
 local function get_tab_colors(is_active, is_ssh)
   if is_active and is_ssh then
     return TAB_COLORS.background_ssh_active, TAB_COLORS.foreground_ssh_active
@@ -147,15 +120,28 @@ function M.tab_picker()
         label = extract_project_name(cwd)
       end
 
-      local process = active_pane:get_foreground_process_name() or ""
-      local process_name = basename(process)
-      if process_name == "" then
-        process_name = "?"
+      -- タブ内のどのペインがアクティブでも、Claude Codeが動いているペインがあれば
+      -- 見出し(セッション内容の要約)を優先して表示する(そのタブの作業目的が分かるように)
+      local detail = nil
+      for _, p in ipairs(tab:panes()) do
+        local p_process = basename(p:get_foreground_process_name() or "")
+        local p_title = sanitize_title(p:get_title() or "")
+        if is_claude_process(p_process, p_title) and p_title ~= "" then
+          detail = p_title
+          break
+        end
+      end
+
+      if not detail then
+        detail = basename(active_pane:get_foreground_process_name() or "")
+      end
+      if detail == "" then
+        detail = "?"
       end
 
       table.insert(choices, {
         id = tostring(tab_id),
-        label = string.format("%d: %s  (%s)", index, label, process_name),
+        label = string.format("%d: %s  (%s)", index, label, detail),
       })
     end
 
@@ -185,9 +171,8 @@ function M.setup(config)
   local title_cache = {}
   local raw_cwd_cache = {}
   local ssh_host_cache = {}
-  local claude_cache = {}
 
-  -- cwd/Claude Code検出のキャッシュ更新(重い処理を毎描画走らせないため)
+  -- cwdキャッシュ更新(重い処理を毎描画走らせないため)
   wezterm.on("update-status", function(_, pane)
     local pane_id = pane:pane_id()
     local user_vars = pane.user_vars or {}
@@ -200,22 +185,12 @@ function M.setup(config)
         title_cache[pane_id] = extract_project_name(cwd)
       end
     end
-
-    local process_name = basename(pane:get_foreground_process_name() or "")
-    local pane_title = pane:get_title() or ""
-    if is_claude_process(process_name, pane_title) then
-      claude_cache[pane_id] = true
-    elseif (process_name == "zsh" or process_name == "bash" or process_name == "fish")
-      and not (pane_title:find("^✳") or pane_title:lower():find("claude")) then
-      claude_cache[pane_id] = nil
-    end
   end)
 
   wezterm.on("format-tab-title", function(tab, _, _, _, _, max_width)
     local pane = tab.active_pane
     local pane_id = pane.pane_id
     local process_name = basename(pane.foreground_process_name)
-    local pane_title = sanitize_title(pane.title or "")
     local cmdline = pane.foreground_process_name or ""
     local user_vars = pane.user_vars or {}
     local cached_cwd = title_cache[pane_id] or ""
@@ -226,8 +201,6 @@ function M.setup(config)
     elseif not is_ssh then
       ssh_host_cache[pane_id] = nil
     end
-
-    local is_claude = claude_cache[pane_id] or false
 
     local background, foreground = get_tab_colors(tab.is_active, is_ssh)
     local edge_background = "transparent"
@@ -257,18 +230,15 @@ function M.setup(config)
       end
     end
 
-    local claude_suffix = ""
-    if not custom and is_claude and pane_title ~= "" then
-      claude_suffix = " " .. pane_title
-    end
-
-    local icon, icon_color = get_icon_and_color(process_name, pane_title, cached_cwd, is_ssh, is_claude)
     local zoom_indicator = has_zoomed_pane(tab.panes) and (ICONS.zoom .. " ") or ""
-    local left_circle = tab.is_active and DECORATIONS.left_circle or ""
-    local right_circle = tab.is_active and DECORATIONS.right_circle or ""
+    local left_circle = DECORATIONS.left_circle
+    local right_circle = DECORATIONS.right_circle
 
-    local title = " " .. wezterm.truncate_right(title_text, max_width)
-    local claude_title = wezterm.truncate_right(claude_suffix, max_width) .. " "
+    -- max_widthはタブ全体の予算なので、caps/アイコン/余白の分を差し引いてから
+    -- タイトル本文を切り詰める(そうしないと右端の丸capごと切り詰められてしまう)
+    local decoration = " " .. left_circle .. zoom_indicator .. right_circle .. "   "
+    local available_width = math.max(max_width - wezterm.column_width(decoration), 1)
+    local title = " " .. wezterm.truncate_right(title_text, available_width) .. " "
 
     return {
       { Background = { Color = edge_background } },
@@ -276,18 +246,16 @@ function M.setup(config)
       { Foreground = { Color = edge_foreground } },
       { Text = left_circle },
       { Background = { Color = background } },
-      { Foreground = { Color = icon_color } },
-      { Text = icon },
-      { Background = { Color = background } },
       { Foreground = { Color = foreground } },
       { Text = zoom_indicator },
       { Attribute = { Intensity = "Bold" } },
       { Text = title },
       { Attribute = { Intensity = "Normal" } },
-      { Text = claude_title },
       { Background = { Color = edge_background } },
       { Foreground = { Color = edge_foreground } },
       { Text = right_circle },
+      { Background = { Color = edge_background } },
+      { Text = " " },
     }
   end)
 
