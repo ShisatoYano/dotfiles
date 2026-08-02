@@ -34,7 +34,8 @@
 |---|---|
 | `Space` | ステージ/アンステージ |
 | `c` | コミット |
-| `Ctrl+g` | git-czで規約付きコミット |
+| `Ctrl+g` | ステージ済みdiffをAIで判定し、type/subject入力済みでgit-czを開く(scope/body等は対話入力のまま) |
+| `Ctrl+x`(コミットパネル) | 未pushのコミットをAIでスカッシュ+メッセージ生成(元コミット一覧はbodyに残る) |
 | `P` / `p` | push / pull |
 | `?` | lazygit専用ヘルプ |
 
