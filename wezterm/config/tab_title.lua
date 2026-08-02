@@ -13,7 +13,7 @@ local TAB_COLORS = {
   foreground_inactive = "#f8f8f2",
   background_inactive = "#6272a4", -- Comment(控えめだが視認できる背景)
   foreground_active = "#282a36", -- Background(明るい背景の上の文字色に流用)
-  background_active = "#bd93f9", -- Purple(目立つ背景)
+  background_active = "#ffd700", -- Purple(目立つ背景)
   background_ssh_active = "#ff5555", -- Red
   foreground_ssh_active = "#f8f8f2", -- Foreground
 }
@@ -254,8 +254,6 @@ function M.setup(config)
       { Background = { Color = edge_background } },
       { Foreground = { Color = edge_foreground } },
       { Text = right_circle },
-      { Background = { Color = edge_background } },
-      { Text = " " },
     }
   end)
 
