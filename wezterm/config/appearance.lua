@@ -35,7 +35,7 @@ function M.setup(config)
   -- 非アクティブなペインを暗く/彩度を落として表示し、アクティブなペインが一目で分かるようにする
   config.inactive_pane_hsb = {
     saturation = 0.9,
-    brightness = 0.2,
+    brightness = 0.4,
   }
   -- コピーモードの選択範囲が背景色とほぼ同化して見づらいため上書きする
   -- (Dracula標準のselection色は背景に近すぎるため)
