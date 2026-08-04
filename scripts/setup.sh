@@ -358,6 +358,12 @@ if ! jq -e '.statusLine' ~/.claude/settings.json >/dev/null 2>&1; then
   echo "settings.jsonにstatusLine設定を追加しました"
 fi
 
+echo "=== Claude Codeのskills ==="
+if [ ! -e ~/.claude/skills ]; then
+  ln -s ~/dotfiles/claude/skills ~/.claude/skills
+  echo "skillsディレクトリをリンクしました"
+fi
+
 echo "=== tab-check(bukuのURLを決まった時刻にタブで開く/アクティブにする) ==="
 mkdir -p ~/.config/systemd/user
 for unit in notion-check attendance-check schedule-check; do
