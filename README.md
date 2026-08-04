@@ -19,6 +19,7 @@ git clone git@github.com:あなたのユーザー名/dotfiles.git ~/dotfiles
 - Docker(公式apt repo経由)、`docker`グループへの追加
 - starship(プロンプト)
 - jq、Claude Codeのstatusline(モデル名/コンテキスト使用率/利用制限%を表示)
+- Claude Codeのskills(`claude/skills/` を `~/.claude/skills` にリンク。日々の定型作業をSkill化して蓄積していく)
 - pipx, buku(CLIブックマーク管理)、tabctl(ブラウザタブ操作)
 - notify-relay(Slack/Calendar/Gmailの通知をログに記録する常駐サービス)
 - tab-check(bukuのURLを決まった時刻に開く/アクティブにするsystemdタイマー)
