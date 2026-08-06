@@ -1,13 +1,32 @@
 local wezterm = require("wezterm")
-local monokai_pro = require("colors.monokai-pro")
 local M = {}
 
-function M.setup(config)
-  monokai_pro.register_color_schemes(config)
+-- "#RRGGBB"をWezTermの"rgba(r, g, b, a)"形式に変換する(アルファチャンネル指定用)
+local function hex_to_rgba(hex, alpha)
+  local r = tonumber(hex:sub(2, 3), 16)
+  local g = tonumber(hex:sub(4, 5), 16)
+  local b = tonumber(hex:sub(6, 7), 16)
+  return string.format("rgba(%d, %d, %d, %.2f)", r, g, b, alpha)
+end
 
+function M.setup(config)
   config.font = wezterm.font("JetBrainsMono Nerd Font Mono")
   config.font_size = 10.0
   config.color_scheme = "Dracula (Official)"
+
+  -- 組み込みDraculaスキームはtab_bar.backgroundが不透明な固定色のため、
+  -- タブの無い末尾の余白だけwindow_background_opacityの透過が反映されない。
+  -- retroタブバー(use_fancy_tab_bar = false)は単なるテキスト行として描画され、
+  -- 中間的なアルファ値によるブレンド合成には対応していない(wezterm側の既知の制約:
+  -- https://github.com/wezterm/wezterm/issues/3563#issuecomment-1515479566)。
+  -- アルファ0(完全な透過)を指定した場合のみ描画自体がスキップされ、
+  -- tab_title.luaのcap部分と同様にウィンドウ本来の透過が反映される。
+  -- (color_schemeを指定すると、config.colorsによるトップレベルの上書きは無視されるため
+  --  スキーム自体を複製してtab_bar.backgroundだけ差し替え、同名で再登録する)
+  local dracula = wezterm.get_builtin_color_schemes()["Dracula (Official)"]
+  dracula.tab_bar.background = hex_to_rgba(dracula.tab_bar.background, 0)
+  config.color_schemes = { ["Dracula (Official)"] = dracula }
+
   config.window_decorations = "RESIZE"
   config.window_padding = {
     left = 5,
