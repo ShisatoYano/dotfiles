@@ -9,6 +9,8 @@ description: Use when the user wants to check on their own open pull requests (s
 
 **PRの状態を変更する操作(`gh pr merge`、`gh pr review --approve` / `--request-changes` / `--comment`、`gh pr comment` など)は絶対に実行しない。** このSkillが行うのは判断材料の整理と下書き作成までであり、実際の操作は必ずユーザー自身が行う。
 
+ユーザーがどちらか一方だけを指定した場合(「自分のPRの状況教えて」「レビュー待ちのPRある?」など)はそのワークフローだけを行う。両方確認したい場合や、特に指定がなくこのSkillを起動した場合は、**「自分が出したPRのワークフロー」を先に行い、その後「自分にアサインされたレビューのワークフロー」に進む**。
+
 ## 共通の使い方
 
 `gh search prs` は複数リポジトリを横断して検索できる。フィルタとして以下が使える。
@@ -24,7 +26,7 @@ description: Use when the user wants to check on their own open pull requests (s
 
 ### 1. 状況の一覧・優先度整理
 
-以下を順に実行し、まとめて報告する(対応必須のものを先に出す)。
+まず以下を順に実行し、CI/レビュー状況で粗く分類する。
 
 ```bash
 gh search prs --author @me --state open --checks failure           # CI失敗中
@@ -33,7 +35,13 @@ gh search prs --author @me --state open --review required          # レビュ�
 gh search prs --author @me --state open --review approved          # approve済み(マージ判断へ)
 ```
 
-優先度: CI失敗中 → 変更要求あり → (様子見)レビュー待ち → approve済み。draft PRは参考として別枠で扱う。
+`reviewDecision`(`--review approved` などの分類の元)は「必須承認数を満たしたか」しか見ていないため、一部のレビュアーがコメントのみで承認していない状態でも `approved` に分類されうる。これを見落とさないよう、各PRについて `gh pr view <number> --repo <owner/repo> --json reviews,comments,reviewRequests` を取得し、
+
+- レビュアーごとの状態(`APPROVED` / `COMMENTED` / `CHANGES_REQUESTED`)を一覧表示する
+- 未回答のレビュー依頼(`reviewRequests`)が残っていないか確認する
+- PRコメントの有無を確認し、あれば要約する。特にPR作者(ユーザー自身)が「修正します」のように対応を約束している発言があれば控えておく(ステップ3のマージ可否チェックで使う)
+
+これらを踏まえて優先度を判定する。優先度: CI失敗中 → 変更要求あり → 一部レビュアーがコメントのみ・未回答のまま止まっているもの(実質レビュー未完了) → (様子見)レビュー待ち → 全員承認済み。draft PRは参考として別枠で扱う。
 
 ### 2. レビューコメントへの対応支援
 
@@ -41,12 +49,14 @@ gh search prs --author @me --state open --review approved          # approve済�
 
 ### 3. マージ可否チェック
 
-対象PRについて `gh pr view <number> --repo <owner/repo> --json reviewDecision,statusCheckRollup,mergeStateStatus,mergeable` を取得し、以下を確認して結論(マージ可能 / まだ対応が必要:理由)を提示する。
+対象PRについて `gh pr view <number> --repo <owner/repo> --json reviewDecision,statusCheckRollup,mergeStateStatus,mergeable,reviews,comments` を取得し、以下を確認して結論(マージ可能 / まだ対応が必要:理由)を提示する。
 
 - `reviewDecision` が `APPROVED`
 - `statusCheckRollup` が全て成功
 - `mergeStateStatus` が `CLEAN`(コンフリクトなし)
 - 未解決のレビュースレッドが残っていない
+- `reviews` を個別に確認し、コメントのみで承認していないレビュアーが残っていないか(`reviewDecision`は必須承認数の充足を見ているだけで、全員の承認を意味しない)
+- `comments` の中でユーザー自身が対応を約束した発言があれば、それが実際にコミットへ反映されているか(コメント日時と最新コミット日時、diffの内容を突き合わせて確認する)
 
 **マージは実行しない。**
 
@@ -62,11 +72,23 @@ gh search prs --review-requested @me --state open --sort updated --order asc
 
 ### 2. レビュー実施そのものの支援
 
+対象PRの `body`(`gh pr view <number> --repo <owner/repo> --json body` などで取得済みのもの)に、画像・動画の添付を示すパターン(`https://github.com/user-attachments/assets/...` へのリンクや、Markdownの画像記法 `![...](...)`)が含まれていないか確認する。含まれていた場合は、その内容を読み取ることはできない(特に動画は視聴できない)ので、代わりに `gh pr view <number> --repo <owner/repo> --web` でPRページをブラウザで自動的に開き、「添付画像/動画があるためブラウザを開きました。内容をご確認ください」とユーザーに伝える。
+
 実際にレビューする際は `review` Skillを呼び出して本体のコードレビュー(diff要約・観点出し・リスク箇所の指摘)を行わせる。このSkillはその結果を踏まえて、全体としてapprove相当か変更要求相当かコメントに留めるべきかの整理と、実際に投稿する場合のレビューコメント文面の下書きまでを行う。**`gh pr review` などによる投稿は実行しない。**
 
 ### 3. レビュー後のフォロー
 
 レビュー済みのPRについて `gh pr view <number> --repo <owner/repo> --json reviews,commits,updatedAt` を確認し、レビュー後に新しいコミットが積まれているか・指摘内容が実際に反映されているかを見て、再レビューが必要そうなものを一覧化して提示する。
+
+### 4. 確認漏れの再チェック
+
+一覧にあったPRを一通り確認し終えたら、最後にステップ1と同じクエリをもう一度実行する。
+
+```bash
+gh search prs --review-requested @me --state open --sort updated --order asc
+```
+
+対応済みのPRが一覧から消えていることを確認しつつ、確認作業をしている間に新しく追加されたレビュー依頼が無いかをチェックする。新規のものが見つかった場合はユーザーに知らせ、続けて確認するか尋ねる。
 
 ## 補足
 
