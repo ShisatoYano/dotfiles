@@ -17,17 +17,31 @@ function M.setup(config)
     -- スクロールバックを1ページ分移動(PageUp/PageDownはFn併用が必要で押しにくいため)
     { key = "u", mods = "LEADER", action = wezterm.action.ScrollByPage(-1) },
     { key = "d", mods = "LEADER", action = wezterm.action.ScrollByPage(1) },
-    -- ペインサイズの微調整(LEADER + 矢印キーで2セル分ずつリサイズ)
-    { key = "LeftArrow", mods = "LEADER", action = wezterm.action.AdjustPaneSize({ "Left", 2 }) },
-    { key = "RightArrow", mods = "LEADER", action = wezterm.action.AdjustPaneSize({ "Right", 2 }) },
-    { key = "UpArrow", mods = "LEADER", action = wezterm.action.AdjustPaneSize({ "Up", 2 }) },
-    { key = "DownArrow", mods = "LEADER", action = wezterm.action.AdjustPaneSize({ "Down", 2 }) },
+    -- ペインサイズの微調整モードに入る(以後leader不要でhjkl/矢印キーだけでリサイズ可能。Esc/Enter/qで抜ける)
+    { key = "r", mods = "LEADER", action = wezterm.action.ActivateKeyTable({ name = "resize_pane", one_shot = false }) },
     -- ライト/ダーク配色を瞬時に切り替え
     { key = "t", mods = "LEADER", action = wezterm.action.EmitEvent("toggle-color-scheme") },
     -- WezTermを終了(全ウィンドウ/タブを閉じる)
     { key = "q", mods = "LEADER", action = wezterm.action.QuitApplication },
     -- タブ一覧を表示して選択切り替え(プロジェクト名がわかる自作ピッカー)
     { key = "g", mods = "LEADER", action = tab_title.tab_picker() },
+  }
+
+  -- LEADER+rで入るリサイズモード。抜けるまで2セル分ずつリサイズを繰り返せる
+  config.key_tables = {
+    resize_pane = {
+      { key = "h", action = wezterm.action.AdjustPaneSize({ "Left", 2 }) },
+      { key = "j", action = wezterm.action.AdjustPaneSize({ "Down", 2 }) },
+      { key = "k", action = wezterm.action.AdjustPaneSize({ "Up", 2 }) },
+      { key = "l", action = wezterm.action.AdjustPaneSize({ "Right", 2 }) },
+      { key = "LeftArrow", action = wezterm.action.AdjustPaneSize({ "Left", 2 }) },
+      { key = "RightArrow", action = wezterm.action.AdjustPaneSize({ "Right", 2 }) },
+      { key = "UpArrow", action = wezterm.action.AdjustPaneSize({ "Up", 2 }) },
+      { key = "DownArrow", action = wezterm.action.AdjustPaneSize({ "Down", 2 }) },
+      { key = "Escape", action = "PopKeyTable" },
+      { key = "Enter", action = "PopKeyTable" },
+      { key = "q", action = "PopKeyTable" },
+    },
   }
 end
 
