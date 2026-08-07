@@ -1,13 +1,15 @@
 local wezterm = require("wezterm")
 local M = {}
 
+-- Dark theme settings
 M.dark_scheme = "Dracula (Official)"
+M.dark_opacity = 0.86
+
+-- Light theme settings
 M.light_scheme = "Builtin Solarized Light"
--- 背景の透過はダークテーマのときだけ有効にする
-M.dark_opacity = 0.9
 M.light_opacity = 1.0
 
-wezterm.on("toggle-color-scheme", function(window, pane)
+wezterm.on("toggle-color-scheme", function(window, _)
   local overrides = window:get_config_overrides() or {}
   if overrides.color_scheme == M.light_scheme then
     overrides.color_scheme = M.dark_scheme
