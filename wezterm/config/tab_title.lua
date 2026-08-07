@@ -8,8 +8,8 @@ local ICONS = {
   zoom = wezterm.nerdfonts.md_magnify,
 }
 
--- Dracula(Official)のパレットに合わせた配色
-local TAB_COLORS = {
+-- Dracula(Official)のパレットに合わせた配色(keybinds.luaのキーテーブルバッジ表示でも再利用する)
+M.TAB_COLORS = {
   foreground_inactive = "#f8f8f2",
   background_inactive = "#6272a4", -- Comment(控えめだが視認できる背景)
   foreground_active = "#282a36", -- Background(明るい背景の上の文字色に流用)
@@ -79,11 +79,11 @@ end
 
 local function get_tab_colors(is_active, is_ssh)
   if is_active and is_ssh then
-    return TAB_COLORS.background_ssh_active, TAB_COLORS.foreground_ssh_active
+    return M.TAB_COLORS.background_ssh_active, M.TAB_COLORS.foreground_ssh_active
   elseif is_active then
-    return TAB_COLORS.background_active, TAB_COLORS.foreground_active
+    return M.TAB_COLORS.background_active, M.TAB_COLORS.foreground_active
   end
-  return TAB_COLORS.background_inactive, TAB_COLORS.foreground_inactive
+  return M.TAB_COLORS.background_inactive, M.TAB_COLORS.foreground_inactive
 end
 
 local function has_zoomed_pane(panes)

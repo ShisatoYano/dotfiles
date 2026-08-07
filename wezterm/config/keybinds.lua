@@ -2,6 +2,30 @@ local wezterm = require("wezterm")
 local tab_title = require("config.tab_title")
 local M = {}
 
+-- キーテーブルのラベル(未登録のテーブル名が来た場合はそのまま大文字表示にフォールバック)
+local KEY_TABLE_LABELS = {
+  resize_pane = "RESIZE_PANE",
+}
+
+-- アクティブなキーテーブルをステータス領域にバッジ表示する
+-- (素のテキストだけだと右下に埋もれて見落としやすいため、
+--  アクティブタブと同じ配色(tab_title.luaのTAB_COLORS)で目立たせる)
+wezterm.on("update-right-status", function(window, _)
+  local name = window:active_key_table()
+  if not name then
+    window:set_right_status("")
+    return
+  end
+
+  local label = KEY_TABLE_LABELS[name] or name:upper()
+  window:set_right_status(wezterm.format({
+    { Foreground = { Color = tab_title.TAB_COLORS.foreground_active } },
+    { Background = { Color = tab_title.TAB_COLORS.background_active } },
+    { Attribute = { Intensity = "Bold" } },
+    { Text = "  " .. label .. "  " },
+  }))
+end)
+
 function M.setup(config)
   config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 1000 }
   config.keys = {
