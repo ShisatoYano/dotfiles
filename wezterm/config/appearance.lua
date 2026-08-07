@@ -1,4 +1,5 @@
 local wezterm = require("wezterm")
+local theme = require("config.theme")
 local M = {}
 
 -- "#RRGGBB"をWezTermの"rgba(r, g, b, a)"形式に変換する(アルファチャンネル指定用)
@@ -12,7 +13,7 @@ end
 function M.setup(config)
   config.font = wezterm.font("JetBrainsMono Nerd Font Mono")
   config.font_size = 10.0
-  config.color_scheme = "Dracula (Official)"
+  config.color_scheme = theme.dark_scheme
 
   -- 組み込みDraculaスキームはtab_bar.backgroundが不透明な固定色のため、
   -- タブの無い末尾の余白だけwindow_background_opacityの透過が反映されない。
@@ -23,9 +24,9 @@ function M.setup(config)
   -- tab_title.luaのcap部分と同様にウィンドウ本来の透過が反映される。
   -- (color_schemeを指定すると、config.colorsによるトップレベルの上書きは無視されるため
   --  スキーム自体を複製してtab_bar.backgroundだけ差し替え、同名で再登録する)
-  local dracula = wezterm.get_builtin_color_schemes()["Dracula (Official)"]
+  local dracula = wezterm.get_builtin_color_schemes()[theme.dark_scheme]
   dracula.tab_bar.background = hex_to_rgba(dracula.tab_bar.background, 0)
-  config.color_schemes = { ["Dracula (Official)"] = dracula }
+  config.color_schemes = { [theme.dark_scheme] = dracula }
 
   config.window_decorations = "RESIZE"
   config.window_padding = {
@@ -47,7 +48,7 @@ function M.setup(config)
   config.tab_bar_at_bottom = true -- タブバーを画面下部に表示
   config.tab_max_width = 40 -- タブタイトルが途中で切れないよう広めに確保
   -- 背景を透過(GNOME/Mutterはリアルタイムのぼかしに対応していないため透過のみ)
-  config.window_background_opacity = 0.86
+  config.window_background_opacity = theme.dark_opacity
   -- "Hold"だと、wezterm-sessionsが復元処理で不要になった初期タブを閉じるために
   -- 送る"exit"コマンドの後もペインが残ってしまうため、正常終了時は自動で閉じる設定にする
   config.exit_behavior = "CloseOnCleanExit"
