@@ -64,6 +64,11 @@ function M.setup(config)
     
     -- Select tab 
     { key = "g", mods = "LEADER", action = tab_title.tab_picker() },
+
+    -- Resize font
+    { key = "+", mods = "CTRL", action = wezterm.action.IncreaseFontSize },
+    { key = "-", mods = "CTRL", action = wezterm.action.DecreaseFontSize },
+    { key = "0", mods = "CTRL", action = wezterm.action.ResetFontSize },
   }
 
   -- Key tables 
