@@ -1,5 +1,6 @@
 local wezterm = require("wezterm")
 local tab_title = require("config.tab_title")
+local theme = require("config.theme")
 local M = {}
 
 -- キーテーブルのラベル(未登録のテーブル名が来た場合はそのまま大文字表示にフォールバック)
@@ -17,10 +18,15 @@ wezterm.on("update-right-status", function(window, _)
     return
   end
 
+  local overrides = window:get_config_overrides() or {}
+  local colors = overrides.color_scheme == theme.light_scheme
+    and tab_title.TAB_COLORS_LIGHT
+    or tab_title.TAB_COLORS_DARK
+
   local label = KEY_TABLE_LABELS[name] or name:upper()
   window:set_right_status(wezterm.format({
-    { Foreground = { Color = tab_title.TAB_COLORS.foreground_active } },
-    { Background = { Color = tab_title.TAB_COLORS.background_active } },
+    { Foreground = { Color = colors.foreground_active } },
+    { Background = { Color = colors.background_active } },
     { Attribute = { Intensity = "Bold" } },
     { Text = "  " .. label .. "  " },
   }))
