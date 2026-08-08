@@ -1,4 +1,5 @@
 local wezterm = require("wezterm")
+local theme = require("config.theme")
 local M = {}
 
 -- カスタムタブ名(tab_id -> string)。<leader>,でリネームすると入る
@@ -8,14 +9,24 @@ local ICONS = {
   zoom = wezterm.nerdfonts.md_magnify,
 }
 
--- Dracula(Official)のパレットに合わせた配色(keybinds.luaのキーテーブルバッジ表示でも再利用する)
-M.TAB_COLORS = {
+-- Tab colors for dark theme 
+M.TAB_COLORS_DARK = {
   foreground_inactive = "#f8f8f2",
   background_inactive = "#6272a4", -- Comment(控えめだが視認できる背景)
   foreground_active = "#282a36", -- Background(明るい背景の上の文字色に流用)
-  background_active = "#ffd700", -- Purple(目立つ背景)
+  background_active = "#ffd700", -- 目立つ黄色
   background_ssh_active = "#ff5555", -- Red
   foreground_ssh_active = "#f8f8f2", -- Foreground
+}
+
+-- Tab colors for light theme
+M.TAB_COLORS_LIGHT = {
+  foreground_inactive = "#657b83", -- base00
+  background_inactive = "#eee8d5", -- base2(控えめだが視認できる背景)
+  foreground_active = "#fdf6e3", -- base3(濃い背景の上の文字色に流用)
+  background_active = "#b58900", -- yellow(目立つ背景)
+  background_ssh_active = "#dc322f", -- red
+  foreground_ssh_active = "#fdf6e3", -- base3
 }
 
 -- Starshipプロンプトの左右の丸caps([](fg:accent5)[...]の形)と同じグリフに揃える
@@ -23,6 +34,24 @@ local DECORATIONS = {
   left_circle = "\u{e0ba}",
   right_circle = "\u{e0bc}",
 }
+
+-- Function to select color theme for current tab
+function M.current_tab_colors(config)
+  if config.color_scheme == theme.light_scheme then
+    return M.TAB_COLORS_LIGHT
+  end
+  return M.TAB_COLORS_DARK
+end
+
+-- Function to get tab colors depend on it is active, ssh
+local function get_tab_colors(colors, is_active, is_ssh)
+  if is_active and is_ssh then
+    return colors.background_ssh_active, colors.foreground_ssh_active
+  elseif is_active then
+    return colors.background_active, colors.foreground_active
+  end
+  return colors.background_inactive, colors.foreground_inactive
+end
 
 local function basename(path)
   return string.gsub(path or "", "(.*[/\\])(.*)", "%2")
@@ -75,15 +104,6 @@ local function extract_project_name(cwd)
   -- 最後のディレクトリ名
   cwd = cwd:gsub("/$", "")
   return cwd:match("([^/]+)$") or cwd
-end
-
-local function get_tab_colors(is_active, is_ssh)
-  if is_active and is_ssh then
-    return M.TAB_COLORS.background_ssh_active, M.TAB_COLORS.foreground_ssh_active
-  elseif is_active then
-    return M.TAB_COLORS.background_active, M.TAB_COLORS.foreground_active
-  end
-  return M.TAB_COLORS.background_inactive, M.TAB_COLORS.foreground_inactive
 end
 
 local function has_zoomed_pane(panes)
@@ -187,7 +207,7 @@ function M.setup(config)
     end
   end)
 
-  wezterm.on("format-tab-title", function(tab, _, _, _, _, max_width)
+  wezterm.on("format-tab-title", function(tab, _, _, config, _, max_width)
     local pane = tab.active_pane
     local pane_id = pane.pane_id
     local process_name = basename(pane.foreground_process_name)
@@ -202,7 +222,8 @@ function M.setup(config)
       ssh_host_cache[pane_id] = nil
     end
 
-    local background, foreground = get_tab_colors(tab.is_active, is_ssh)
+    local colors = M.current_tab_colors(config)
+    local background, foreground = get_tab_colors(colors, tab.is_active, is_ssh)
     local edge_background = "transparent"
     local edge_foreground = background
 
