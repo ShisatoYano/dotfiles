@@ -6,6 +6,7 @@ return {
     config = function()
       -- ダークはDracula、ライトはSolarized Lightを使う
       local function apply_dark()
+        vim.cmd("highlight clear")
         vim.o.background = "dark"
         require("dracula").setup({
           transparent_bg = true, -- WezTermの背景透過を活かすため
@@ -18,6 +19,7 @@ return {
       end
 
       local function apply_light()
+        vim.cmd("highlight clear")
         vim.o.background = "light"
         require("solarized").setup({
           variant = "winter", -- 標準的なSolarized配色

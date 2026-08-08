@@ -2,26 +2,33 @@ return {
   "akinsho/bufferline.nvim",
   dependencies = { "nvim-tree/nvim-web-devicons", "famiu/bufdelete.nvim" },
   config = function()
-    require("bufferline").setup({
-      options = {
-        offsets = {
-          {
-            filetype = "NvimTree",
-            text = "File Explorer",
-            highlight = "Directory",
-            separator = true,
-          },
+    local options = {
+      offsets = {
+        {
+          filetype = "NvimTree",
+          text = "File Explorer",
+          highlight = "Directory",
+          separator = true,
         },
-        -- 名前が空で未編集の(=中身が空の)バッファはタブに表示しない
-        custom_filter = function(buf_number)
-          local name = vim.api.nvim_buf_get_name(buf_number)
-          local modified = vim.api.nvim_buf_get_option(buf_number, "modified")
-          if name == "" and not modified then
-            return false
-          end
-          return true
-        end,
       },
+      -- not display buffers which name is empty and is not modified on tab bar
+      custom_filter = function (buf_number)
+        local name = vim.api.nvim_buf_get_name(buf_number)
+        local modified = vim.api.nvim_buf_get_option(buf_number, "modified")
+        if name == "" and not modified then
+          return false
+        end
+        return true
+      end,
+    }
+
+    require("bufferline").setup({ options = options })
+
+    -- When color scheme is switched to dark or light, tab bar's highlight is calculated again with options
+    vim.api.nvim_create_autocmd("ColorScheme", {
+      callback = function ()
+        require("bufferline").setup({ options = options })
+      end,
     })
 
     -- タブ間の移動
