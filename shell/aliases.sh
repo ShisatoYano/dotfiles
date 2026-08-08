@@ -79,55 +79,9 @@ dstop() {
 # notify-relayが検知した通知をリアルタイムに表示する
 alias nrlog="tail -f ~/.local/state/notify-relay/notify.log"
 
-# カレンダー関連の通知(📅マーク付き)をあいまい検索し、
-# Googleカレンダーのタブを開く/アクティブにする(実イベントへのリンクは通知に含まれないため)
-nrjump() {
-  grep '📅' ~/.local/state/notify-relay/notify.log 2>/dev/null \
-    | tac \
-    | fzf --reverse --prompt="カレンダー通知> " >/dev/null || return
-  ~/dotfiles/scripts/tab-check.sh schedule_check
-}
-
-# GitHub関連の通知(本文にPR URLが含まれるもの)をあいまい検索し、
-# 既にそのPRのタブが開いていればアクティブに、無ければ新規タブで開く
-ghjump() {
-  local line url tabs id
-  line=$(grep -oE '.*https://github\.com/[^ )]+/pull/[0-9]+.*' ~/.local/state/notify-relay/notify.log 2>/dev/null \
-    | tac \
-    | fzf --reverse --prompt="GitHub通知> ") || return
-  url=$(grep -oE 'https://github\.com/[^ )]+/pull/[0-9]+' <<< "$line" | tail -1)
-  [ -z "$url" ] && return
-  tabs=$(tabctl list 2>/dev/null)
-  id=$(awk -F'\t' -v u="$url" '$3 == u { print $1; exit }' <<< "$tabs")
-  if [ -n "$id" ]; then
-    tabctl activate "$id" >/dev/null 2>&1
-  else
-    tabctl open "$url" >/dev/null 2>&1
-  fi
-}
-
-# Slackの通常メッセージ通知(💬マーク付き、GitHub/カレンダー以外)をあいまい検索し、
-# Slackの通知(Activity)受信箱を開く/アクティブにする(投稿個別へのリンクは通知に含まれないため)
-slackjump() {
-  grep '💬' ~/.local/state/notify-relay/notify.log 2>/dev/null \
-    | tac \
-    | fzf --reverse --prompt="Slack通知> " >/dev/null || return
-  ~/dotfiles/scripts/tab-check.sh slack_activity
-}
-
-# Gmail通知(GitHub関連はghjump対象なので除く)をあいまい検索し、
-# Notion経由のメール(📝)ならNotionのタブ、それ以外(📧)ならGmail受信トレイを開く/アクティブにする
-mailjump() {
-  local line tag
-  line=$(grep -E '📧|📝' ~/.local/state/notify-relay/notify.log 2>/dev/null \
-    | tac \
-    | fzf --reverse --prompt="Gmail通知> ") || return
-  if [[ "$line" == *"📝"* ]]; then
-    tag="notion_check"
-  else
-    tag="mail_check"
-  fi
-  ~/dotfiles/scripts/tab-check.sh "$tag"
+# notify-relayのログを新しい順にあいまい検索して表示する
+nrsearch() {
+  tac ~/.local/state/notify-relay/notify.log 2>/dev/null | fzf --reverse --prompt="通知ログ> "
 }
 
 # 自分に関するPRを横断で確認する(自分が出したもの/レビュー依頼が来ているもの)
