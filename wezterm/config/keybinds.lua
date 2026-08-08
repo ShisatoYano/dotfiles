@@ -5,7 +5,7 @@ local M = {}
 
 -- Key table of mode label 
 local KEY_TABLE_LABELS = {
-  resize_pane = "RESIZE_PANE",
+  resize_pane = "RESIZE_MODE",
 }
 
 -- Display active mode on status area
@@ -53,9 +53,9 @@ function M.setup(config)
     { key = "u", mods = "LEADER", action = wezterm.action.ScrollByPage(-1) },
     { key = "d", mods = "LEADER", action = wezterm.action.ScrollByPage(1) },
     
-    -- Activate Resize pane mode 
+    -- Resize pane 
     { key = "r", mods = "LEADER", action = wezterm.action.ActivateKeyTable({ name = "resize_pane", one_shot = false }) },
-    
+
     -- Switch color scheme dark/light
     { key = "t", mods = "LEADER", action = wezterm.action.EmitEvent("toggle-color-scheme") },
     
@@ -74,7 +74,7 @@ function M.setup(config)
       { key = "k", action = wezterm.action.AdjustPaneSize({ "Up", 1 }) },
       { key = "l", action = wezterm.action.AdjustPaneSize({ "Right", 1 }) },
       { key = "Enter", action = "PopKeyTable" },
-    },
+    }, 
   }
 end
 
