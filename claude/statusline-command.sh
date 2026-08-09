@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claude Code statusline: モデル名 + コンテキスト使用率 + サブスクリプション利用率(5h/7d) + ディレクトリ名
+# Claude Code statusline: モデル名 + コンテキスト使用率 + サブスクリプション利用率(5h/7d、リセットまでの残り時間付き) + ディレクトリ名
 # コストの内訳(ccusage)は情報過多かつ幅の問題も出たため廃止し、本当に見たい情報だけに絞っている。
 # 見た目は絵文字区切りでおしゃれに。
 
@@ -16,7 +16,28 @@ model=$(echo "$input" | jq -r '.model.display_name // "?"')
 used=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 five=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
 week=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
+five_reset=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
+week_reset=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // empty')
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // empty')
+
+# resets_at はUNIX epoch秒。現在時刻との差分を人間可読な残り時間に変換する。
+now=$(date +%s)
+fmt_remaining() {
+  local epoch="$1"
+  [ -z "$epoch" ] && return
+  local diff=$(( epoch - now ))
+  [ "$diff" -lt 0 ] && diff=0
+  local d=$(( diff / 86400 ))
+  local h=$(( (diff % 86400) / 3600 ))
+  local m=$(( (diff % 3600) / 60 ))
+  if [ "$d" -gt 0 ]; then
+    printf '%dd%dh' "$d" "$h"
+  elif [ "$h" -gt 0 ]; then
+    printf '%dh%dm' "$h" "$m"
+  else
+    printf '%dm' "$m"
+  fi
+}
 dirname=""
 [ -n "$cwd" ] && dirname=$(basename "$cwd")
 
@@ -32,8 +53,17 @@ if [ -n "$used" ]; then
 fi
 
 rl=""
-[ -n "$five" ] && rl="5h $(printf '%.0f' "$five")%"
-[ -n "$week" ] && rl="${rl:+$rl }7d $(printf '%.0f' "$week")%"
+if [ -n "$five" ]; then
+  rl="5h $(printf '%.0f' "$five")%"
+  fr=$(fmt_remaining "$five_reset")
+  [ -n "$fr" ] && rl="${rl}→${fr}"
+fi
+if [ -n "$week" ]; then
+  wr="7d $(printf '%.0f' "$week")%"
+  fr=$(fmt_remaining "$week_reset")
+  [ -n "$fr" ] && wr="${wr}→${fr}"
+  rl="${rl:+$rl }${wr}"
+fi
 [ -n "$rl" ] && parts+=("⏳ ${C_DIM}${rl}${RESET}")
 
 [ -n "$dirname" ] && parts+=("📁 ${C_DIM}${dirname}${RESET}")
