@@ -1,0 +1,9 @@
+[Unit]
+Description=login-tab-check.serviceを平日のPCログイン時に実行するタイマー
+
+[Timer]
+OnCalendar=Mon..Fri
+Persistent=true
+
+[Install]
+WantedBy=timers.target

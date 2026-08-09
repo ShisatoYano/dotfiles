@@ -4,11 +4,9 @@ After=graphical-session.target
 
 [Service]
 Type=oneshot
-# 起動直後はセッションのPATHがまだ~/.local/binを含んでいないことがあるため明示指定する
+# 起動直後(Persistent=trueによるcatch-up実行)はセッションのPATHがまだ
+# ~/.local/binを含んでいないことがあるため明示指定する
 Environment=PATH=%h/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # Chromeの自動起動(autostart)完了とtabctl拡張機能の接続を待つための猶予
-ExecStartPre=/bin/sleep 15
+ExecStartPre=/bin/sleep 10
 ExecStart=/bin/sh -c '%h/dotfiles/scripts/tab-check.sh notion_check; %h/dotfiles/scripts/tab-check.sh attendance_check; %h/dotfiles/scripts/tab-check.sh slack_check; %h/dotfiles/scripts/tab-check.sh schedule_check; %h/dotfiles/scripts/tab-check.sh mail_check'
-
-[Install]
-WantedBy=graphical-session.target
