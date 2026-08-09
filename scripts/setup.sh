@@ -278,6 +278,20 @@ else
 fi
 
 # ---------------------------------------------
+# mdroll(WezTerm向けTUI Markdownビューア)
+# ---------------------------------------------
+echo "=== mdroll ==="
+if ! command -v mdroll &> /dev/null; then
+  MDROLL_VERSION=$(curl -s "https://api.github.com/repos/tokuhirom/mdroll/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
+  curl -Lo mdroll.tar.gz "https://github.com/tokuhirom/mdroll/releases/latest/download/mdroll-v${MDROLL_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+  tar xf mdroll.tar.gz mdroll
+  sudo install mdroll /usr/local/bin
+  rm mdroll.tar.gz mdroll
+else
+  echo "mdroll はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
 # クリップボード連携
 # ---------------------------------------------
 # ---------------------------------------------
