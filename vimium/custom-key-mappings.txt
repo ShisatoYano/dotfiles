@@ -1,0 +1,8 @@
+" デフォルトのH/L(履歴の戻る/進む)をh/lへ移動し、
+" 空いたH/Lをnvimのバッファ切り替え(S-h/S-l = 前/次)と指癖を合わせてタブ切り替えに割り当てる
+" デフォルトのJ/K・gt/gTでのタブ切り替えは残したまま(unmapしていない)
+map h goBack
+map l goForward
+
+map H previousTab
+map L nextTab
