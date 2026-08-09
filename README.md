@@ -22,7 +22,6 @@ git clone git@github.com:あなたのユーザー名/dotfiles.git ~/dotfiles
 - Claude Codeのskills(`claude/skills/` を `~/.claude/skills` にリンク。日々の定型作業をSkill化して蓄積していく)
 - Claude CodeのCLAUDE.md(`claude/CLAUDE.md` を `~/.claude/CLAUDE.md` にリンク。全プロジェクト共通の指示)
 - pipx, buku(CLIブックマーク管理)、tabctl(ブラウザタブ操作)
-- notify-relay(Slack/Calendar/Gmailの通知をログに記録する常駐サービス)
 - tab-check(bukuのURLを決まった時刻に開く/アクティブにするsystemdタイマー)
 - ログイン時の自動起動(WezTerm、Chrome、xhost-docker)
 - `~/.config/wezterm`, `~/.config/nvim` 等へのシンボリックリンク
@@ -51,4 +50,3 @@ Git操作は `docs/git-cheatsheet.md`、Neovimの標準操作は `docs/nvim-chea
 - ROS 2ワークスペースでPythonの自作パッケージ補完を効かせるには、ワークスペース直下で
   `python3 ~/dotfiles/scripts/generate_pyright_paths.py` を実行してください
   (`install/`以下のsite-packagesパスを集めて`pyrightconfig.json`を生成します)
-- Slack/Calendar/Gmailの通知を`tail -f ~/.local/state/notify-relay/notify.log`で確認できます

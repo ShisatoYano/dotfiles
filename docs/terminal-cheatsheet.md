@@ -62,27 +62,6 @@ catch-up実行(電源オフ中に逃した回の追いつき)はセッションP
 `~/.config/autostart/`(dotfilesの`autostart/`配下)でログイン時に自動起動する設定にしており、
 catch-up実行時にChromeが起動済みである可能性を上げている。
 
-## notify-relay(Slack/Calendar/Gmailの通知をログに記録する常駐サービス)
-GNOME通知のポップアップは「設定 > 通知」でアプリ(Google Chrome)ごとにオフにする想定。
-ポップアップを止めても内容を見逃さないよう、D-Bus上を流れる通知(`org.freedesktop.Notifications.Notify`)を
-gnome-shellの処理を横取りせず観測(eavesdrop)し、Slack/Calendar/Gmailに該当するものだけログへ書き出す。
-Chrome経由の通知は`app_name`が常に"Google Chrome"になり判別に使えないため、
-本文に含まれる送信元ドメイン(`app.slack.com`/`mail.google.com`/`calendar.google.com`等)や
-キーワードで判定している(`~/dotfiles/scripts/notify-relay.py`の`KEYWORDS`)。
-
-- 本文に`MENTION_NAME`(`@Shisato Yano`)が含まれる場合は`🔔MENTION`を先頭に付ける
-- 本文にGitHubのPR URLが含まれる場合、Slackの通知本文自体には opened/merged の情報が
-  含まれていないため、`gh pr view`でPRの実際の状態(OPEN/MERGED/CLOSED/DRAFT)を問い合わせて
-  `[MERGED]`のように付与する
-- Slackはブラウザ版(Chrome)・ネイティブアプリのどちらの通知でも同様に拾う(ソースは区別しない)
-
-| コマンド | 動作 |
-|---|---|
-| `nrlog` | 該当した通知をリアルタイムに表示(`tail -f ~/.local/state/notify-relay/notify.log`) |
-| `tail -f ~/.local/state/notify-relay/debug.log` | 判定結果に関わらず全通知の生データを表示(キーワード調整用) |
-| `systemctl --user status notify-relay.service` | 常駐状態を確認 |
-| `systemctl --user restart notify-relay.service` | `KEYWORDS`変更後などに再起動して反映 |
-
 ## Claude Code
 | キー | 動作 |
 |---|---|
