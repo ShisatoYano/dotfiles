@@ -63,6 +63,9 @@ ff() {
 # docker composeの短縮形(dc up -d, dc exec <service> bash, dc down等)
 alias dc="docker compose"
 
+# mdrollをファイル更新監視付きで起動する(編集中のプレビュー用途)
+alias mdw="mdroll --watch"
+
 # 起動中のコンテナをfzfであいまい検索してbashで入る
 dexec() {
   local line container
