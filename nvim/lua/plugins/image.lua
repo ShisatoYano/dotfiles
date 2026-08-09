@@ -5,5 +5,10 @@ return {
     -- WezTermはkitty protocolを完全サポートしていないため、Sixelを使う
     backend = "sixel",
     processor = "magick_cli",
+    integrations = {
+      markdown = {
+        enabled = false, -- markdown内の画像を自動プレビューしない
+      },
+    },
   },
 }
