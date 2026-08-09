@@ -364,6 +364,12 @@ if [ ! -e ~/.claude/skills ]; then
   echo "skillsディレクトリをリンクしました"
 fi
 
+echo "=== Claude CodeのCLAUDE.md(全プロジェクト共通の指示) ==="
+if [ ! -e ~/.claude/CLAUDE.md ]; then
+  ln -s ~/dotfiles/claude/CLAUDE.md ~/.claude/CLAUDE.md
+  echo "CLAUDE.mdをリンクしました"
+fi
+
 echo "=== tab-check(bukuのURLを決まった時刻にタブで開く/アクティブにする) ==="
 mkdir -p ~/.config/systemd/user
 for unit in notion-check attendance-check schedule-check; do
