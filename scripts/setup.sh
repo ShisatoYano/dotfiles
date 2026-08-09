@@ -108,12 +108,6 @@ echo "=== python3-venv ==="
 sudo apt install -y python3-venv
 
 # ---------------------------------------------
-# notify-relay(Slack/Calendar/Gmailの通知をD-Bus上で観測してログに記録)
-# ---------------------------------------------
-echo "=== python3-dbus / python3-gi(notify-relay用) ==="
-sudo apt install -y python3-dbus python3-gi
-
-# ---------------------------------------------
 # 検索系: ripgrep, fd-find
 # ---------------------------------------------
 echo "=== ripgrep / fd-find ==="
@@ -399,18 +393,6 @@ for unit in notion-check attendance-check schedule-check login-tab-check; do
 done
 echo "(bukuで対象URLに'notion_check'/'attendance_check'/'slack_check'/'schedule_check'/'mail_check'タグを付けてください)"
 echo "(login-tab-checkは平日のログイン時のみ実行されます)"
-
-echo "=== notify-relay(Slack/Calendar/Gmailの通知をログに記録する常駐サービス) ==="
-mkdir -p ~/.config/systemd/user
-if [ ! -e ~/.config/systemd/user/notify-relay.service ]; then
-  ln -s ~/dotfiles/systemd/notify-relay.service ~/.config/systemd/user/notify-relay.service
-  systemctl --user daemon-reload
-  systemctl --user enable --now notify-relay.service
-  echo "notify-relay.serviceを有効化しました"
-else
-  echo "notify-relay.service はリンク済みです。スキップします。"
-fi
-echo "(ログは ~/.local/state/notify-relay/notify.log 、判定用の生データは debug.log)"
 
 echo "=== ログイン時の自動起動(WezTerm/Chrome/xhost-docker) ==="
 mkdir -p ~/.config/autostart

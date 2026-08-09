@@ -79,14 +79,6 @@ dstop() {
   docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}' | fzf --reverse --multi --header="NAMES	IMAGE	STATUS" | cut -f1 | xargs -r docker stop
 }
 
-# notify-relayが検知した通知をリアルタイムに表示する
-alias nrlog="tail -f ~/.local/state/notify-relay/notify.log"
-
-# notify-relayのログを新しい順にあいまい検索して表示する
-nrsearch() {
-  tac ~/.local/state/notify-relay/notify.log 2>/dev/null | fzf --reverse --prompt="通知ログ> "
-}
-
 # 自分に関するPRを横断で確認する(自分が出したもの/レビュー依頼が来ているもの)
 prs() {
   echo "=== 自分が出したPR ==="
