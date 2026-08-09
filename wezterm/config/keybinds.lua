@@ -31,7 +31,7 @@ wezterm.on("update-right-status", function(window, _)
 end)
 
 function M.setup(config)
-  config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 1000 }
+  config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 2000 }
   config.keys = {
     -- Split pane
     { key = "v", mods = "LEADER", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
@@ -62,8 +62,12 @@ function M.setup(config)
     -- Terminate WezTerm
     { key = "q", mods = "LEADER", action = wezterm.action.QuitApplication },
     
-    -- Select tab 
+    -- Select tab
     { key = "g", mods = "LEADER", action = tab_title.tab_picker() },
+
+    -- Switch tab (nvimのバッファ切り替え<S-h>/<S-l>に合わせたキー)
+    { key = "H", mods = "LEADER|SHIFT", action = wezterm.action.ActivateTabRelative(-1) },
+    { key = "L", mods = "LEADER|SHIFT", action = wezterm.action.ActivateTabRelative(1) },
 
     -- Resize font
     { key = "+", mods = "CTRL", action = wezterm.action.IncreaseFontSize },
