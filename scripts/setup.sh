@@ -372,6 +372,13 @@ if [ ! -e ~/.claude/skills ]; then
   echo "skillsディレクトリをリンクしました"
 fi
 
+echo "=== Claude Codeのhooks(gitブランチ切替の禁止など) ==="
+if ! jq -e '.hooks.PreToolUse[]? | select(.matcher == "Bash" and (.hooks[]?.command | contains("block-branch-checkout.py")))' ~/.claude/settings.json >/dev/null 2>&1; then
+  tmp=$(mktemp)
+  jq '.hooks.PreToolUse = ((.hooks.PreToolUse // []) + [{"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 ~/dotfiles/claude/hooks/block-branch-checkout.py"}]}])' ~/.claude/settings.json > "$tmp" && mv "$tmp" ~/.claude/settings.json
+  echo "settings.jsonにgitブランチ切替禁止hookを追加しました"
+fi
+
 echo "=== Claude CodeのCLAUDE.md(全プロジェクト共通の指示) ==="
 if [ ! -e ~/.claude/CLAUDE.md ]; then
   ln -s ~/dotfiles/claude/CLAUDE.md ~/.claude/CLAUDE.md
