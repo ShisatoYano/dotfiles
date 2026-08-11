@@ -1,3 +1,6 @@
+# nb(メモ管理CLI)やgit commit等で使うエディタをnvimに固定する
+export EDITOR=nvim
+
 # ghq管理下のリポジトリをfzfであいまい検索して移動する
 gcd() {
   local dir
@@ -86,4 +89,195 @@ prs() {
   echo
   echo "=== 自分がレビュアーのPR ==="
   gh search prs --review-requested @me --state open
+}
+
+# URLがPDFかどうかを判定する(nba/nbsumで共有)
+_nb_is_pdf_url() {
+  local url="$1"
+  local content_type
+  content_type=$(curl -sIL --max-time 10 "$url" 2>/dev/null | tr -d '\r' | grep -i '^content-type:' | tail -1)
+  if echo "$content_type" | grep -qi 'application/pdf'; then
+    return 0
+  fi
+  [[ "$url" =~ \.pdf($|\?) ]]
+}
+
+# URLを渡すとタイトルを自動取得してnbにメモを作成する(nba <url> / タイトルを手動指定するならnba <title> <url>)
+# PDF(論文など)の場合はpdfinfoのメタデータからタイトルを取る(取れなければURLのファイル名を使う)
+# ノートは<タイトル>/<タイトル>.mdというフォルダ配置で作成する(nbsumで図を追加した際に同じフォルダにまとめるため)
+nba() {
+  if [ $# -lt 1 ]; then
+    echo "Usage: nba <url>           # タイトルを自動取得"
+    echo "       nba <title> <url>   # タイトルを手動指定"
+    return 1
+  fi
+
+  local title="" url=""
+  if [ $# -eq 1 ]; then
+    url="$1"
+    echo "Fetching title from: $url"
+
+    if _nb_is_pdf_url "$url"; then
+      local tmp_pdf
+      tmp_pdf=$(mktemp --suffix=.pdf)
+      curl -sL --max-redirs 3 --max-time 20 -o "$tmp_pdf" "$url"
+      title=$(pdfinfo "$tmp_pdf" 2>/dev/null | grep "^Title:" | sed 's/^Title:[[:space:]]*//')
+      rm -f "$tmp_pdf"
+      if [ -z "$title" ]; then
+        title=$(basename "$url" .pdf | sed 's/[-_]/ /g')
+      fi
+    else
+      title=$(curl -sL --max-redirs 3 --max-time 5 --compressed "$url" |
+              head -c 512 |
+              perl -0777 -ne 'print $1 if /<title[^>]*>([^<]+)<\/title>/i')
+      title=$(echo "$title" | perl -pe 's/^\s+|\s+$//g; s/\s+/ /g')
+    fi
+
+    if [ -z "$title" ]; then
+      echo "Error: Could not fetch title from URL"
+      return 1
+    fi
+    echo "Title: $title"
+  else
+    title="$1"
+    url="$2"
+  fi
+
+  local content="# ${title}
+
+参照: [${title}](${url})"
+
+  nb add --filename "${title}/${title}.md" --content "$content"
+  echo "Note created: [${title}](${url})"
+}
+
+# nbのメモをfzfであいまい検索し、プレビューを見ながら選んでnvimで編集する
+# note_id(数字)ではなく絶対パスで選択・オープンするので、フォルダ配下のノートも問題なく扱える
+nbq() {
+  if [ -z "$1" ]; then
+    echo "Usage: nbq <search query>"
+    return 1
+  fi
+
+  local query="$*"
+  local results
+  results=$(nb search "$query" --path --no-color 2>/dev/null | grep -v '/\.index$')
+
+  if [ -z "$results" ]; then
+    echo "No results found for: $query"
+    return 1
+  fi
+
+  export _NBQ_QUERY="$query"
+
+  local selected
+  selected=$(echo "$results" | fzf \
+    --preview 'echo "=== $(basename {}) ==="
+               echo ""
+               grep -i --color=always -C 2 "$_NBQ_QUERY" {} | head -30' \
+    --preview-window=right:60%:wrap \
+    --header "Search: $query")
+
+  unset _NBQ_QUERY
+
+  [ -n "$selected" ] && nb edit "$selected"
+}
+
+# nbのメモをfzfで選び、mdroll(--watch)でMarkdownプレビューする(パス入力不要)
+# フォルダ配下のノートも拾えるよう、notebookディレクトリ配下を再帰的にfindする
+nbmd() {
+  local notebook_dir selected
+  notebook_dir=$(nb notebooks current --path) || return
+  selected=$(find "$notebook_dir" -type f -name '*.md' | fzf \
+    --preview 'cat {}' \
+    --preview-window=right:60%:wrap) || return
+  [ -n "$selected" ] || return
+  mdroll --watch "$selected"
+}
+
+# nba等で作成したノート内のURLをClaudeに要約させ、本文に追記する(nbsum <note id>)
+nbsum() {
+  if [ -z "$1" ]; then
+    echo "Usage: nbsum <note id>"
+    return 1
+  fi
+
+  local note_id="$1"
+  local path note_dir url
+  path=$(nb show "$note_id" --path) || return 1
+  note_dir=$(dirname "$path")
+  url=$(grep -oE 'https?://[^)]+' "$path" | head -1)
+
+  if [ -z "$url" ]; then
+    echo "Error: No URL found in note $note_id"
+    return 1
+  fi
+
+  echo "Fetching: $url"
+  local page_text
+  local -a image_files=()
+  if _nb_is_pdf_url "$url"; then
+    local tmp_pdf tmp_img_dir
+    tmp_pdf=$(mktemp --suffix=.pdf)
+    curl -sL --max-redirs 3 --max-time 30 -o "$tmp_pdf" "$url"
+    page_text=$(pdftotext -layout "$tmp_pdf" - 2>/dev/null | perl -pe 's/\s+/ /g' | head -c 20000)
+
+    # 埋め込み画像のうち透過マスク(smask)を除いた本物の図だけをノートと同じフォルダに保存する
+    tmp_img_dir=$(mktemp -d)
+    pdfimages -png "$tmp_pdf" "$tmp_img_dir/fig" 2>/dev/null
+    local num fig_index=1
+    while IFS= read -r num; do
+      local src
+      src=$(printf '%s/fig-%03d.png' "$tmp_img_dir" "$num")
+      if [ -f "$src" ]; then
+        cp "$src" "${note_dir}/fig${fig_index}.png"
+        image_files+=("fig${fig_index}.png")
+        fig_index=$((fig_index + 1))
+      fi
+    done < <(pdfimages -list "$tmp_pdf" 2>/dev/null | tail -n +3 | awk '$3 == "image" {print $2}')
+    rm -rf "$tmp_img_dir"
+
+    rm -f "$tmp_pdf"
+  else
+    page_text=$(curl -sL --max-redirs 3 --max-time 10 --compressed "$url" |
+      perl -0777 -pe 's/<script.*?<\/script>//gis; s/<style.*?<\/style>//gis; s/<[^>]+>/ /g; s/&nbsp;/ /g; s/\s+/ /g' |
+      head -c 8000)
+  fi
+
+  if [ -z "$page_text" ]; then
+    echo "Error: Could not fetch page content"
+    return 1
+  fi
+
+  echo "Summarizing with claude..."
+  local summary
+  summary=$(echo "$page_text" | claude -p "以下はウェブページの本文をテキスト抽出したものです。日本語で、下記の2見出し構成のMarkdownで出力してください(前置きや締めの言葉は不要です)。
+
+## 要約
+箇条書き3〜5行の簡潔な要約
+
+## 詳細
+見出しや箇条書きを使った、もう少し詳しい内容のまとめ")
+
+  if [ -z "$summary" ]; then
+    echo "Error: Failed to get summary from claude"
+    return 1
+  fi
+
+  printf '\n%s\n' "$summary" >> "$path"
+
+  if [ "${#image_files[@]}" -gt 0 ]; then
+    {
+      echo ""
+      echo "## 図"
+      echo ""
+      for f in "${image_files[@]}"; do
+        echo "![${f}](${f})"
+      done
+    } >> "$path"
+    echo "Imported ${#image_files[@]} image(s)"
+  fi
+
+  (cd "$note_dir" && git add -A && git commit -q -m "Summarize: $(basename "$path")")
+  echo "Note updated: $path"
 }
