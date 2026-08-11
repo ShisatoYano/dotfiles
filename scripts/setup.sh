@@ -416,6 +416,13 @@ if ! jq -e '.permissions.allow[]? | select(. == "Bash(gh search prs *)")' ~/.cla
   echo "settings.jsonに許可リストを追加しました"
 fi
 
+echo "=== Claude Codeの許可リスト(nbノート操作、コマンド存在確認) ==="
+if ! jq -e '.permissions.allow[]? | select(. == "Bash(nb help *)")' ~/.claude/settings.json >/dev/null 2>&1; then
+  tmp=$(mktemp)
+  jq '.permissions.allow = ((.permissions.allow // []) + ["Bash(nb help *)", "Bash(nb ls *)", "Bash(nb show *)", "Bash(command -v *)", "Bash(nb notebooks *)", "Bash(nb search *)"] | unique)' ~/.claude/settings.json > "$tmp" && mv "$tmp" ~/.claude/settings.json
+  echo "settings.jsonに許可リストを追加しました"
+fi
+
 echo "=== Claude CodeのCLAUDE.md(全プロジェクト共通の指示) ==="
 if [ ! -e ~/.claude/CLAUDE.md ]; then
   ln -s ~/dotfiles/claude/CLAUDE.md ~/.claude/CLAUDE.md
