@@ -409,6 +409,13 @@ if ! jq -e '.hooks.PreToolUse[]? | select(.matcher == "Bash" and (.hooks[]?.comm
   echo "settings.jsonにgitブランチ切替禁止hookを追加しました"
 fi
 
+echo "=== Claude Codeの許可リスト(コードレビュー時によく使うコマンド) ==="
+if ! jq -e '.permissions.allow[]? | select(. == "Bash(gh search prs *)")' ~/.claude/settings.json >/dev/null 2>&1; then
+  tmp=$(mktemp)
+  jq '.permissions.allow = ((.permissions.allow // []) + ["Bash(gh search prs *)", "Bash(systemctl --user status *)"] | unique)' ~/.claude/settings.json > "$tmp" && mv "$tmp" ~/.claude/settings.json
+  echo "settings.jsonに許可リストを追加しました"
+fi
+
 echo "=== Claude CodeのCLAUDE.md(全プロジェクト共通の指示) ==="
 if [ ! -e ~/.claude/CLAUDE.md ]; then
   ln -s ~/dotfiles/claude/CLAUDE.md ~/.claude/CLAUDE.md
