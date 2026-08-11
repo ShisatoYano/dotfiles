@@ -161,6 +161,36 @@ else
 fi
 
 # ---------------------------------------------
+# nb(メモ管理CLI、fzf連携はshell/aliases.shのnba/nbq関数、Neovim連携はnvim/lua/plugins/nb.lua)
+# ---------------------------------------------
+echo "=== nb ==="
+if ! command -v nb &> /dev/null; then
+  mkdir -p ~/.local/bin
+  curl -Lo ~/.local/bin/nb "https://raw.githubusercontent.com/xwmx/nb/master/nb"
+  chmod +x ~/.local/bin/nb
+else
+  echo "nb はインストール済みです。スキップします。"
+fi
+
+# nbのbashタブ補完(bash-completionのユーザーディレクトリに置くのでsudo不要)
+if [ ! -f ~/.local/share/bash-completion/completions/nb ]; then
+  mkdir -p ~/.local/share/bash-completion/completions
+  curl -Lo ~/.local/share/bash-completion/completions/nb \
+    "https://raw.githubusercontent.com/xwmx/nb/master/etc/nb-completion.bash"
+  echo "nbのタブ補完をインストールしました"
+else
+  echo "nbのタブ補完はインストール済みです。スキップします。"
+fi
+
+# poppler-utils(pdftotext/pdfinfo、shell/aliases.shのnba/nbsumでPDF論文の要約に使用)
+echo "=== poppler-utils ==="
+if ! command -v pdftotext &> /dev/null; then
+  sudo apt install -y poppler-utils
+else
+  echo "poppler-utils はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
 # starship(プロンプト、公式インストーラーでユーザー領域にインストール)
 # ---------------------------------------------
 echo "=== starship ==="
