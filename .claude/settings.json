@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(gh search prs *)",
-      "Bash(systemctl --user status *)"
-    ]
-  }
-}
