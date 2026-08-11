@@ -257,7 +257,7 @@ function M.setup(config)
 
     -- max_widthはタブ全体の予算なので、caps/アイコン/余白の分を差し引いてから
     -- タイトル本文を切り詰める(そうしないと右端の丸capごと切り詰められてしまう)
-    local decoration = " " .. left_circle .. zoom_indicator .. right_circle .. "   "
+    local decoration = " " .. left_circle .. zoom_indicator .. right_circle .. "  "
     local available_width = math.max(max_width - wezterm.column_width(decoration), 1)
     local title = " " .. wezterm.truncate_right(title_text, available_width) .. " "
 
