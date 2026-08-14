@@ -21,7 +21,7 @@
 | `nb delete <id>` | 削除(確認あり) |
 
 フォルダ配下のノートを直接指定したいときは、`nb ls`や`nb search --path`で得た絶対パスを
-そのまま`<id>`の代わりに渡せる(例: `nb edit "/home/yano/.nb/eightknot/foo/foo.md"`)。
+そのまま`<id>`の代わりに渡せる(例: `nb edit "/home/yano/.nb/work/foo/foo.md"`)。
 
 ## タグ
 タグは専用コマンドではなく、本文中に`#タグ名`と書くだけ。
