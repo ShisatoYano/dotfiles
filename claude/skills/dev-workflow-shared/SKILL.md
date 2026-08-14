@@ -11,6 +11,7 @@ description: Shared steps used by genre-specific development workflow Skills (`b
 
 - 修正・実装のpush・PR作成など状態変更操作は、毎回ユーザーの明示確認を得てから実行する(`pr-workflow`と同じ安全境界)
 - Notionタスクページへの進捗記録・タスク完了は`notion-task-workflow` Skillに委譲する(ここでは重複させない)
+- 対象リポジトリ以外の場所で作業しているときに`git`コマンドを対象リポジトリへ向ける場合は、`cd <path> && git ...`ではなく`git -C <path> ...`を使う。`cd`を挟むとリポジトリのhookが実行されうるとしてツール側の確認が挟まるため
 
 ## 事前準備: リポジトリの最新化確認
 
