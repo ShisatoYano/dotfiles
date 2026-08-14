@@ -423,6 +423,13 @@ if ! jq -e '.permissions.allow[]? | select(. == "Bash(nb help *)")' ~/.claude/se
   echo "settings.jsonに許可リストを追加しました"
 fi
 
+echo "=== Claude Codeの許可リスト(PRレビュー・開発ワークフローSkillで使う読み取り専用コマンド) ==="
+if ! jq -e '.permissions.allow[]? | select(. == "Bash(git fetch *)")' ~/.claude/settings.json >/dev/null 2>&1; then
+  tmp=$(mktemp)
+  jq '.permissions.allow = ((.permissions.allow // []) + ["Bash(git fetch *)", "Bash(git log *)", "Bash(gh api repos/*/pulls/*/comments)", "Bash(gh api repos/*/pulls/*/commits)", "Bash(gh pr view *)", "Bash(gh pr diff *)"] | unique)' ~/.claude/settings.json > "$tmp" && mv "$tmp" ~/.claude/settings.json
+  echo "settings.jsonに許可リストを追加しました"
+fi
+
 echo "=== Claude CodeのCLAUDE.md(全プロジェクト共通の指示) ==="
 if [ ! -e ~/.claude/CLAUDE.md ]; then
   ln -s ~/dotfiles/claude/CLAUDE.md ~/.claude/CLAUDE.md

@@ -22,6 +22,8 @@ description: Use when the user wants to check on their own open pull requests (s
 
 `--json` で取れるのは `assignees, author, authorAssociation, body, closedAt, commentsCount, createdAt, id, isDraft, isLocked, isPullRequest, labels, number, repository, state, title, updatedAt, url` まで。CI詳細・レビュー内容・diffサイズ・マージ可否などPR個別の深い情報は含まれないので、対象PRを絞り込んだ後に `gh pr view <number> --repo <owner/repo> --json ...` で個別取得する。
 
+複数PRについてこれを行う場合、`for`ループでシェル側にまとめて実行させない。`gh pr view`単体はClaude Codeのネイティブな読み取り専用コマンドとして自動的に承認されるが、`for`ループで包むとループ構文(変数展開・複数文)自体が承認対象になり、中身が全てread-onlyでも毎回確認を求められてしまう。PRごとに個別のBashコマンドとして(可能なら1メッセージ内で並列に)実行する。
+
 ## 自分が出したPRのワークフロー
 
 ### 1. 状況の一覧・優先度整理
@@ -74,13 +76,15 @@ gh search prs --review-requested @me --state open --sort updated --order asc
 
 対象PRの `body`(`gh pr view <number> --repo <owner/repo> --json body` などで取得済みのもの)に、画像・動画の添付を示すパターン(`https://github.com/user-attachments/assets/...` へのリンクや、Markdownの画像記法 `![...](...)`)が含まれていないか確認する。含まれていた場合は、その内容を読み取ることはできない(特に動画は視聴できない)ので、代わりに `gh pr view <number> --repo <owner/repo> --web` でPRページをブラウザで自動的に開き、「添付画像/動画があるためブラウザを開きました。内容をご確認ください」とユーザーに伝える。
 
-実際にレビューする際は、まず対象PRの既存レビュー・コメント(`gh pr view <number> --repo <owner/repo> --json reviews,comments`、インラインの行コメントは`gh api repos/<owner>/<repo>/pulls/<number>/comments`)を取得しておく。その上で `review` Skillを呼び出して本体のコードレビュー(diff要約・観点出し・リスク箇所の指摘)を行わせ、出てきた指摘を既存コメントと突き合わせる。
+レビュー対象が複数ある場合は、PRごとに逐次処理せず、**Agentツール(`general-purpose`)でPRごとに並行してサブエージェントを立てる**(1メッセージにまとめて複数のAgent呼び出しを行う)。各サブエージェントには対象のPR番号・リポジトリを渡し、以下を行わせる。
 
-- 既存コメントと重複し、かつその後のコミットで対応済みと判断できるものは、出力から除外する
-- 既存コメントと重複するが未対応のものは、詳細を再掲せず「(誰が)指摘済み・未対応」の一言に圧縮する
-- 既存コメントに無い新規の指摘は、通常どおり詳しく提示する
+1. 対象PRの既存レビュー・コメント(`gh pr view <number> --repo <owner/repo> --json reviews,comments`、インラインの行コメントは`gh api repos/<owner>/<repo>/pulls/<number>/comments`)を取得する
+2. `review` Skillを呼び出して本体のコードレビュー(diff要約・観点出し・リスク箇所の指摘)を行わせる
+3. 出てきた指摘を1の既存コメントと突き合わせる: 重複しかつその後のコミットで対応済みのものは除外、重複するが未対応のものは詳細を再掲せず「(誰が)指摘済み・未対応」の一言に圧縮、既存コメントに無い新規の指摘は詳しく残す(他レビュアーの指摘の焼き直しにならないようにするため)
+4. 全体としてapprove相当か変更要求相当かコメントに留めるべきかの推奨と、実際に投稿する場合のレビューコメント文面の下書きをまとめて返す
+5. **`gh pr review` などによる投稿はサブエージェント自身も実行しないこと**を、Agent呼び出し時のプロンプトに明記する
 
-他レビュアーの指摘の焼き直しにならないようにするための処理であり、このSkillはその結果を踏まえて、全体としてapprove相当か変更要求相当かコメントに留めるべきかの整理と、実際に投稿する場合のレビューコメント文面の下書きまでを行う。**`gh pr review` などによる投稿は実行しない。**
+全サブエージェントの結果が揃ってから、PRごとの結果をまとめて1つのレポートとしてユーザーに提示する。
 
 ### 3. レビュー後のフォロー
 
