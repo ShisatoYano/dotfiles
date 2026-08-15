@@ -1,5 +1,4 @@
 local wezterm = require("wezterm")
-local sessions_plugin = wezterm.plugin.require("https://github.com/abidibo/wezterm-sessions")
 local sessions_wrapper = require("config.sessions")
 local M = {}
 
@@ -92,6 +91,10 @@ local function do_create(window, pane, repo_root, purpose)
     shell_quote(shell)
   )
 
+  -- mux.spawn_window+mux.set_active_workspaceは(wezterm-sessionsのfork_stateと
+  -- 同じ組み合わせだが)guiフロントエンドが別OSウィンドウを自動で開いてしまい、
+  -- 「ウィンドウは常に1つ」という要件に合わなかったため、今のウィンドウをそのまま
+  -- 新workspaceへ切り替えるシンプルな形に戻す
   window:perform_action(
     wezterm.action.SwitchToWorkspace({
       name = name,
@@ -142,6 +145,25 @@ function M.create_workspace()
   end)
 end
 
+-- workspaceに属する全paneを閉じる。worktree実体を消しても、それを表示していた
+-- タブ/ウィンドウ自体は残ってしまい、切り替え一覧に「worktree管理外」として
+-- 出続けてしまうため、削除時にペインごと片付ける
+local function close_workspace_panes(name)
+  local ok, windows = pcall(wezterm.mux.all_windows)
+  if not ok or not windows then
+    return
+  end
+  for _, mux_win in ipairs(windows) do
+    if mux_win:get_workspace() == name then
+      for _, tab in ipairs(mux_win:tabs()) do
+        for _, p in ipairs(tab:panes()) do
+          run({ "wezterm", "cli", "kill-pane", "--pane-id", tostring(p:pane_id()) })
+        end
+      end
+    end
+  end
+end
+
 function M.delete_workspace()
   return wezterm.action_callback(function(window, pane)
     local entries = list_workspaces()
@@ -175,7 +197,10 @@ function M.delete_workspace()
                 .. sessions_wrapper.escape_file_name(id)
                 .. ".json"
               os.remove(file_path)
+              -- 削除中のworkspaceが今アクティブな場合、ここでこのウィンドウ自体が
+              -- 閉じることがあるため、通知を先に出してからペインを閉じる
               window:toast_notification("Worktree Workspace", "削除しました: " .. id, nil, 4000, "normal")
+              close_workspace_panes(id)
             else
               window:toast_notification("Worktree Workspace", "削除に失敗しました: " .. (stderr or ""), nil, 6000, "normal")
             end
@@ -191,8 +216,10 @@ function M.switch_workspace()
   return wezterm.action_callback(function(window, pane)
     local entries = list_workspaces()
     local registered = {}
+    local worktree_paths = {}
     for _, e in ipairs(entries) do
       registered[e.name] = true
+      worktree_paths[e.name] = e.worktree_path
     end
 
     local active = window:active_workspace()
@@ -235,18 +262,25 @@ function M.switch_workspace()
           if not id then
             return
           end
-          window:perform_action(wezterm.action.SwitchToWorkspace({ name = id }), inner_pane)
-          -- switch直後はまだ新しいペインの準備が終わっていないことがあるため、
-          -- wezterm-sessions側のfork/load処理と同じく少し待ってから復元する
-          wezterm.sleep_ms(2000)
-          -- wezterm-sessionsのrestore_stateは「切り替え先がタブ1つ・ペイン1つの
-          -- まっさらな状態」でないと失敗する(workspace.luaの制約)。既にタブが複数ある
-          -- workspace(同一セッション中に使い続けているもの)に対して呼ぶと
-          -- "Workspace state loading failed" になるため、まっさらな時だけ復元を試みる
-          local tabs = window:mux_window():tabs()
-          if #tabs == 1 and #tabs[1]:panes() == 1 then
-            sessions_plugin.restore_state(window)
-          end
+          -- 以前はここでsessions_plugin.restore_state(window)を呼び、WezTerm再起動後に
+          -- 前回のタブ配置を自動復元しようとしていたが、switch_workspace実行のたびに
+          -- タブが増殖する不具合(defaultなど他workspaceの保存済みタブが混ざる)の原因に
+          -- なったため廃止した。単純にworkspaceを切り替えるだけにする。
+          -- 再起動後に前回のレイアウトを戻したい場合は、wezterm-sessions標準の
+          -- ALT+l(一覧から読み込み)/ALT+r(復元)を手動で使う
+          --
+          -- spawnにworktreeのパスを渡しておく。既にmux上に当該workspaceが存在する
+          -- 場合はspawnは無視されて単純にそちらへ切り替わるだけだが、WezTerm再起動後で
+          -- workspaceがまだ存在しない場合は、ここで指定したcwdで新規に開かれるため、
+          -- worktree管理外(defaultなど)ではないworkspace_pathが無い場合はcwdを省略する
+          local worktree_path = worktree_paths[id]
+          window:perform_action(
+            wezterm.action.SwitchToWorkspace({
+              name = id,
+              spawn = worktree_path and { cwd = worktree_path } or nil,
+            }),
+            inner_pane
+          )
         end),
       }),
       pane
