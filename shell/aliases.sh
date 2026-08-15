@@ -281,3 +281,14 @@ nbsum() {
   (cd "$note_dir" && git add -A && git commit -q -m "Summarize: $(basename "$path")")
   echo "Note updated: $path"
 }
+
+# Neovimプラグイン開発でCIと同じLuaチェック(stylua --check + luacheck)をカレントディレクトリで実行する
+# (luacheckは.luacheckrcをカレントディレクトリから探すため、対象リポジトリのルートで実行すること)
+luaci() {
+  local status=0
+  echo "=== stylua --check ==="
+  stylua --check . || status=1
+  echo "=== luacheck ==="
+  luacheck lua || status=1
+  return "$status"
+}
