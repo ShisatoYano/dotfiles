@@ -222,6 +222,16 @@ else
 fi
 
 # ---------------------------------------------
+# Herdr(複数AIコーディングエージェントの状態を一括で見える化するターミナル多重化ツール、公式インストーラーでユーザー領域にインストール)
+# ---------------------------------------------
+echo "=== Herdr ==="
+if ! command -v herdr &> /dev/null; then
+  curl -fsSL https://herdr.dev/install.sh | sh
+else
+  echo "herdr はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
 # Go(ccsession等のGo製CLIツールのビルド用)
 # ---------------------------------------------
 echo "=== Go ==="
@@ -427,6 +437,13 @@ if ! jq -e '.hooks.PreToolUse[]? | select(.matcher == "Bash" and (.hooks[]?.comm
   tmp=$(mktemp)
   jq '.hooks.PreToolUse = ((.hooks.PreToolUse // []) + [{"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 ~/dotfiles/claude/hooks/block-branch-checkout.py"}]}])' ~/.claude/settings.json > "$tmp" && mv "$tmp" ~/.claude/settings.json
   echo "settings.jsonにgitブランチ切替禁止hookを追加しました"
+fi
+
+echo "=== HerdrのClaude Code連携(複数エージェントの状態検知hook) ==="
+if command -v herdr &> /dev/null && [ ! -f ~/.claude/hooks/herdr-agent-state.sh ]; then
+  herdr integration install claude
+else
+  echo "Herdrのclaude連携hookはインストール済みか、herdr未インストールのためスキップします。"
 fi
 
 echo "=== Claude Codeの許可リスト(コードレビュー時によく使うコマンド) ==="
