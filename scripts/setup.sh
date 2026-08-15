@@ -60,6 +60,26 @@ else
 fi
 
 # ---------------------------------------------
+# Lua lint/format(Neovimプラグイン開発用): luacheck, stylua
+# ---------------------------------------------
+echo "=== luacheck ==="
+if ! command -v luacheck &> /dev/null; then
+  sudo apt install -y lua-check
+else
+  echo "luacheck はインストール済みです。スキップします。"
+fi
+
+echo "=== stylua ==="
+if ! command -v stylua &> /dev/null; then
+  curl -LO https://github.com/JohnnyMorganz/StyLua/releases/latest/download/stylua-linux-x86_64.zip
+  unzip -o stylua-linux-x86_64.zip
+  sudo install stylua /usr/local/bin
+  rm stylua-linux-x86_64.zip stylua
+else
+  echo "stylua はインストール済みです。スキップします。"
+fi
+
+# ---------------------------------------------
 # Node.js / npm (nvm経由)
 # ---------------------------------------------
 echo "=== nvm / Node.js ==="
