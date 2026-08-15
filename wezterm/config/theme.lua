@@ -3,7 +3,7 @@ local M = {}
 
 -- Dark theme settings
 M.dark_scheme = "Dracula (Official)"
-M.dark_opacity = 0.86
+M.dark_opacity = 0.90
 
 -- Light theme settings
 M.light_scheme = "Builtin Solarized Light"
