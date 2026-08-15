@@ -2,14 +2,15 @@ local wezterm = require("wezterm")
 local sessions = wezterm.plugin.require("https://github.com/abidibo/wezterm-sessions")
 local M = {}
 
-local STATE_DIR = wezterm.home_dir .. "/.local/share/wezterm-sessions/state/"
+M.STATE_DIR = wezterm.home_dir .. "/.local/share/wezterm-sessions/state/"
 
-local function escape_file_name(name)
+-- worktree_workspace.luaもworkspace削除時に保存済みstateファイルを掃除するため参照する
+function M.escape_file_name(name)
   return (name:gsub("[^%w_%-]", "_"))
 end
 
 local function has_saved_state(workspace_name)
-  local file_path = STATE_DIR .. "wezterm_state_" .. escape_file_name(workspace_name) .. ".json"
+  local file_path = M.STATE_DIR .. "wezterm_state_" .. M.escape_file_name(workspace_name) .. ".json"
   local f = io.open(file_path, "r")
   if f then
     f:close()
