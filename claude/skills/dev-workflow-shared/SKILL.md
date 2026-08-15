@@ -17,7 +17,7 @@ description: Shared steps used by genre-specific development workflow Skills (`b
 
 作業に入る前に行う。
 
-1. 作業対象に関連するローカルの各リポジトリ(サブモジュールを含む)について、`git fetch`した上で、ローカルの本流ブランチ(`develop`)が`origin/develop`から遅れていないか確認する
+1. 作業対象に関連するローカルの各リポジトリ(サブモジュールを含む)について、本流ブランチ名を`develop`と決め打ちせず、`git symbolic-ref refs/remotes/origin/HEAD --short`(または`git remote show origin`)で確認する。その上で`git fetch`し、ローカルの本流ブランチが`origin/<本流ブランチ>`から遅れていないか確認する
 2. 遅れているリポジトリがあれば一覧にしてユーザーに提示し、先に最新化(pull等)するよう促す。更新作業自体は自動実行せず、ユーザーに依頼する
 3. 全て最新であることを確認できてから、呼び出し元のジャンル固有のステップ(原因調査・要件確認など)に進む
 
