@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(command -v *)",
+      "Bash(gh api repos/*/pulls/*/comments)",
+      "Bash(gh api repos/*/pulls/*/commits)",
+      "Bash(gh pr diff *)",
+      "Bash(gh pr view *)",
+      "Bash(gh search prs *)",
+      "Bash(git fetch *)",
+      "Bash(git log *)",
+      "Bash(nb help *)",
+      "Bash(nb ls *)",
+      "Bash(nb notebooks *)",
+      "Bash(nb search *)",
+      "Bash(nb show *)",
+      "Bash(systemctl --user status *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/dotfiles/claude/hooks/block-branch-checkout.py"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/home/yano/.claude/hooks/herdr-agent-state.sh' session",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh"
+  }
+}
