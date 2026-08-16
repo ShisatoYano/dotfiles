@@ -15,7 +15,7 @@ description: Use as a sub-step of `daily-task-planning` to select candidate Noti
 
 ## 手順
 
-1. `nb search --path` などで`work` notebook(`notion-task-workflow` Skillが書き出す)内の直近の`daily/*.md`を確認し、前日までの持ち越し・未完了タスクがあれば把握する
+1. `nb search --path` などで`daily-task-logs` notebook(`notion-task-workflow` Skillが書き出す)内の直近の`daily/*.md`を確認し、前日までの持ち越し・未完了タスクがあれば把握する
 2. 自分の未完了タスクの一覧を取得する。ユーザーが用意した「自分のタスク」ビューがあればそれを`query_data_sources`(view mode)で取得する。無ければ、タスクDBを`担当者`に自分を含む条件で検索する
 3. `担当者`が複数人いるタスクは、`見積`をそのまま自分の工数として使わない(見積はタスク全体の工数で、自分の持ち分ではないため)。該当タスクは都度、今日実際に割く時間をユーザーに確認し、その値を4以降で使う
 4. 各タスクの`見積`(3で確認した複数担当者タスクは確認済みの時間)を人日換算し、以下の目安で並び替えの一次案を作る(機械的な絶対順位ではなく判断材料として扱う):
