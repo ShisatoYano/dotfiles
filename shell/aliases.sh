@@ -282,6 +282,9 @@ nbsum() {
   echo "Note updated: $path"
 }
 
+# git pushブロック用フック(claude/hooks/block-git-push.py)のトグルを操作する
+alias gpushctl="$HOME/dotfiles/scripts/claude-git-push-ctl.sh"
+
 # Neovimプラグイン開発でCIと同じLuaチェック(stylua --check + luacheck)をカレントディレクトリで実行する
 # (luacheckは.luacheckrcをカレントディレクトリから探すため、対象リポジトリのルートで実行すること)
 luaci() {
