@@ -295,3 +295,21 @@ luaci() {
   luacheck lua || status=1
   return "$status"
 }
+
+# カレントディレクトリを対象にHerdr workspaceを作成する(ラベル省略時はディレクトリ名)
+hwsnew() {
+  local label="${1:-$(basename "$PWD")}"
+  herdr workspace create --cwd "$PWD" --label "$label"
+}
+
+# Herdr workspaceをfzfであいまい検索して切り替える
+hwsswitch() {
+  local id
+  id=$(herdr workspace list | jq -r '.result.workspaces[] | "\(.workspace_id)\t\(.label)"' | fzf --reverse --header="ID	LABEL" | cut -f1) || return
+  [ -n "$id" ] && herdr workspace focus "$id"
+}
+
+# Herdr workspaceをfzfであいまい検索して閉じる(Tabキーで複数選択可)
+hwsclose() {
+  herdr workspace list | jq -r '.result.workspaces[] | "\(.workspace_id)\t\(.label)"' | fzf --reverse --multi --header="ID	LABEL" | cut -f1 | xargs -r -n1 herdr workspace close
+}
