@@ -417,13 +417,16 @@ if [ ! -e ~/.claude/statusline-command.sh ]; then
   ln -s ~/dotfiles/claude/statusline-command.sh ~/.claude/statusline-command.sh
   echo "statusline用スクリプトをリンクしました"
 fi
-if [ ! -f ~/.claude/settings.json ]; then
-  echo '{}' > ~/.claude/settings.json
-fi
-if ! jq -e '.statusLine' ~/.claude/settings.json >/dev/null 2>&1; then
-  tmp=$(mktemp)
-  jq '.statusLine = {"type": "command", "command": "bash ~/.claude/statusline-command.sh"}' ~/.claude/settings.json > "$tmp" && mv "$tmp" ~/.claude/settings.json
-  echo "settings.jsonにstatusLine設定を追加しました"
+
+# permissions/hooks/statusLineはclaude/settings.jsonにまとめて宣言し、symlinkで配置する。
+# theme/enabledPluginsなど機械固有の可変設定は~/.claude/settings.local.json(symlinkしない、
+# ユーザースコープのローカルオーバーライド)に置き、dotfiles管理下からは意図的に外す
+echo "=== Claude Codeのsettings.json(permissions/hooks/statusLine) ==="
+if [ ! -e ~/.claude/settings.json ]; then
+  ln -s ~/dotfiles/claude/settings.json ~/.claude/settings.json
+  echo "settings.jsonをリンクしました"
+elif [ ! -L ~/.claude/settings.json ]; then
+  echo "警告: ~/.claude/settings.jsonが既に実ファイルとして存在します。theme/enabledPluginsなど機械固有の設定は~/.claude/settings.local.jsonへ、それ以外はclaude/settings.jsonへ移してから手動でリンクし直してください。" >&2
 fi
 
 echo "=== Claude Codeのskills ==="
@@ -432,39 +435,11 @@ if [ ! -e ~/.claude/skills ]; then
   echo "skillsディレクトリをリンクしました"
 fi
 
-echo "=== Claude Codeのhooks(gitブランチ切替の禁止など) ==="
-if ! jq -e '.hooks.PreToolUse[]? | select(.matcher == "Bash" and (.hooks[]?.command | contains("block-branch-checkout.py")))' ~/.claude/settings.json >/dev/null 2>&1; then
-  tmp=$(mktemp)
-  jq '.hooks.PreToolUse = ((.hooks.PreToolUse // []) + [{"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 ~/dotfiles/claude/hooks/block-branch-checkout.py"}]}])' ~/.claude/settings.json > "$tmp" && mv "$tmp" ~/.claude/settings.json
-  echo "settings.jsonにgitブランチ切替禁止hookを追加しました"
-fi
-
 echo "=== HerdrのClaude Code連携(複数エージェントの状態検知hook) ==="
 if command -v herdr &> /dev/null && [ ! -f ~/.claude/hooks/herdr-agent-state.sh ]; then
   herdr integration install claude
 else
   echo "Herdrのclaude連携hookはインストール済みか、herdr未インストールのためスキップします。"
-fi
-
-echo "=== Claude Codeの許可リスト(コードレビュー時によく使うコマンド) ==="
-if ! jq -e '.permissions.allow[]? | select(. == "Bash(gh search prs *)")' ~/.claude/settings.json >/dev/null 2>&1; then
-  tmp=$(mktemp)
-  jq '.permissions.allow = ((.permissions.allow // []) + ["Bash(gh search prs *)", "Bash(systemctl --user status *)"] | unique)' ~/.claude/settings.json > "$tmp" && mv "$tmp" ~/.claude/settings.json
-  echo "settings.jsonに許可リストを追加しました"
-fi
-
-echo "=== Claude Codeの許可リスト(nbノート操作、コマンド存在確認) ==="
-if ! jq -e '.permissions.allow[]? | select(. == "Bash(nb help *)")' ~/.claude/settings.json >/dev/null 2>&1; then
-  tmp=$(mktemp)
-  jq '.permissions.allow = ((.permissions.allow // []) + ["Bash(nb help *)", "Bash(nb ls *)", "Bash(nb show *)", "Bash(command -v *)", "Bash(nb notebooks *)", "Bash(nb search *)"] | unique)' ~/.claude/settings.json > "$tmp" && mv "$tmp" ~/.claude/settings.json
-  echo "settings.jsonに許可リストを追加しました"
-fi
-
-echo "=== Claude Codeの許可リスト(PRレビュー・開発ワークフローSkillで使う読み取り専用コマンド) ==="
-if ! jq -e '.permissions.allow[]? | select(. == "Bash(git fetch *)")' ~/.claude/settings.json >/dev/null 2>&1; then
-  tmp=$(mktemp)
-  jq '.permissions.allow = ((.permissions.allow // []) + ["Bash(git fetch *)", "Bash(git log *)", "Bash(gh api repos/*/pulls/*/comments)", "Bash(gh api repos/*/pulls/*/commits)", "Bash(gh pr view *)", "Bash(gh pr diff *)"] | unique)' ~/.claude/settings.json > "$tmp" && mv "$tmp" ~/.claude/settings.json
-  echo "settings.jsonに許可リストを追加しました"
 fi
 
 echo "=== Claude CodeのCLAUDE.md(全プロジェクト共通の指示) ==="
