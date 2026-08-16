@@ -7,7 +7,7 @@ description: Use when the user wants to check on their own open pull requests (s
 
 このdotfilesの `prs` エイリアス(`shell/aliases.sh`)は `gh search prs --author @me` / `--review-requested @me` で自分のPRと担当レビューを横断的に一覧表示する。このSkillはその発展形で、状況ごとの分類・優先度整理・下調べを行う。
 
-**PRの状態を変更する操作(`gh pr merge`、`gh pr review --approve` / `--request-changes` / `--comment`、`gh pr comment` など)は絶対に実行しない。** このSkillが行うのは判断材料の整理と下書き作成までであり、実際の操作は必ずユーザー自身が行う。
+PRの状態を変更する操作(`gh pr merge`、`gh pr review`、`gh pr comment`)はhook(`claude/hooks/block-pr-write-actions.py`)でシステム的にブロックされている。このSkillが行うのは判断材料の整理と下書き作成までであり、実際の操作は必ずユーザー自身が行う。
 
 ユーザーがどちらか一方だけを指定した場合(「自分のPRの状況教えて」「レビュー待ちのPRある?」など)はそのワークフローだけを行う。両方確認したい場合や、特に指定がなくこのSkillを起動した場合は、**「自分が出したPRのワークフロー」を先に行い、その後「自分にアサインされたレビューのワークフロー」に進む**。
 
@@ -60,8 +60,6 @@ gh search prs --author @me --state open --review approved          # approve済�
 - `reviews` を個別に確認し、コメントのみで承認していないレビュアーが残っていないか(`reviewDecision`は必須承認数の充足を見ているだけで、全員の承認を意味しない)
 - `comments` の中でユーザー自身が対応を約束した発言があれば、それが実際にコミットへ反映されているか(コメント日時と最新コミット日時、diffの内容を突き合わせて確認する)
 
-**マージは実行しない。**
-
 ## 自分にアサインされたレビューのワークフロー
 
 ### 1. レビュー待ちPRの一覧・優先度整理
@@ -82,7 +80,6 @@ gh search prs --review-requested @me --state open --sort updated --order asc
 2. `review` Skillを呼び出して本体のコードレビュー(diff要約・観点出し・リスク箇所の指摘)を行わせる
 3. 出てきた指摘を1の既存コメントと突き合わせる: 重複しかつその後のコミットで対応済みのものは除外、重複するが未対応のものは詳細を再掲せず「(誰が)指摘済み・未対応」の一言に圧縮、既存コメントに無い新規の指摘は詳しく残す(他レビュアーの指摘の焼き直しにならないようにするため)
 4. 全体としてapprove相当か変更要求相当かコメントに留めるべきかの推奨と、実際に投稿する場合のレビューコメント文面の下書きをまとめて返す
-5. **`gh pr review` などによる投稿はサブエージェント自身も実行しないこと**を、Agent呼び出し時のプロンプトに明記する
 
 全サブエージェントの結果が揃ってから、PRごとの結果をまとめて1つのレポートとしてユーザーに提示する。
 
