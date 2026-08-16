@@ -25,6 +25,10 @@
           {
             "type": "command",
             "command": "python3 ~/dotfiles/claude/hooks/block-branch-checkout.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/dotfiles/claude/hooks/block-pr-write-actions.py"
           }
         ]
       }
@@ -45,5 +49,8 @@
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"
+  },
+  "enabledPlugins": {
+    "pyright-lsp@claude-plugins-official": true
   }
 }
