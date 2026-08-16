@@ -29,6 +29,10 @@
           {
             "type": "command",
             "command": "python3 ~/dotfiles/claude/hooks/block-pr-write-actions.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/dotfiles/claude/hooks/block-git-push.py"
           }
         ]
       }
