@@ -8,5 +8,5 @@
 
 ## hookとの役割分担
 
-- `git push`・`gh pr merge/review/comment`・`git checkout`はPreToolUse hookで機械的にブロックされる(`claude/hooks/block-git-push.py`など)。これは「承認前にコマンド自体が実行されない」という最終防波堤
+- `git push`・`gh pr merge/review/comment`・`git checkout`はPreToolUse hookで機械的にブロックされる(`~/dotfiles/claude/hooks/block-git-push.py`など)。これは「承認前にコマンド自体が実行されない」という最終防波堤
 - 実装方針の承認やNotion書き込みの承認は、「実際にユーザーに提示したか」をhookでは検証できない性質のため、hook化せずSkillの手順として守る
