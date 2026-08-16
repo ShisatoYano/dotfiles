@@ -10,6 +10,7 @@ set -euo pipefail
 
 REGISTRY_DIR="${HOME}/.local/share/wezterm-worktrees"
 REGISTRY_FILE="${REGISTRY_DIR}/registry.json"
+REGISTRY_LOCK="${REGISTRY_DIR}/registry.lock"
 
 usage() {
   echo "使い方: $(basename "$0") <create|remove|list|check-dirty> ..." >&2
@@ -50,10 +51,17 @@ cmd_create() {
   local repo_root="$1" worktree_path="$2" workspace_name="$3" purpose="$4"
   ensure_registry
 
+  # 複数タスクを並列でcreateする運用(Herdr連携)を想定し、registry.jsonへの
+  # 存在チェック・書き込みはflockで直列化する。git worktree add/サブモジュール初期化は
+  # ロックの外で行うため、並列実行時の速度メリット自体は損なわれない
+  exec {lock_fd}>"$REGISTRY_LOCK"
+  flock -x "$lock_fd"
   if jq -e --arg n "$workspace_name" 'has($n)' "$REGISTRY_FILE" >/dev/null; then
+    flock -u "$lock_fd"
     echo "エラー: workspace '$workspace_name' は既に存在します" >&2
     exit 1
   fi
+  flock -u "$lock_fd"
 
   # 前回のcreate失敗時に残った、登録だけされて実体が無いworktreeを掃除しておく
   # (残っているとこの後のworktree addが「missing but already registered」で失敗する)
@@ -85,6 +93,7 @@ cmd_create() {
 
   local created_at tmp
   created_at=$(date -Iseconds)
+  flock -x "$lock_fd"
   tmp=$(mktemp)
   jq --arg n "$workspace_name" \
      --arg repo "$repo_root" \
@@ -94,6 +103,7 @@ cmd_create() {
      '.[$n] = {repo_root: $repo, worktree_path: $path, purpose: $purpose, created_at: $created}' \
      "$REGISTRY_FILE" > "$tmp"
   mv "$tmp" "$REGISTRY_FILE"
+  flock -u "$lock_fd"
   trap - ERR
 
   echo "作成しました: $worktree_path"
@@ -103,11 +113,15 @@ cmd_remove() {
   local workspace_name="$1"
   ensure_registry
 
+  exec {lock_fd}>"$REGISTRY_LOCK"
+  flock -x "$lock_fd"
   local entry
   entry=$(jq -e --arg n "$workspace_name" '.[$n]' "$REGISTRY_FILE") || {
+    flock -u "$lock_fd"
     echo "エラー: workspace '$workspace_name' は見つかりません" >&2
     exit 1
   }
+  flock -u "$lock_fd"
   local repo_root worktree_path
   repo_root=$(echo "$entry" | jq -r '.repo_root')
   worktree_path=$(echo "$entry" | jq -r '.worktree_path')
@@ -121,10 +135,12 @@ cmd_remove() {
   # 未コミット変更はここまでの直前チェックで確認済みなので、安全性は損なわれない。
   git -C "$repo_root" worktree remove --force "$worktree_path"
 
+  flock -x "$lock_fd"
   local tmp
   tmp=$(mktemp)
   jq --arg n "$workspace_name" 'del(.[$n])' "$REGISTRY_FILE" > "$tmp"
   mv "$tmp" "$REGISTRY_FILE"
+  flock -u "$lock_fd"
 
   echo "削除しました: $workspace_name"
 }
