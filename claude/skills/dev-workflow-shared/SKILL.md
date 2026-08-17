@@ -9,7 +9,7 @@ description: Shared steps used by genre-specific development workflow Skills (`b
 
 ## 前提
 
-- 修正・実装のpush・PR作成など状態変更操作は、毎回ユーザーの明示確認を得てから実行する(`pr-workflow`と同じ安全境界)
+- 修正・実装のpush・PR作成など状態変更操作は、毎回ユーザーの明示確認を得てから実行する(`~/dotfiles/claude/rules/write-approval.md`参照)
 - Notionタスクページへの進捗記録・タスク完了は`notion-task-workflow` Skillに委譲する(ここでは重複させない)
 - 対象リポジトリ以外の場所で作業しているときに`git`コマンドを対象リポジトリへ向ける場合は、`cd <path> && git ...`ではなく`git -C <path> ...`を使う。`cd`を挟むとリポジトリのhookが実行されうるとしてツール側の確認が挟まるため
 
@@ -39,4 +39,4 @@ description: Shared steps used by genre-specific development workflow Skills (`b
 1. 作業用ブランチを作成する(まだ作っていない場合)。ブランチ名は既存の命名規則に合わせる
 2. 変更をコミットする。コミットメッセージは既存のコミットログのスタイルに合わせる
 3. 対象リポジトリにPRテンプレート(`.github/PULL_REQUEST_TEMPLATE.md`など)が用意されていないか確認する。あればそのテンプレートに従って、無ければ既存のPRのスタイルを参考にPRのタイトル・本文を下書きする。本文には作業内容・テスト結果(ユニット/シミュレーション/実機)を含め、対象のNotionタスクへのリンクも記載する
-4. push・PR作成(`gh pr create`)は、下書き内容をユーザーに提示し、明示的な承認を得てから実行する。PRの作成者は`gh`のローカル認証に紐づくためユーザー自身のアカウントになり、Claudeの関与はコミットの`Co-Authored-By`トレイラーで表現する
+4. push・PR作成(`gh pr create`)は、下書き内容を提示し承認を得てから実行する(前提の承認ゲート参照)。PRの作成者は`gh`のローカル認証に紐づくためユーザー自身のアカウントになり、Claudeの関与はコミットの`Co-Authored-By`トレイラーで表現する
