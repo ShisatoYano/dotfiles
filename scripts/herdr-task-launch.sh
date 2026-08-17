@@ -2,18 +2,21 @@
 # 1タスク分のClaude Codeエージェントを、隔離されたgit worktree上でHerdrに展開する。
 # 並列化はこのスクリプト自身では持たない。呼び出し元(オーケストレーター役のClaude)が
 # 同一ターン内で複数のBashツール呼び出しとしてこれを並列発行することを前提にしている。
-# worktree自体はscripts/wezterm-worktree.sh(git worktree作成・サブモジュール初期化・
-# registry管理・flockによる並列書き込み対応済み)にそのまま委譲する。
+#
+# worktree作成はHerdr自身の`herdr worktree create --cwd`に一本化している(以前は
+# scripts/wezterm-worktree.sh経由だったが、Herdrが--cwd直指定でworktree作成から
+# ペイン確保までできることが分かったため統合した。anchor workspaceの事前作成も不要)。
+# サブモジュール初期化はここでは行わない。委譲先エージェントには初期プロンプトで
+# 「作業前に必ずリポジトリのセットアップ完了をユーザーに確認する」よう指示する設計
+# (daily-task-planning Skill側)のため、サブモジュール初期化が必要な場合もその中で扱われる。
 set -euo pipefail
 
-WEZTERM_WORKTREE_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/wezterm-worktree.sh"
 WORKTREES_ROOT="${HOME}/worktrees"
 
 usage() {
-  echo "使い方: $(basename "$0") <repo_root> <name> <purpose> <initial_prompt> [--anchor <workspace_id>]" >&2
-  echo "  --anchorを省略すると、repo_root直下を指すHerdr workspaceを新規作成して使う。" >&2
-  echo "  複数タスクを並列起動する場合は、最初に1回だけanchorを作って使い回すこと" >&2
-  echo "  (省略時オートで作ると、タスクごとに重複したworkspaceができてしまうため)。" >&2
+  echo "使い方: $(basename "$0") <repo_root> <name> <purpose> <initial_prompt> [--base <ref>]" >&2
+  echo "  nameはHerdr上のagent名・新規ブランチ名・worktreeディレクトリ名を兼ねる(例: task-4595)" >&2
+  echo "  --baseを省略すると、repo_rootの現在のHEADを起点に新規ブランチを作る" >&2
   exit 1
 }
 
@@ -21,10 +24,10 @@ usage() {
 
 repo_root="$1" name="$2" purpose="$3" initial_prompt="$4"
 shift 4
-anchor=""
+base=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --anchor) anchor="$2"; shift 2 ;;
+    --base) base="$2"; shift 2 ;;
     *) usage ;;
   esac
 done
@@ -32,24 +35,17 @@ done
 repo_name="$(basename "${repo_root%/}")"
 worktree_path="${WORKTREES_ROOT}/${name}/${repo_name}"
 
-echo "[${name}] worktreeを作成しています: ${worktree_path}" >&2
-"$WEZTERM_WORKTREE_SCRIPT" create "$repo_root" "$worktree_path" "$name" "$purpose" >&2
-
-if [ -z "$anchor" ]; then
-  echo "[${name}] anchor workspace未指定のため新規作成します" >&2
-  anchor_json=$(herdr workspace create --cwd "$repo_root" --label "${repo_name}-anchor" --no-focus)
-  anchor=$(echo "$anchor_json" | jq -r '.result.workspace.workspace_id')
-fi
-
-echo "[${name}] Herdrにworktreeを開いています(anchor=${anchor})" >&2
-open_json=$(herdr worktree open --workspace "$anchor" --path "$worktree_path" --label "$purpose" --no-focus)
-pane_id=$(echo "$open_json" | jq -r '.result.root_pane.pane_id')
+echo "[${name}] Herdrでworktreeを作成しています: ${worktree_path}" >&2
+create_args=(--cwd "$repo_root" --path "$worktree_path" --branch "$name" --label "$purpose" --no-focus)
+[ -n "$base" ] && create_args+=(--base "$base")
+create_json=$(herdr worktree create "${create_args[@]}")
+pane_id=$(echo "$create_json" | jq -r '.result.root_pane.pane_id')
+workspace_id=$(echo "$create_json" | jq -r '.result.workspace.workspace_id')
 
 echo "[${name}] Claude Codeエージェントを起動しています(pane=${pane_id})" >&2
-# 複数タスクを同時にworktree openした直後は、wezterm側のウィンドウ生成が
-# 間に合わずagent startが一時的に"agent_pane_busy"で失敗することがある
-# (単発実行やタイミングがずれた場合は起きない、実際に並列2つ発行して再現した事象)。
-# 数秒おきに数回リトライすることで、この一過性の失敗を吸収する。
+# worktree作成直後は、wezterm側のウィンドウ生成が間に合わずagent startが一時的に
+# "agent_pane_busy"で失敗することがある(単発実行やタイミングがずれた場合は起きない、
+# 実際に並列2つ発行して再現した事象)。数秒おきに数回リトライすることで吸収する。
 attempt=0
 until herdr agent start "$name" --kind claude --pane "$pane_id" >&2; do
   attempt=$((attempt + 1))
@@ -78,6 +74,6 @@ until herdr agent prompt "$name" "$initial_prompt" --wait --timeout 10000 >&2; d
   sleep 2
 done
 
-jq -n --arg name "$name" --arg pane_id "$pane_id" --arg anchor "$anchor" \
+jq -n --arg name "$name" --arg pane_id "$pane_id" --arg workspace_id "$workspace_id" \
       --arg worktree_path "$worktree_path" --arg purpose "$purpose" \
-      '{name: $name, pane_id: $pane_id, anchor_workspace_id: $anchor, worktree_path: $worktree_path, purpose: $purpose}'
+      '{name: $name, pane_id: $pane_id, workspace_id: $workspace_id, worktree_path: $worktree_path, purpose: $purpose}'
