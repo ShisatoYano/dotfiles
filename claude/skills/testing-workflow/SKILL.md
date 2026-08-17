@@ -10,7 +10,7 @@ description: Use for test/verification work — either a Notion task whose purpo
 ## 前提
 
 - テストの進め方は、このdotfilesの`~/.claude/CLAUDE.md`の「テスト」節に従う: まずローカルで検証できる範囲を最大化する、テストケースは必要以上に増やさない
-- テストコードのpush・PR作成など状態変更操作は、毎回ユーザーの明示確認を得てから実行する(`pr-workflow`と同じ安全境界)
+- テストコードのpush・PR作成など状態変更操作は、毎回ユーザーの明示確認を得てから実行する(`~/dotfiles/claude/rules/write-approval.md`参照)
 - 実装/不具合修正ワークフローの一部として呼ばれた場合と、独立したNotionタスクとして着手する場合とで、後半の扱いが変わる(「完了後」セクション参照)
 
 ## 事前準備
