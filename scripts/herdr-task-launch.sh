@@ -41,6 +41,8 @@ create_args=(--cwd "$repo_root" --path "$worktree_path" --branch "$name" --label
 create_json=$(herdr worktree create "${create_args[@]}")
 pane_id=$(echo "$create_json" | jq -r '.result.root_pane.pane_id')
 workspace_id=$(echo "$create_json" | jq -r '.result.workspace.workspace_id')
+# sidebar表示用の$idトークンを登録する(~/dotfiles/herdr/config.tomlの[ui.sidebar.spaces]と対)
+herdr workspace report-metadata "$workspace_id" --source dotfiles --token "id=${workspace_id}" >/dev/null
 
 echo "[${name}] Claude Codeエージェントを起動しています(pane=${pane_id})" >&2
 # worktree作成直後は、wezterm側のウィンドウ生成が間に合わずagent startが一時的に
