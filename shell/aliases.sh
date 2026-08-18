@@ -305,10 +305,21 @@ luaci() {
   return "$status"
 }
 
+# herdr workspace/worktree create のJSON出力からworkspace_idを取り出し、
+# sidebar表示用の$idトークンとして登録する(herdr/config.tomlの[ui.sidebar.spaces]と対)
+_herdr_report_id() {
+  local id
+  id=$(jq -r '.result.workspace.workspace_id' <<< "$1")
+  [ -n "$id" ] && [ "$id" != "null" ] && herdr workspace report-metadata "$id" --source dotfiles --token "id=$id" >/dev/null
+}
+
 # カレントディレクトリを対象にHerdr workspaceを作成する(ラベル省略時はディレクトリ名)
 hwsnew() {
   local label="${1:-$(basename "$PWD")}"
-  herdr workspace create --cwd "$PWD" --label "$label"
+  local out
+  out=$(herdr workspace create --cwd "$PWD" --label "$label") || return
+  echo "$out"
+  _herdr_report_id "$out"
 }
 
 # Herdr workspaceをfzfであいまい検索して切り替える
@@ -355,5 +366,8 @@ hwtnew() {
   local branch="$1" base="${2:-}" label="${3:-$1}"
   local -a opts=(--cwd "$PWD" --path "$HOME/worktrees/${branch}/$(basename "$PWD")" --branch "$branch" --label "$label")
   [ -n "$base" ] && opts+=(--base "$base")
-  herdr worktree create "${opts[@]}"
+  local out
+  out=$(herdr worktree create "${opts[@]}") || return
+  echo "$out"
+  _herdr_report_id "$out"
 }

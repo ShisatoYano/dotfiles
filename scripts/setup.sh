@@ -401,6 +401,11 @@ if [ ! -e ~/.config/lazygit/config.yml ]; then
   ln -s ~/dotfiles/lazygit/config.yml ~/.config/lazygit/config.yml
   echo "lazygit設定をリンクしました"
 fi
+mkdir -p ~/.config/herdr
+if [ ! -e ~/.config/herdr/config.toml ]; then
+  ln -s ~/dotfiles/herdr/config.toml ~/.config/herdr/config.toml
+  echo "herdr設定をリンクしました"
+fi
 if [ ! -e ~/.config/starship.toml ]; then
   ln -s ~/dotfiles/starship/starship.toml ~/.config/starship.toml
   echo "starship設定をリンクしました"
