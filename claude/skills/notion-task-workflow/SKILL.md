@@ -1,6 +1,6 @@
 ---
 name: notion-task-workflow
-description: Use when the user wants to record progress on a Notion task page during work, mark a Notion task complete, or wrap up the day's work into a local summary. Trigger on phrases like "進捗記録して", "タスク完了", "今日のまとめ作って". Also apply the progress-recording step proactively when a long work session on a Notion-tracked task is approaching context compaction, per the user's global CLAUDE.md instruction to hand off progress at a good breakpoint — write that handoff to the task's Notion page, not just the conversation. Deciding what to work on today is handled by the separate `daily-task-planning` Skill, which reads this Skill's Notion property conventions (read-only) to select today's tasks; this Skill is what actually writes to those tasks' Notion pages once work is underway.
+description: Use when the user wants to record progress on a Notion task page during work, mark a Notion task complete, or wrap up the day's work into a local summary. Trigger on phrases like "進捗記録して", "タスク完了", "今日のまとめ作って". Also trigger proactively — asking for confirmation before creating anything — when the user signals they're wrapping up for the day without an explicit request, e.g. "今日の業務はこれで終了です", "今日はここまでにします". Also apply the progress-recording step proactively when a long work session on a Notion-tracked task is approaching context compaction, per the user's global CLAUDE.md instruction to hand off progress at a good breakpoint — write that handoff to the task's Notion page, not just the conversation. Deciding what to work on today is handled by the separate `daily-task-planning` Skill, which reads this Skill's Notion property conventions (read-only) to select today's tasks; this Skill is what actually writes to those tasks' Notion pages once work is underway.
 ---
 
 # Notion Task Workflow
@@ -33,10 +33,11 @@ Notion上の担当タスクページを軸にした業務フロー(作業中の�
 
 ## サブワークフロー3: 終業時のまとめ
 
-トリガー例: 「今日のまとめ作って」
+トリガー例: 「今日のまとめ作って」。加えて、「今日の業務はこれで終了です」等、終業を示唆する発言があった場合も、明示的な依頼がなくてもこのサブワークフローの対象にする(ただし勝手に作り始めず、先に「今日のまとめを作成しましょうか」とユーザーに確認する)
 
-1. その日扱ったタスクを特定する。会話内で明らかならそれも使えるが、この手順は別セッション(タスクごとのセッション)から呼ばれることを前提に、それだけに頼らない。自分のタスク一覧(`daily-task-planning`と同じビュー/検索)を取得し、`Last edited time`が今日のものに絞り込むことで、進捗記録・タスク完了で実際に触れたタスクを会話の記憶に依存せず特定する
-2. 1で特定した各タスクの状態(完了/進行中/ブロック)と、見積もりに対する実績感を集計する
-3. まとめ本文をWrite toolでスクラッチパッドの一時ファイルに書く(`nb add --content`には渡さない。AI生成のMarkdownはバッククォートや引用符を含みやすく、シェル経由で渡すとコマンド置換やクォート不整合でハング・内容破損を起こすため)
-4. `nb add daily-task-logs:daily/<YYYY-MM-DD>.md < <一時ファイルパス>`で標準入力から読み込ませ`daily-task-logs` notebookに保存する。翌朝の`daily-task-planning` Skillがこれを読んで持ち越しを把握する
-5. 登録成功を確認したら一時ファイルを削除する
+1. (終業を示唆する発言がトリガーの場合のみ)まとめを作成してよいかユーザーに確認する。明示的に「まとめ作って」と依頼された場合はこの確認は不要
+2. その日扱ったタスクを特定する。会話内で明らかならそれも使えるが、この手順は別セッション(タスクごとのセッション)から呼ばれることを前提に、それだけに頼らない。自分のタスク一覧(`daily-task-planning`と同じビュー/検索)を取得し、`Last edited time`が今日のものに絞り込むことで、進捗記録・タスク完了で実際に触れたタスクを会話の記憶に依存せず特定する
+3. 2で特定した各タスクの状態(完了/進行中/ブロック)と、見積もりに対する実績感を集計する
+4. まとめ本文をWrite toolでスクラッチパッドの一時ファイルに書く(`nb add --content`には渡さない。AI生成のMarkdownはバッククォートや引用符を含みやすく、シェル経由で渡すとコマンド置換やクォート不整合でハング・内容破損を起こすため)
+5. `nb add daily-task-logs:daily/<YYYY-MM-DD>.md < <一時ファイルパス>`で標準入力から読み込ませ`daily-task-logs` notebookに保存する。翌朝の`daily-task-planning` Skillがこれを読んで持ち越しを把握する
+6. 登録成功を確認したら一時ファイルを削除する
