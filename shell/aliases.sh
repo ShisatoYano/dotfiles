@@ -1,10 +1,19 @@
 # nb(メモ管理CLI)やgit commit等で使うエディタをnvimに固定する
 export EDITOR=nvim
 
-# ghq管理下のリポジトリをfzfであいまい検索して移動する
+# ghq管理下のリポジトリ + ~/worktrees配下のHerdr worktree(サブモジュール含む)を
+# まとめてfzfであいまい検索して移動する。worktree側は[wt]を付けて表示し、
+# 普段の癖でgcdを使っても誤ってghq本体側に移動しないようにする
+# (~/worktreesが未作成でも、findが何も出力せずghq側だけの一覧になるだけで問題ない)
 gcd() {
   local dir
-  dir=$(ghq list -p | fzf) || return
+  dir=$(
+    { ghq list -p | while read -r p; do printf '%s\t%s\n' "$p" "$p"; done
+      find "$HOME/worktrees" -mindepth 1 -name .git 2>/dev/null \
+        | xargs -r -n1 dirname \
+        | while read -r p; do printf '[wt] %s\t%s\n' "$p" "$p"; done
+    } | fzf --delimiter=$'\t' --with-nth=1 | cut -f2
+  ) || return
   cd "$dir" || return
 }
 
