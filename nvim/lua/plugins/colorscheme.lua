@@ -1,21 +1,17 @@
 return {
   {
-    "Mofiqul/dracula.nvim",
+    "craftzdog/solarized-osaka.nvim",
     lazy = false,
     priority = 1000,
     config = function()
-      -- ダークはDracula、ライトはSolarized Lightを使う
+      -- ダークはSolarized Osaka、ライトはSolarized Lightを使う
       local function apply_dark()
         vim.cmd("highlight clear")
         vim.o.background = "dark"
-        require("dracula").setup({
-          transparent_bg = true, -- WezTermの背景透過を活かすため
-          overrides = {
-            -- 標準のVisual色(#3E4452)は背景(#282A36)に近すぎて選択範囲が見づらいため上書き
-            Visual = { bg = "#6272a4" },
-          },
+        require("solarized-osaka").setup({
+          transparent = true, -- WezTermの背景透過を活かすため
         })
-        vim.cmd.colorscheme("dracula")
+        vim.cmd.colorscheme("solarized-osaka")
       end
 
       local function apply_light()
