@@ -1,7 +1,7 @@
 local wezterm = require("wezterm")
 local config = wezterm.config_builder()
 
-require("config.theme") -- toggle-color-schemeイベントを登録するため読み込むだけでOK
+require("config.theme").setup(config) -- toggle-color-schemeイベント登録 + カスタムカラースキームのconfig.color_schemes登録
 require("config.appearance").setup(config)
 require("config.keybinds").setup(config) -- config.keys/config.key_tablesを直接代入するので最初に呼ぶ
 require("config.cmdpicker").setup(config)
