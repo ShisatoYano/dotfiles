@@ -11,7 +11,9 @@ local function hex_to_rgba(hex, alpha)
 end
 
 local function register_transparent_tab_bar(config, scheme_name)
-  local scheme = wezterm.get_builtin_color_schemes()[scheme_name]
+  -- config.theme.custom_schemesで登録したカスタムスキームはbuiltinに存在しないため、
+  -- 先にconfig.color_schemes(theme.setupで登録済み)を見る
+  local scheme = (config.color_schemes or {})[scheme_name] or wezterm.get_builtin_color_schemes()[scheme_name]
   scheme.tab_bar = scheme.tab_bar or {}
   scheme.tab_bar.background = hex_to_rgba(scheme.background, 0)
   config.color_schemes = config.color_schemes or {}
@@ -52,8 +54,8 @@ function M.setup(config)
   config.exit_behavior = "CloseOnCleanExit"
   -- 非アクティブなペインを暗く/彩度を落として表示し、アクティブなペインが一目で分かるようにする
   config.inactive_pane_hsb = {
-    saturation = 0.9,
-    brightness = 0.4,
+    saturation = 1.0,
+    brightness = 1.0,
   }
   -- コピーモードの選択範囲が背景色とほぼ同化して見づらいため上書きする
   -- (Dracula標準のselection色は背景に近すぎるため)
