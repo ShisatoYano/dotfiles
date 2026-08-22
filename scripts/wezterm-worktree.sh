@@ -135,6 +135,12 @@ cmd_remove() {
   # 未コミット変更はここまでの直前チェックで確認済みなので、安全性は損なわれない。
   git -C "$repo_root" worktree remove --force "$worktree_path"
 
+  # worktree_pathはcreate時にmkdir -pした「目的名/リポジトリ名」の2階層構成。
+  # worktree removeはリポジトリ名側のディレクトリしか消さないため、目的名側の
+  # 親ディレクトリが空の抜け殻として残る。空であれば片付ける
+  # (他リポジトリのworktreeが同じ目的名配下に残っていれば空にならず、rmdirは黙って失敗する)
+  rmdir "$(dirname "$worktree_path")" 2>/dev/null || true
+
   flock -x "$lock_fd"
   local tmp
   tmp=$(mktemp)
