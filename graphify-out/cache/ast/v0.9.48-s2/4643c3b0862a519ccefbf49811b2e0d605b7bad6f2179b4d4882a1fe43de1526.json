@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_nvim_lua_plugins_mason_lua", "label": "mason.lua", "file_type": "code", "source_file": "nvim/lua/plugins/mason.lua", "source_location": "L1"}], "edges": [], "raw_calls": []}

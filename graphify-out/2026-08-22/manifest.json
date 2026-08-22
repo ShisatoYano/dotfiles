@@ -1,0 +1,494 @@
+{
+  ".claude/settings.local.json": {
+    "mtime": 1786688340.7377858,
+    "seen": 1787373874.054105,
+    "ast_hash": "413173608c616a4674cbac4bce472bbb",
+    "semantic_hash": "413173608c616a4674cbac4bce472bbb"
+  },
+  "claude/hooks/block-branch-checkout.py": {
+    "mtime": 1786368987.9592512,
+    "seen": 1787373874.0541093,
+    "ast_hash": "9e1ddde405534167c582050c9386f3b6",
+    "semantic_hash": "9e1ddde405534167c582050c9386f3b6"
+  },
+  "claude/hooks/block-git-push.py": {
+    "mtime": 1786851458.3853047,
+    "seen": 1787373874.0541112,
+    "ast_hash": "939fe6d043fb6457379ae838a1244931",
+    "semantic_hash": "939fe6d043fb6457379ae838a1244931"
+  },
+  "claude/hooks/block-pr-write-actions.py": {
+    "mtime": 1786850634.968408,
+    "seen": 1787373874.0541124,
+    "ast_hash": "7a116c992dbf2248bc09b4c555d07865",
+    "semantic_hash": "7a116c992dbf2248bc09b4c555d07865"
+  },
+  "claude/settings.json": {
+    "mtime": 1786851592.2708197,
+    "seen": 1787373874.0541136,
+    "ast_hash": "78e0b4e8ab74aadb82ba8e4b8346869a",
+    "semantic_hash": "78e0b4e8ab74aadb82ba8e4b8346869a"
+  },
+  "claude/statusline-command.sh": {
+    "mtime": 1786255801.3958125,
+    "seen": 1787373874.0541146,
+    "ast_hash": "ba78dd5a8ae4f133e5ea1ceb2c5f5a59",
+    "semantic_hash": "ba78dd5a8ae4f133e5ea1ceb2c5f5a59"
+  },
+  "nvim/init.lua": {
+    "mtime": 1783894225.122506,
+    "seen": 1787373874.0541155,
+    "ast_hash": "e52f77675d88419ef8aa456f71a17026",
+    "semantic_hash": "e52f77675d88419ef8aa456f71a17026"
+  },
+  "nvim/lazy-lock.json": {
+    "mtime": 1787230796.7504933,
+    "seen": 1787373874.0541167,
+    "ast_hash": "b32dbd012ffd36d43a5d04f3aab6afd0",
+    "semantic_hash": "b32dbd012ffd36d43a5d04f3aab6afd0"
+  },
+  "nvim/lua/config/keymaps.lua": {
+    "mtime": 1786433801.5073836,
+    "seen": 1787373874.0541174,
+    "ast_hash": "18fb0e1e6db51b0e33b4b520111e4ad4",
+    "semantic_hash": "18fb0e1e6db51b0e33b4b520111e4ad4"
+  },
+  "nvim/lua/config/lazy.lua": {
+    "mtime": 1783304517.6827655,
+    "seen": 1787373874.0541182,
+    "ast_hash": "8ed6ac225baac461f2c065aaca154979",
+    "semantic_hash": "8ed6ac225baac461f2c065aaca154979"
+  },
+  "nvim/lua/config/options.lua": {
+    "mtime": 1784852203.3390331,
+    "seen": 1787373874.0541189,
+    "ast_hash": "ba40237ab6c4af90a7986f34b08bc7e4",
+    "semantic_hash": "ba40237ab6c4af90a7986f34b08bc7e4"
+  },
+  "nvim/lua/plugins/auto-session.lua": {
+    "mtime": 1783682271.2690902,
+    "seen": 1787373874.0541198,
+    "ast_hash": "7e501c68c99ee23a6e6b2a53bdb01ad7",
+    "semantic_hash": "7e501c68c99ee23a6e6b2a53bdb01ad7"
+  },
+  "nvim/lua/plugins/autopairs.lua": {
+    "mtime": 1783680592.3324618,
+    "seen": 1787373874.0541208,
+    "ast_hash": "4be18022052be26523c8a65042109483",
+    "semantic_hash": "4be18022052be26523c8a65042109483"
+  },
+  "nvim/lua/plugins/bufferline.lua": {
+    "mtime": 1786162490.8394847,
+    "seen": 1787373874.0541215,
+    "ast_hash": "7205985e6b6e5ce516f782d8089540dd",
+    "semantic_hash": "7205985e6b6e5ce516f782d8089540dd"
+  },
+  "nvim/lua/plugins/colorscheme.lua": {
+    "mtime": 1787230559.065775,
+    "seen": 1787373874.0541222,
+    "ast_hash": "6f20e6d9add150188085c85e1382fb83",
+    "semantic_hash": "6f20e6d9add150188085c85e1382fb83"
+  },
+  "nvim/lua/plugins/completion.lua": {
+    "mtime": 1783680693.8533514,
+    "seen": 1787373874.054123,
+    "ast_hash": "56eb9430030845a7c20e428256a74770",
+    "semantic_hash": "56eb9430030845a7c20e428256a74770"
+  },
+  "nvim/lua/plugins/dap.lua": {
+    "mtime": 1783335288.8801775,
+    "seen": 1787373874.0541239,
+    "ast_hash": "8f325ea6309891f267b5dafa06fce88f",
+    "semantic_hash": "8f325ea6309891f267b5dafa06fce88f"
+  },
+  "nvim/lua/plugins/gitgraph.lua": {
+    "mtime": 1783895851.959184,
+    "seen": 1787373874.0541246,
+    "ast_hash": "00cf53ae6d911dfc62276fd63746002f",
+    "semantic_hash": "00cf53ae6d911dfc62276fd63746002f"
+  },
+  "nvim/lua/plugins/gitsigns.lua": {
+    "mtime": 1783552072.0047367,
+    "seen": 1787373874.0541253,
+    "ast_hash": "de2b62562cb53a72d188ca592c1d1e10",
+    "semantic_hash": "de2b62562cb53a72d188ca592c1d1e10"
+  },
+  "nvim/lua/plugins/image.lua": {
+    "mtime": 1786258966.7092955,
+    "seen": 1787373874.054126,
+    "ast_hash": "4dda19382bca4cec601335f7a7952902",
+    "semantic_hash": "4dda19382bca4cec601335f7a7952902"
+  },
+  "nvim/lua/plugins/img-clip.lua": {
+    "mtime": 1784016400.3175182,
+    "seen": 1787373874.0541267,
+    "ast_hash": "0848349a858c98b533d16c25e494e3b3",
+    "semantic_hash": "0848349a858c98b533d16c25e494e3b3"
+  },
+  "nvim/lua/plugins/lazydev.lua": {
+    "mtime": 1783343453.592574,
+    "seen": 1787373874.0541277,
+    "ast_hash": "177a04841d71a33de655513955e8c347",
+    "semantic_hash": "177a04841d71a33de655513955e8c347"
+  },
+  "nvim/lua/plugins/lazygit.lua": {
+    "mtime": 1783341268.595096,
+    "seen": 1787373874.054129,
+    "ast_hash": "ffb1d36494bc7ce89801b3c3c17dfbae",
+    "semantic_hash": "ffb1d36494bc7ce89801b3c3c17dfbae"
+  },
+  "nvim/lua/plugins/lint.lua": {
+    "mtime": 1785036283.4356105,
+    "seen": 1787373874.0541296,
+    "ast_hash": "46a35e95b768dd6a4470c627d830980f",
+    "semantic_hash": "46a35e95b768dd6a4470c627d830980f"
+  },
+  "nvim/lua/plugins/lsp.lua": {
+    "mtime": 1783428199.1328769,
+    "seen": 1787373874.0541303,
+    "ast_hash": "6d37f026ce1ae1a82d8c4e75aab6589c",
+    "semantic_hash": "6d37f026ce1ae1a82d8c4e75aab6589c"
+  },
+  "nvim/lua/plugins/lualine.lua": {
+    "mtime": 1785067196.2595377,
+    "seen": 1787373874.0541313,
+    "ast_hash": "3f82fbe13d4ceef3412731b23f32e947",
+    "semantic_hash": "3f82fbe13d4ceef3412731b23f32e947"
+  },
+  "nvim/lua/plugins/markdown-preview.lua": {
+    "mtime": 1783432930.039876,
+    "seen": 1787373874.054132,
+    "ast_hash": "b1cdd479773b62a7b92e79464e891b9f",
+    "semantic_hash": "b1cdd479773b62a7b92e79464e891b9f"
+  },
+  "nvim/lua/plugins/mason.lua": {
+    "mtime": 1784854964.2583168,
+    "seen": 1787373874.0541327,
+    "ast_hash": "6320639a4766b568138982898e60a9d4",
+    "semantic_hash": "6320639a4766b568138982898e60a9d4"
+  },
+  "nvim/lua/plugins/nb.lua": {
+    "mtime": 1786762984.6843944,
+    "seen": 1787373874.0541334,
+    "ast_hash": "61693e49dde1b283e10dd3043343216b",
+    "semantic_hash": "61693e49dde1b283e10dd3043343216b"
+  },
+  "nvim/lua/plugins/nvim-tree.lua": {
+    "mtime": 1784109340.306658,
+    "seen": 1787373874.0541344,
+    "ast_hash": "71f8c1029651e62f62f0ad15034156e9",
+    "semantic_hash": "71f8c1029651e62f62f0ad15034156e9"
+  },
+  "nvim/lua/plugins/smart-splits.lua": {
+    "mtime": 1783607714.4604585,
+    "seen": 1787373874.054135,
+    "ast_hash": "7da9d832b1b61ce2549b9e75482b4814",
+    "semantic_hash": "7da9d832b1b61ce2549b9e75482b4814"
+  },
+  "nvim/lua/plugins/telescope.lua": {
+    "mtime": 1784178003.8019202,
+    "seen": 1787373874.0541358,
+    "ast_hash": "150f05c61c59f389003a5f3dee5657b9",
+    "semantic_hash": "150f05c61c59f389003a5f3dee5657b9"
+  },
+  "nvim/lua/plugins/treesitter.lua": {
+    "mtime": 1783304671.484715,
+    "seen": 1787373874.0541368,
+    "ast_hash": "732778f8d484f8aa24bc05dcee210210",
+    "semantic_hash": "732778f8d484f8aa24bc05dcee210210"
+  },
+  "scripts/ai-commit-msg.sh": {
+    "mtime": 1785839849.7612689,
+    "seen": 1787373874.0541372,
+    "ast_hash": "451f3aef0f7de571a2c48717c2989399",
+    "semantic_hash": "451f3aef0f7de571a2c48717c2989399"
+  },
+  "scripts/ai-squash-commit.sh": {
+    "mtime": 1785656671.883525,
+    "seen": 1787373874.0541382,
+    "ast_hash": "7d47679d072ffe7850f810a102c6ed8e",
+    "semantic_hash": "7d47679d072ffe7850f810a102c6ed8e"
+  },
+  "scripts/claude-git-push-ctl.sh": {
+    "mtime": 1786852601.5787501,
+    "seen": 1787373874.054139,
+    "ast_hash": "d28fc983b94c27381102e7b17199f9a0",
+    "semantic_hash": "d28fc983b94c27381102e7b17199f9a0"
+  },
+  "scripts/generate_pyright_paths.py": {
+    "mtime": 1783302458.0418453,
+    "seen": 1787373874.0541396,
+    "ast_hash": "877abb853544452ed9854e0bdb7f792f",
+    "semantic_hash": "877abb853544452ed9854e0bdb7f792f"
+  },
+  "scripts/herdr-task-launch.sh": {
+    "mtime": 1787054704.8613503,
+    "seen": 1787373874.0541403,
+    "ast_hash": "fd0230a2759b14d3d6f56afde7ae4e1b",
+    "semantic_hash": "fd0230a2759b14d3d6f56afde7ae4e1b"
+  },
+  "scripts/setup.sh": {
+    "mtime": 1787054443.111661,
+    "seen": 1787373874.0541413,
+    "ast_hash": "916bd3686a6cf86249751c86709ce6b5",
+    "semantic_hash": "916bd3686a6cf86249751c86709ce6b5"
+  },
+  "scripts/tab-check.sh": {
+    "mtime": 1784253748.6364853,
+    "seen": 1787373874.054142,
+    "ast_hash": "6eae61826bdb076dc00054296220dbf9",
+    "semantic_hash": "6eae61826bdb076dc00054296220dbf9"
+  },
+  "scripts/wezterm-worktree.sh": {
+    "mtime": 1786842689.957585,
+    "seen": 1787373874.0541427,
+    "ast_hash": "78827396fd015cb2623646988fb258f4",
+    "semantic_hash": "78827396fd015cb2623646988fb258f4"
+  },
+  "shell/aliases.sh": {
+    "mtime": 1787054699.8345063,
+    "seen": 1787373874.0541437,
+    "ast_hash": "882c02b9f37f17b86af1030f9b3c9079",
+    "semantic_hash": "882c02b9f37f17b86af1030f9b3c9079"
+  },
+  "wezterm/config/appearance.lua": {
+    "mtime": 1787234637.6133494,
+    "seen": 1787373874.0541446,
+    "ast_hash": "30999abc249ccbed8fe91b0bc1fd9dec",
+    "semantic_hash": "30999abc249ccbed8fe91b0bc1fd9dec"
+  },
+  "wezterm/config/cmdpicker.lua": {
+    "mtime": 1783517197.5526407,
+    "seen": 1787373874.0541468,
+    "ast_hash": "a7817e20395e1554641c4e5179b19154",
+    "semantic_hash": "a7817e20395e1554641c4e5179b19154"
+  },
+  "wezterm/config/colorschemes/solarized_osaka.lua": {
+    "mtime": 1787229932.0738077,
+    "seen": 1787373874.0541475,
+    "ast_hash": "bad5b05ab51825e597e71daa8ae4ad92",
+    "semantic_hash": "bad5b05ab51825e597e71daa8ae4ad92"
+  },
+  "wezterm/config/keybinds.lua": {
+    "mtime": 1786784021.405372,
+    "seen": 1787373874.0541487,
+    "ast_hash": "cadd4b8f295fcf48dd805f385e26d9f6",
+    "semantic_hash": "cadd4b8f295fcf48dd805f385e26d9f6"
+  },
+  "wezterm/config/sessions.lua": {
+    "mtime": 1786776031.3526368,
+    "seen": 1787373874.0541494,
+    "ast_hash": "7dd22635012ef080e9483f0ad4ab1001",
+    "semantic_hash": "7dd22635012ef080e9483f0ad4ab1001"
+  },
+  "wezterm/config/smart-splits.lua": {
+    "mtime": 1783608399.6658094,
+    "seen": 1787373874.05415,
+    "ast_hash": "399f930fd6dbaf04107fc6b96ca7491f",
+    "semantic_hash": "399f930fd6dbaf04107fc6b96ca7491f"
+  },
+  "wezterm/config/tab_title.lua": {
+    "mtime": 1786434292.663007,
+    "seen": 1787373874.0541508,
+    "ast_hash": "5c60e25e181bf7d55904eca3e96ecb09",
+    "semantic_hash": "5c60e25e181bf7d55904eca3e96ecb09"
+  },
+  "wezterm/config/theme.lua": {
+    "mtime": 1787230096.602927,
+    "seen": 1787373874.0541518,
+    "ast_hash": "f0aa834aff664c304177434500a32192",
+    "semantic_hash": "f0aa834aff664c304177434500a32192"
+  },
+  "wezterm/config/worktree_workspace.lua": {
+    "mtime": 1786790095.7135117,
+    "seen": 1787373874.0541525,
+    "ast_hash": "1741aa1bcf995894d11c940f73fbd33d",
+    "semantic_hash": "1741aa1bcf995894d11c940f73fbd33d"
+  },
+  "wezterm/wezterm.lua": {
+    "mtime": 1787229957.7859929,
+    "seen": 1787373874.0541532,
+    "ast_hash": "ae6596d1da7836b28e04a77aca7481a5",
+    "semantic_hash": "ae6596d1da7836b28e04a77aca7481a5"
+  },
+  "README.md": {
+    "mtime": 1786282291.3842967,
+    "seen": 1787373874.054154,
+    "ast_hash": "9bc2c255b271a69e0f4aecd6ae1a0bc2",
+    "semantic_hash": "9bc2c255b271a69e0f4aecd6ae1a0bc2"
+  },
+  "claude/CLAUDE.md": {
+    "mtime": 1787372947.9848092,
+    "seen": 1787373874.0541546,
+    "ast_hash": "ba0b8c695affc3dc9c5556e3b30e9224",
+    "semantic_hash": "ba0b8c695affc3dc9c5556e3b30e9224"
+  },
+  "claude/rules/skill-authoring.md": {
+    "mtime": 1786857592.8122559,
+    "seen": 1787373874.0541556,
+    "ast_hash": "c967c5303bb050753b8fc864c7e936b2",
+    "semantic_hash": "c967c5303bb050753b8fc864c7e936b2"
+  },
+  "claude/rules/write-approval.md": {
+    "mtime": 1786857598.7612188,
+    "seen": 1787373874.0541565,
+    "ast_hash": "92b44e407b189892ff339ddbf4bc8281",
+    "semantic_hash": "92b44e407b189892ff339ddbf4bc8281"
+  },
+  "claude/skills/bug-investigation-workflow/SKILL.md": {
+    "mtime": 1786929853.2908077,
+    "seen": 1787373874.054157,
+    "ast_hash": "c39033700704492aa79a907f7e32acec",
+    "semantic_hash": "c39033700704492aa79a907f7e32acec"
+  },
+  "claude/skills/daily-task-planning/SKILL.md": {
+    "mtime": 1787062996.4355676,
+    "seen": 1787373874.054158,
+    "ast_hash": "9c0c66a9b531571fd6281e75be31bd08",
+    "semantic_hash": "9c0c66a9b531571fd6281e75be31bd08"
+  },
+  "claude/skills/dev-workflow-shared/SKILL.md": {
+    "mtime": 1786929769.6264741,
+    "seen": 1787373874.054159,
+    "ast_hash": "7581bd1075c20b5fb2c434ee4450bc33",
+    "semantic_hash": "7581bd1075c20b5fb2c434ee4450bc33"
+  },
+  "claude/skills/graphify/SKILL.md": {
+    "mtime": 1787372947.9848092,
+    "seen": 1787373874.0541596,
+    "ast_hash": "1656a8a8e4a05bbe69f32cd15de81e87",
+    "semantic_hash": "1656a8a8e4a05bbe69f32cd15de81e87"
+  },
+  "claude/skills/graphify/references/add-watch.md": {
+    "mtime": 1787372942.704058,
+    "seen": 1787373874.0541604,
+    "ast_hash": "d59d027fe449f06aa03905a01184e779",
+    "semantic_hash": "d59d027fe449f06aa03905a01184e779"
+  },
+  "claude/skills/graphify/references/exports.md": {
+    "mtime": 1787372942.704058,
+    "seen": 1787373874.054161,
+    "ast_hash": "9da2a2152e60a22f07f05fed5158f287",
+    "semantic_hash": "9da2a2152e60a22f07f05fed5158f287"
+  },
+  "claude/skills/graphify/references/extraction-spec.md": {
+    "mtime": 1787372942.704058,
+    "seen": 1787373874.0541615,
+    "ast_hash": "42fef56a01698118f7fd722acdadea34",
+    "semantic_hash": "42fef56a01698118f7fd722acdadea34"
+  },
+  "claude/skills/graphify/references/github-and-merge.md": {
+    "mtime": 1787372942.704058,
+    "seen": 1787373874.0541625,
+    "ast_hash": "cde13df085e4c492aeb7ba298a996d0d",
+    "semantic_hash": "cde13df085e4c492aeb7ba298a996d0d"
+  },
+  "claude/skills/graphify/references/hooks.md": {
+    "mtime": 1787372942.704058,
+    "seen": 1787373874.0541632,
+    "ast_hash": "3f545db6ce646650bb9de588f5512a27",
+    "semantic_hash": "3f545db6ce646650bb9de588f5512a27"
+  },
+  "claude/skills/graphify/references/query.md": {
+    "mtime": 1787372942.704058,
+    "seen": 1787373874.054164,
+    "ast_hash": "3c46f8ad006874260614ed8657d02307",
+    "semantic_hash": "3c46f8ad006874260614ed8657d02307"
+  },
+  "claude/skills/graphify/references/transcribe.md": {
+    "mtime": 1787372942.704058,
+    "seen": 1787373874.0541646,
+    "ast_hash": "67b6a5fa6c0974e18f60db9f8932fbd8",
+    "semantic_hash": "67b6a5fa6c0974e18f60db9f8932fbd8"
+  },
+  "claude/skills/graphify/references/update.md": {
+    "mtime": 1787372942.704058,
+    "seen": 1787373874.0541656,
+    "ast_hash": "9378bd03d56baaf78bd738ab3848f142",
+    "semantic_hash": "9378bd03d56baaf78bd738ab3848f142"
+  },
+  "claude/skills/implementation-workflow/SKILL.md": {
+    "mtime": 1786929901.3895824,
+    "seen": 1787373874.0541663,
+    "ast_hash": "f70274b2810d12b45a6b2ae2567fde86",
+    "semantic_hash": "f70274b2810d12b45a6b2ae2567fde86"
+  },
+  "claude/skills/notion-task-planning/SKILL.md": {
+    "mtime": 1786864200.2535243,
+    "seen": 1787373874.054167,
+    "ast_hash": "c413486a1c21a0b399282caa82e68c89",
+    "semantic_hash": "c413486a1c21a0b399282caa82e68c89"
+  },
+  "claude/skills/notion-task-workflow/SKILL.md": {
+    "mtime": 1787061835.4962776,
+    "seen": 1787373874.0541677,
+    "ast_hash": "6361900ad8239f064d952a9763f69363",
+    "semantic_hash": "6361900ad8239f064d952a9763f69363"
+  },
+  "claude/skills/pr-task-planning/SKILL.md": {
+    "mtime": 1786862501.499653,
+    "seen": 1787373874.0541685,
+    "ast_hash": "0fedfa57b1eba9ee3fc637ae0c47e9be",
+    "semantic_hash": "0fedfa57b1eba9ee3fc637ae0c47e9be"
+  },
+  "claude/skills/pr-workflow/SKILL.md": {
+    "mtime": 1786862540.114367,
+    "seen": 1787373874.0541694,
+    "ast_hash": "ced0519e184a1a6107c76cde21437756",
+    "semantic_hash": "ced0519e184a1a6107c76cde21437756"
+  },
+  "claude/skills/testing-workflow/SKILL.md": {
+    "mtime": 1787062314.510177,
+    "seen": 1787373874.0541701,
+    "ast_hash": "20e40297203873fa5b0a5350ef4ac9d1",
+    "semantic_hash": "20e40297203873fa5b0a5350ef4ac9d1"
+  },
+  "docs/docker-cheatsheet.md": {
+    "mtime": 1785065425.6496305,
+    "seen": 1787373874.0541708,
+    "ast_hash": "75ec60157b902f8cd01ac0380fe4f45b",
+    "semantic_hash": "75ec60157b902f8cd01ac0380fe4f45b"
+  },
+  "docs/git-cheatsheet.md": {
+    "mtime": 1785659326.4370425,
+    "seen": 1787373874.0541716,
+    "ast_hash": "9ea935fde4c76e3caf13d488a1e3f8b2",
+    "semantic_hash": "9ea935fde4c76e3caf13d488a1e3f8b2"
+  },
+  "docs/nb-cheatsheet.md": {
+    "mtime": 1786683066.0677004,
+    "seen": 1787373874.0541725,
+    "ast_hash": "5cc6117307a93408d93de04742c05377",
+    "semantic_hash": "5cc6117307a93408d93de04742c05377"
+  },
+  "docs/nvim-cheatsheet.md": {
+    "mtime": 1785037369.1286411,
+    "seen": 1787373874.0541732,
+    "ast_hash": "b78e9ea962a2ba1fc633cf962cbfcd48",
+    "semantic_hash": "b78e9ea962a2ba1fc633cf962cbfcd48"
+  },
+  "docs/terminal-cheatsheet.md": {
+    "mtime": 1786283215.689474,
+    "seen": 1787373874.0541742,
+    "ast_hash": "5b14c042feb77593f4f716690eda92d6",
+    "semantic_hash": "5b14c042feb77593f4f716690eda92d6"
+  },
+  "docs/vimium-cheatsheet.md": {
+    "mtime": 1786254688.889061,
+    "seen": 1787373874.054175,
+    "ast_hash": "f3e469239ff16202efd0086484430bb8",
+    "semantic_hash": "f3e469239ff16202efd0086484430bb8"
+  },
+  "lazygit/config.yml": {
+    "mtime": 1785657412.3347478,
+    "seen": 1787373874.0541759,
+    "ast_hash": "e8b861b686a440f77ca6fb861987e4a2",
+    "semantic_hash": "e8b861b686a440f77ca6fb861987e4a2"
+  },
+  "vimium/custom-key-mappings.txt": {
+    "mtime": 1786253258.4086576,
+    "seen": 1787373874.0541766,
+    "ast_hash": "85cece8eabc69b8171b527a71a071fa4",
+    "semantic_hash": "85cece8eabc69b8171b527a71a071fa4"
+  }
+}

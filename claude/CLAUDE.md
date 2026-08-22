@@ -57,3 +57,6 @@
 ## フィードバック
 
 - こちらの考えや実装に問題・気になる点があれば、遠慮せず率直に指摘する
+# graphify
+- **graphify** (`~/.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
+When the user types `/graphify`, use the installed graphify skill or instructions before doing anything else.
