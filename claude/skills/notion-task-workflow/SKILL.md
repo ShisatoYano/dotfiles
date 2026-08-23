@@ -41,3 +41,4 @@ Notion上の担当タスクページを軸にした業務フロー(作業中の�
 4. まとめ本文をWrite toolでスクラッチパッドの一時ファイルに書く(`nb add --content`には渡さない。AI生成のMarkdownはバッククォートや引用符を含みやすく、シェル経由で渡すとコマンド置換やクォート不整合でハング・内容破損を起こすため)
 5. `nb add daily-task-logs:daily/<YYYY-MM-DD>.md < <一時ファイルパス>`で標準入力から読み込ませ`daily-task-logs` notebookに保存する。翌朝の`daily-task-planning` Skillがこれを読んで持ち越しを把握する
 6. 登録成功を確認したら一時ファイルを削除する
+7. `pr-workflow` Skillで並列委譲したペイン(`pr-own-check`/`pr-review-check`)のうち、その日のクローズ通知(SendMessage)を受け取り済みで`workspace_id`を記録できているものがあれば、`herdr workspace close <workspace_id>`で削除する。クローズ通知がまだ来ていないものはそのまま残す
