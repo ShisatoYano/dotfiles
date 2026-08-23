@@ -59,12 +59,8 @@ function M.setup(config)
     { key = "v", mods = "LEADER", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
     { key = "s", mods = "LEADER", action = wezterm.action.SplitVertical({ domain = "CurrentPaneDomain" }) },
     
-    -- Activate pane
-    { key = "h", mods = "LEADER", action = wezterm.action.ActivatePaneDirection("Left") },
-    { key = "j", mods = "LEADER", action = wezterm.action.ActivatePaneDirection("Down") },
-    { key = "k", mods = "LEADER", action = wezterm.action.ActivatePaneDirection("Up") },
-    { key = "l", mods = "LEADER", action = wezterm.action.ActivatePaneDirection("Right") },
-    
+    -- Activate pane: Ctrl+h/j/k/l (config.smart-splits側で設定、nvimとシームレスに連携)
+
     -- Close pane
     { key = "x", mods = "LEADER", action = wezterm.action.CloseCurrentPane({ confirm = true }) },
     

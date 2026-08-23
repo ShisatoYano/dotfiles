@@ -36,3 +36,5 @@ function M.setup(config)
   table.insert(config.keys, split_nav("k"))
   table.insert(config.keys, split_nav("l"))
 end
+
+return M
