@@ -9,12 +9,10 @@ description: Use when the user wants to check on their own open pull requests (s
 
 PRの状態を変更する操作(`gh pr merge`、`gh pr review`、`gh pr comment`)はhook(`claude/hooks/block-pr-write-actions.py`)でシステム的にブロックされている。このSkillが行うのは判断材料の整理と下書き作成までであり、実際の操作は必ずユーザー自身が行う。
 
-ユーザーがどちらか一方だけを指定した場合(「自分のPRの状況教えて」「レビュー待ちのPRある?」など)はそのワークフローだけを、このセッション内で直接行う。
-
-両方確認したい場合や、特に指定がなくこのSkillを起動した場合は、2つのワークフローを並列に進めるため、それぞれ専用のHerdrエージェントに委譲する。どちらも調査・下書き作成のみでファイル編集を伴わないため、worktree/branchを作る`herdr-task-launch.sh`(実装タスク向け)ではなく、`scripts/herdr-agent-launch.sh`(ブランチなしのplain workspaceを作るだけの版)を使う。
+実際の確認・支援作業(`gh`呼び出し・diff閲覧・下書き作成など)は、片方のワークフローしか要らない場合(特定PR1件の指定を含む)でも必ずHerdrエージェントに委譲する。このセッション内で直接`gh`を呼んで内容を読み込むと、その分このセッション自身のコンテキストを消費してしまうため。どちらのワークフローも調査・下書き作成のみでファイル編集を伴わないため、worktree/branchを作る`herdr-task-launch.sh`(実装タスク向け)ではなく、`scripts/herdr-agent-launch.sh`(ブランチなしのplain workspaceを作るだけの版)を使う。
 
 1. `ListAgents`でこのセッション自身の名前(委譲先からの通知の宛先)を確認する
-2. 対象リポジトリ(このセッションの`$PWD`をデフォルトとする)に対して、以下2つを1メッセージ内で並列Bashツール呼び出しとして起動する
+2. ユーザーの要求に応じて起動対象を決める。両方確認したい場合や特に指定がなくこのSkillを起動した場合は以下2つを1メッセージ内で並列Bashツール呼び出しとして起動し、どちらか一方だけを指定した場合(「自分のPRの状況教えて」「レビュー待ちのPRある?」、特定PR1件の指定なども含む)は該当する1つだけを起動する。
    ```
    scripts/herdr-agent-launch.sh <repo_root> pr-own-check "自分のPR確認" "<初期プロンプトA>"
    scripts/herdr-agent-launch.sh <repo_root> pr-review-check "アサインされたレビュー確認" "<初期プロンプトB>"
