@@ -22,7 +22,7 @@ git clone git@github.com:あなたのユーザー名/dotfiles.git ~/dotfiles
 - Claude Codeのskills(`claude/skills/` を `~/.claude/skills` にリンク。日々の定型作業をSkill化して蓄積していく)
 - Claude CodeのCLAUDE.md(`claude/CLAUDE.md` を `~/.claude/CLAUDE.md` にリンク。全プロジェクト共通の指示)
 - pipx, buku(CLIブックマーク管理)、tabctl(ブラウザタブ操作)
-- tab-check(bukuのURLを決まった時刻に開く/アクティブにするsystemdタイマー)
+- tab-check(bukuのURLを決まったタイミングで開く/アクティブにするsystemdユニット群)
 - ログイン時の自動起動(WezTerm、Chrome、xhost-docker)
 - `~/.config/wezterm`, `~/.config/nvim` 等へのシンボリックリンク
 
