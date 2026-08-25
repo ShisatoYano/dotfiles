@@ -14,7 +14,9 @@ if [ $# -ne 1 ]; then
 fi
 TAG="$1"
 
-tabs=$(tabctl list 2>/dev/null || true)
+# tabctlの失敗(Chrome起動前のタイミング競合等)がsystemdのログで気づけるよう、
+# stderrは握りつぶさずjournalに流す
+tabs=$(tabctl list) || echo "tab-check($TAG): tabctl list に失敗しました" >&2
 
 buku --nostdin -p -f4 --nc 2>/dev/null | awk -F'\t' -v tag="$TAG" '
   { n = split($4, tags, /[ ,]+/); for (i = 1; i <= n; i++) if (tags[i] == tag) { print $2; break } }
@@ -27,8 +29,8 @@ buku --nostdin -p -f4 --nc 2>/dev/null | awk -F'\t' -v tag="$TAG" '
     { split($3, b, /[?#]/); if (b[1] == base) { print $1; exit } }
   ')
   if [ -n "$id" ]; then
-    tabctl activate "$id" >/dev/null 2>&1 || true
+    tabctl activate "$id" >/dev/null || echo "tab-check($TAG): tabctl activate に失敗しました (id=$id)" >&2
   else
-    tabctl open "$url" >/dev/null 2>&1 || true
+    tabctl open "$url" >/dev/null || echo "tab-check($TAG): tabctl open に失敗しました (url=$url)" >&2
   fi
 done

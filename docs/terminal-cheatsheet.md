@@ -37,18 +37,22 @@ WezTermのキーバインド、シェル関数、Claude Code操作など、nvim�
 
 Docker関連(`dc`/`dexec`/`dstop`等)は`docs/docker-cheatsheet.md`(`<leader>dh`)を参照。
 
-## tab-check(bukuのURLを定期的にタブで開く/アクティブにする)
-bukuに特定のタグを付けたURLを、systemdユーザータイマーが決まった時間に確認する。
+## tab-check(bukuのURLを決まったタイミングでタブで開く/アクティブにする)
+bukuに特定のタグを付けたURLを、systemdユーザーユニットが決まったタイミングで確認する。
 既に開いていればそのタブをアクティブにするだけ(ウィンドウのフォーカスは奪わない)、開いていなければ新規タブで開く。
-電源が入っていなかった回は次回起動時に1回だけ追いつく(`Persistent=true`)。
 `~/dotfiles/scripts/tab-check.sh <bukuタグ名>`が本体で、タグ・スケジュールごとにsystemdユニットを分けている。
 
 | タグ | 実行タイミング(平日) |
 |---|---|
-| `notion_check` | 10時・13時・16時 |
-| `attendance_check` | 10時・19時 |
-| `slack_check` | 10時 |
-| `schedule_check` | 10時・13時・16時 |
+| `notion_check` | ログイン時・13時・16時 |
+| `attendance_check` | ログイン時・19時 |
+| `slack_check` | ログイン時 |
+| `schedule_check` | ログイン時・13時・16時 |
+| `mail_check` | ログイン時 |
+
+「ログイン時」は`login-tab-check.service`(`graphical-session.target`にひもづけ、平日のみ`ExecCondition`で判定)が担当。
+`OnCalendar`+`Persistent=true`のタイマーは1日1回しか追いつき実行しない(PCが起動したまま日付をまたぐと、その日は二度と追いつかない)ため、
+「毎ログインで実行したい」用途にはtimerではなく`graphical-session.target`への直接フックを使う。
 
 | コマンド | 動作 |
 |---|---|
