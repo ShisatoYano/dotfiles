@@ -440,6 +440,12 @@ if [ ! -e ~/.claude/skills ]; then
   echo "skillsディレクトリをリンクしました"
 fi
 
+echo "=== Claude Codeのagents ==="
+if [ ! -e ~/.claude/agents ]; then
+  ln -s ~/dotfiles/claude/agents ~/.claude/agents
+  echo "agentsディレクトリをリンクしました"
+fi
+
 echo "=== HerdrのClaude Code連携(複数エージェントの状態検知hook) ==="
 if command -v herdr &> /dev/null && [ ! -f ~/.claude/hooks/herdr-agent-state.sh ]; then
   herdr integration install claude
