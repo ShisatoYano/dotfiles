@@ -1,5 +1,4 @@
 {
-  "autoMemoryEnabled": false,
   "permissions": {
     "allow": [
       "Bash(command -v *)",
@@ -57,5 +56,6 @@
   },
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true
-  }
+  },
+  "autoMemoryEnabled": false
 }
