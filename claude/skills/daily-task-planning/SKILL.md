@@ -1,6 +1,6 @@
 ---
 name: daily-task-planning
-description: Use when the user wants to decide what to work on today, combining their assigned Notion tasks with PR/review work from the `pr-workflow` Skill into one prioritized list that fits the day's available work-time budget, then dispatch implementation/bugfix tasks to Herdr. Trigger on phrases like "今日のタスク決めて". Candidate selection (サブワークフロー1) is normally triggered via the `daily-planning` agent (model: haiku) instead of this Skill directly — see that agent's description — but this Skill still contains and can directly run サブワークフロー1 when explicitly invoked. Herdr dispatch (サブワークフロー2) always runs at the caller session's own model: it involves content-based judgment (worktree matching) and state-changing actions (launching Herdr sessions), which `~/dotfiles/claude/rules/context-delegation.md` excludes from haiku delegation.
+description: Use when the user wants to decide what to work on today, combining their assigned Notion tasks with PR/review work from the `pr-workflow` Skill into one prioritized list that fits the day's available work-time budget, draft a Slack work-thread post linking that day's Notion tasks, then dispatch implementation/bugfix tasks to Herdr. Trigger on phrases like "今日のタスク決めて". Candidate selection and Slack draft creation (サブワークフロー1) are normally triggered via the `daily-planning` agent (model: haiku) instead of this Skill directly — see that agent's description — but this Skill still contains and can directly run サブワークフロー1 when explicitly invoked. Herdr dispatch (サブワークフロー2) always runs at the caller session's own model: it involves content-based judgment (worktree matching) and state-changing actions (launching Herdr sessions), which `~/dotfiles/claude/rules/context-delegation.md` excludes from haiku delegation.
 ---
 
 # Daily Task Planning
@@ -23,7 +23,13 @@ Notionの担当タスクと、PR対応・レビュー(`pr-task-planning`/`pr-wor
 4. 総稼働予算から2の見積合計を差し引き、残りを`notion-task-planning`の予算とする
 5. `notion-task-planning` SkillをAgentツール(`model: haiku`)に委譲実行し、4で求めた予算内でのNotionタスク候補を得る(`~/dotfiles/claude/rules/context-delegation.md`参照)
 6. 2のPR/レビュー項目と5のNotionタスク候補を合わせた候補リストをユーザーに提示し、着手済みタスクの扱いやIssueタスクの優先度、PR対応の見積など状況に応じた入れ替えを含めて確認・調整を受ける。確定したリストがその日の作業対象になる
-7. 確定したリストを呼び出し元にそのまま報告して終了する(`daily-planning` agent経由の場合は起動元セッションへの報告)。実装/不具合修正系タスクのHerdrへの委譲実行は`サブワークフロー2: Herdr委譲実行`が担当するため、ここでは実行しない
+7. 確定リスト中のNotionタスクについて、Slack投稿用の下書きを作成する(PR/レビュー項目は含めない)。そのまま貼り付ければ投稿できるよう、標準Markdownの`[表示テキスト](URL)`ではなくSlack独自のmrkdwn記法`<URL|表示テキスト>`を使う。各タスクのタイトルをリンクの表示テキストにし、フォーマットは以下の通り:
+   ```
+   作業スレ
+   • <タスク1のページURL|タスク1のタイトル>
+   • <タスク2のページURL|タスク2のタイトル>
+   ```
+8. 確定したリストと7のSlack下書きを呼び出し元にそのまま報告して終了する(`daily-planning` agent経由の場合は起動元セッションへの報告)。実装/不具合修正系タスクのHerdrへの委譲実行は`サブワークフロー2: Herdr委譲実行`が担当するため、ここでは実行しない
 
 ## サブワークフロー2: Herdr委譲実行(herdr-dispatch)
 
