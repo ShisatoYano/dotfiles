@@ -1,6 +1,6 @@
 ---
 name: notion-task-workflow
-description: Use when the user wants to record progress on a Notion task page during work, mark a Notion task complete, or wrap up the day's work into a local summary. Trigger on phrases like "進捗記録して", "タスク完了", "今日のまとめ作って". Also trigger proactively — asking for confirmation before creating anything — when the user signals they're wrapping up for the day without an explicit request, e.g. "今日の業務はこれで終了です", "今日はここまでにします". Also apply the progress-recording step proactively when a long work session on a Notion-tracked task is approaching context compaction, per the user's global CLAUDE.md instruction to hand off progress at a good breakpoint — write that handoff to the task's Notion page, not just the conversation. Deciding what to work on today is handled by the separate `daily-task-planning` Skill, which reads this Skill's Notion property conventions (read-only) to select today's tasks; this Skill is what actually writes to those tasks' Notion pages once work is underway.
+description: Use when the user wants to record progress on a Notion task page during work, or mark a Notion task complete. Trigger on phrases like "進捗記録して", "タスク完了". End-of-day wrap-up (サブワークフロー3) is normally triggered via the `daily-summary` agent (model: haiku) instead of this Skill directly — see that agent's description — but this Skill still contains and can directly run サブワークフロー3 when explicitly invoked. Also apply the progress-recording step proactively when a long work session on a Notion-tracked task is approaching context compaction, per the user's global CLAUDE.md instruction to hand off progress at a good breakpoint — write that handoff to the task's Notion page, not just the conversation. Deciding what to work on today is handled by the separate `daily-task-planning` Skill, which reads this Skill's Notion property conventions (read-only) to select today's tasks; this Skill is what actually writes to those tasks' Notion pages once work is underway.
 ---
 
 # Notion Task Workflow
@@ -32,6 +32,8 @@ Notion上の担当タスクページを軸にした業務フロー(作業中の�
 3. まとめの内容とステータス更新後の値をユーザーに提示し、承認を得てからタスクページへの追記とステータスプロパティの更新を行う
 
 ## サブワークフロー3: 終業時のまとめ
+
+通常は`daily-summary` agent(`~/dotfiles/claude/agents/daily-summary.md`、model: haiku)経由で以下の手順が実行される。このSkillを直接呼び出す場合の手順は以下の通り。
 
 トリガー例: 「今日のまとめ作って」。加えて、「今日の業務はこれで終了です」等、終業を示唆する発言があった場合も、明示的な依頼がなくてもこのサブワークフローの対象にする(ただし勝手に作り始めず、先に「今日のまとめを作成しましょうか」とユーザーに確認する)
 
