@@ -5,7 +5,7 @@ copy_mode = "prefix+["
 
 # sidebarのworkspace一覧に、workspace_id(herdr workspace listで使うID)を表示する。
 # gcd(shell/aliases.sh)がworktreeパスを[wt]付きで一覧表示するのと突き合わせやすくするため、
-# shell/aliases.sh側のhwsnew/hwtnewとscripts/herdr-task-launch.shが
+# shell/aliases.sh側のhwsnew/hwtnewが
 # workspace作成直後に`herdr workspace report-metadata --token id=<workspace_id>`で
 # $idトークンを登録する運用とセット
 [ui.sidebar.spaces]
