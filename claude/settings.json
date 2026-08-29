@@ -67,6 +67,26 @@
             "command": "python3 ~/dotfiles/claude/hooks/reinject-precompact-snapshot.py"
           }
         ]
+      },
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/dotfiles/claude/hooks/load-context-handoff.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/dotfiles/claude/hooks/warn-context-threshold.py"
+          }
+        ]
       }
     ]
   },

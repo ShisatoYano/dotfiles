@@ -5,6 +5,8 @@
 
 input=$(cat)
 
+CONTEXT_WARN_DIR="${HOME}/.local/state/claude-code/context-warnings"
+
 RESET="\033[0m"
 C_MODEL="\033[38;5;141m" # purple
 C_OK="\033[38;5;150m"    # green
@@ -13,6 +15,7 @@ C_CRIT="\033[38;5;204m"  # pink
 C_DIM="\033[38;5;245m"   # dim gray
 
 model=$(echo "$input" | jq -r '.model.display_name // "?"')
+session_id=$(echo "$input" | jq -r '.session_id // empty')
 used=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 five=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
 week=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
@@ -50,6 +53,14 @@ if [ -n "$used" ]; then
   [ "$used_int" -ge 50 ] && color="$C_WARN"
   [ "$used_int" -ge 80 ] && color="$C_CRIT"
   parts+=("🧠 ${color}$(printf '%.0f' "$used")%${RESET}")
+
+  # 50%到達を warn-context-threshold.py hook(UserPromptSubmit)に伝えるためのマーカー。
+  # statusLineはcontext_window.used_percentageを受け取れる唯一のhook種別なので、ここで検知して
+  # ファイル経由でUserPromptSubmit hookに引き継ぐ(hookイベント自体はこの値を受け取れない)。
+  if [ "$used_int" -ge 50 ] && [ -n "$session_id" ]; then
+    mkdir -p "$CONTEXT_WARN_DIR"
+    touch "${CONTEXT_WARN_DIR}/${session_id}"
+  fi
 fi
 
 rl=""
