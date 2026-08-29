@@ -1,11 +1,11 @@
 ---
 name: daily-task-planning
-description: Use when the user wants to decide what to work on today, combining their assigned Notion tasks with PR/review work from the `pr-workflow` Skill into one prioritized list that fits the day's available work-time budget, draft a Slack work-thread post linking that day's Notion tasks, then dispatch implementation/bugfix tasks to Herdr. Trigger on phrases like "今日のタスク決めて". Candidate selection and Slack draft creation (サブワークフロー1) are normally triggered via the `daily-planning` agent (model: haiku) instead of this Skill directly — see that agent's description — but this Skill still contains and can directly run サブワークフロー1 when explicitly invoked. Herdr dispatch (サブワークフロー2) always runs at the caller session's own model: it involves content-based judgment (worktree matching) and state-changing actions (launching Herdr sessions), which `~/dotfiles/claude/rules/context-delegation.md` excludes from haiku delegation.
+description: Use when the user wants to decide what to work on today, combining their assigned Notion tasks with PR/review work from the `pr-workflow` Skill into one prioritized list that fits the day's available work-time budget, draft a Slack work-thread post linking that day's Notion tasks, then work through implementation/bugfix tasks directly in the caller session. Trigger on phrases like "今日のタスク決めて". Candidate selection and Slack draft creation (サブワークフロー1) are normally triggered via the `daily-planning` agent (model: haiku) instead of this Skill directly — see that agent's description — but this Skill still contains and can directly run サブワークフロー1 when explicitly invoked. Direct implementation (サブワークフロー2) always runs at the caller session's own model, after the agent returns the confirmed list.
 ---
 
 # Daily Task Planning
 
-Notionの担当タスクと、PR対応・レビュー(`pr-task-planning`/`pr-workflow` Skill)を合わせて、その日の作業リストを決め(サブワークフロー1)、確定したリストをHerdrへ委譲実行する(サブワークフロー2)。
+Notionの担当タスクと、PR対応・レビュー(`pr-task-planning`/`pr-workflow` Skill)を合わせて、その日の作業リストを決め(サブワークフロー1)、確定したリスト中の実装/不具合修正タスクにこのセッション内で直接着手する(サブワークフロー2)。
 
 ## 前提
 
@@ -29,13 +29,11 @@ Notionの担当タスクと、PR対応・レビュー(`pr-task-planning`/`pr-wor
    • <タスク1のページURL|タスク1のタイトル>
    • <タスク2のページURL|タスク2のタイトル>
    ```
-8. 確定したリストと7のSlack下書きを呼び出し元にそのまま報告して終了する(`daily-planning` agent経由の場合は起動元セッションへの報告)。実装/不具合修正系タスクのHerdrへの委譲実行は`サブワークフロー2: Herdr委譲実行`が担当するため、ここでは実行しない
+8. 確定したリストと7のSlack下書きを呼び出し元にそのまま報告して終了する(`daily-planning` agent経由の場合は起動元セッションへの報告)。実装/不具合修正系タスクへの着手は`サブワークフロー2: 直接実装`が担当するため、ここでは着手しない
 
-## サブワークフロー2: Herdr委譲実行(herdr-dispatch)
+## サブワークフロー2: 直接実装(direct-implementation)
 
-`サブワークフロー1`で確定したリストを受け取って実行する。worktree重複判定に内容ベースの判断が必要な点と、実際にHerdr上でセッションを起動する状態変更を伴う点から、haikuへは委譲せず呼び出し元セッションのモデルでそのまま実行する(`~/dotfiles/claude/rules/context-delegation.md`参照)。
+`サブワークフロー1`で確定したリストを受け取って実行する。呼び出し元セッションのモデルでそのまま実行する。
 
-1. 確定リスト中の実装/不具合修正系Notionタスクは、いずれも編集(ブランチ操作)を伴うため、基本的に全てHerdrへ委譲する。対象リポジトリは、このセッション自身の作業ディレクトリ(`$PWD`)をデフォルトとして提示する。このセッションで直接進めたいタスクや、`$PWD`と異なるリポジトリのタスクがあれば、その時点でユーザーに確認する
-2. 委譲予定タスクごとに、`herdr worktree list --cwd <repo_root>`で、そのタスク用のworktreeが前日以前から既に存在しないか確認する(ブランチ名・パス、必要なら`herdr workspace get <workspace_id>`のlabelを手がかりに判定する。命名は`task-<タスクID>`とは限らず内容ベースのブランチ名の場合もあるため、機械的な文字列一致ではなく内容で判断する)。既存のworktreeが見つかったタスクは新規作成対象から除外し、該当workspaceを`herdr workspace focus <workspace_id>`でフォーカスした上で、`agent_status`が`idle`なら再開を促すプロンプトを`herdr agent prompt`で送る
-3. 2で新規作成対象と判定したタスクごとに、`scripts/herdr-task-launch.sh <repo_root> task-<タスクID> "<タスク名>" "<初期プロンプト>"`を、対象件数分の並列Bashツール呼び出しで起動する。初期プロンプトは「Notionタスク<URL>を確認してください。作業に入る前に、必ずユーザーに『このリポジトリのセットアップ(依存関係のインストール・ビルドなど)は完了しているか』を確認してください。自分で必要性を判断して省略しないこと。完了の報告を受けてから、内容に応じて適切なSkill(不具合修正なら`bug-investigation-workflow`、それ以外は`implementation-workflow`)で作業を進めてください。」という定型文とし、詳細な文脈は委譲先セッションがNotionページを読んで自分で再構築する
-4. 3の起動結果(`herdr-task-launch.sh`が返すJSON)と、2で再開した既存タスクの状況を合わせてユーザーに提示する。以降の状況把握はHerdr側のTUIに委ねる
+1. 確定リスト中の実装/不具合修正系Notionタスクを上から順に、このセッション内で1件ずつ直接着手する。`種類`が`Issue (Fix)`なら`bug-investigation-workflow`、それ以外なら`implementation-workflow`を呼び出す
+2. 1件が完了する、またはその日の作業として区切りがついたら、次のタスクに進む。全件処理し終えたら終了する
