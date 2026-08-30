@@ -1,11 +1,11 @@
 ---
 name: notion-task-planning
-description: Use as a sub-step of `daily-task-planning` to list the user's currently assigned Notion tasks, sorted by priority/deadline, for the user to pick from. Not typically invoked directly by the user.
+description: Use as a sub-step of `daily-task-workflow` to list the user's currently assigned Notion tasks, sorted by priority/deadline, for the user to pick from. Not typically invoked directly by the user.
 ---
 
 # Notion Task Planning
 
-`daily-task-planning`から呼ばれる、担当中のNotionタスクを優先度・期限に応じて並び替え、全件リストアップするだけを行うSkill。タスクページへの進捗記録・完了処理・終業まとめは`notion-task-workflow` Skillが扱う(ここでは行わない)。
+`daily-task-workflow`から呼ばれる、担当中のNotionタスクを優先度・期限に応じて並び替え、全件リストアップするだけを行うSkill。タスクページへの進捗記録・完了処理・終業まとめは`notion-task-workflow` Skillが扱う(ここでは行わない)。
 
 ## 前提
 
@@ -20,4 +20,4 @@ description: Use as a sub-step of `daily-task-planning` to list the user's curre
    - `ステータス`が`Doing`(着手済み)のタスクは基本的に他より優先するが、絶対ではない
    - 次点は以下の2グループを**同格**として扱う(どちらかを機械的に優先しない): (a) `期限`があるタスクを期限昇順・優先度順に並べたもの、(b) `期限`が未設定でも`種類`が`Issue (Fix)`かつ`優先度`が`Highest`のタスク
    - 上記以外(期限なし・Issueでもない)は優先度順で最後に並べる
-4. 3で並び替えた未完了タスクを全件リストアップする(予算による絞り込みはしない。その日どれをやるかはユーザーが`daily-task-planning`側で選ぶ)
+4. 3で並び替えた未完了タスクを全件リストアップする(予算による絞り込みはしない。その日どれをやるかはユーザーが`daily-task-workflow`側で選ぶ)

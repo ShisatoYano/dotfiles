@@ -1,11 +1,11 @@
 ---
 name: notion-task-workflow
-description: Use when the user wants to record progress on a Notion task page during work, or mark a Notion task complete. Trigger on phrases like "進捗記録して", "タスク完了". End-of-day wrap-up (サブワークフロー3) is normally triggered via the `daily-summary` agent (model: haiku) instead of this Skill directly — see that agent's description — but this Skill still contains and can directly run サブワークフロー3 when explicitly invoked. Also apply the progress-recording step proactively when a long work session on a Notion-tracked task is approaching context compaction, per the user's global CLAUDE.md instruction to hand off progress at a good breakpoint — write that handoff to the task's Notion page, not just the conversation. Deciding what to work on today is handled by the separate `daily-task-planning` Skill, which reads this Skill's Notion property conventions (read-only) to select today's tasks; this Skill is what actually writes to those tasks' Notion pages once work is underway.
+description: Use when the user wants to record progress on a Notion task page during work, or mark a Notion task complete. Trigger on phrases like "進捗記録して", "タスク完了". End-of-day wrap-up (サブワークフロー3) is normally triggered via the `daily-summary` agent (model: haiku) instead of this Skill directly — see that agent's description — but this Skill still contains and can directly run サブワークフロー3 when explicitly invoked. Also apply the progress-recording step proactively when a long work session on a Notion-tracked task is approaching context compaction, per the user's global CLAUDE.md instruction to hand off progress at a good breakpoint — write that handoff to the task's Notion page, not just the conversation. Deciding what to work on today is handled by the separate `daily-task-workflow` Skill, which reads this Skill's Notion property conventions (read-only) to select today's tasks; this Skill is what actually writes to those tasks' Notion pages once work is underway.
 ---
 
 # Notion Task Workflow
 
-Notion上の担当タスクページを軸にした業務フロー(作業中の進捗記録 → タスク完了 → 終業時のまとめ)を支援する。その日どのタスクに取り組むかの選定は`daily-task-planning` Skillが行う。
+Notion上の担当タスクページを軸にした業務フロー(作業中の進捗記録 → タスク完了 → 終業時のまとめ)を支援する。その日どのタスクに取り組むかの選定は`daily-task-workflow` Skillが行う。
 
 ## 前提
 
@@ -48,6 +48,6 @@ Notion上の担当タスクページを軸にした業務フロー(作業中の�
 トリガー例: 「今日のまとめ作って」。加えて、「今日の業務はこれで終了です」等、終業を示唆する発言があった場合も、明示的な依頼がなくてもこのサブワークフローの対象にする(ただし勝手に作り始めず、先に「今日のまとめを作成しましょうか」とユーザーに確認する)
 
 1. (終業を示唆する発言がトリガーの場合のみ)まとめを作成してよいかユーザーに確認する。明示的に「まとめ作って」と依頼された場合はこの確認は不要
-2. その日扱ったタスクを特定する。会話内で明らかならそれも使えるが、この手順は別セッション(タスクごとのセッション)から呼ばれることを前提に、それだけに頼らない。自分のタスク一覧(`daily-task-planning`と同じビュー/検索)を取得し、`Last edited time`が今日のものに絞り込むことで、進捗記録・タスク完了で実際に触れたタスクを会話の記憶に依存せず特定する
+2. その日扱ったタスクを特定する。会話内で明らかならそれも使えるが、この手順は別セッション(タスクごとのセッション)から呼ばれることを前提に、それだけに頼らない。自分のタスク一覧(`daily-task-workflow`と同じビュー/検索)を取得し、`Last edited time`が今日のものに絞り込むことで、進捗記録・タスク完了で実際に触れたタスクを会話の記憶に依存せず特定する
 3. 2で特定した各タスクの状態(完了/進行中/ブロック)を集計する
-4. まとめ本文を作成し、「共通: daily-task-logsへの書き込み」の手順で`daily-task-logs`に保存する(コンテキスト区切りの途中経過が既に当日ファイルに追記されている場合、その内容を踏まえた上で1日分のまとめとして書く)。翌朝の`daily-task-planning` Skillがこれを読んで持ち越しを把握する
+4. まとめ本文を作成し、「共通: daily-task-logsへの書き込み」の手順で`daily-task-logs`に保存する(コンテキスト区切りの途中経過が既に当日ファイルに追記されている場合、その内容を踏まえた上で1日分のまとめとして書く)。翌朝の`daily-task-workflow` Skillがこれを読んで持ち越しを把握する

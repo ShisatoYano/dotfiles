@@ -1,9 +1,9 @@
 ---
-name: daily-task-planning
+name: daily-task-workflow
 description: Use when the user wants to decide what to work on today, combining their assigned Notion tasks with PR/review work from the `pr-workflow` Skill into one list for the user to pick today's tasks from by checking them off, draft a Slack work-thread post linking that day's selected Notion tasks, then work through implementation/bugfix tasks directly in the caller session. Trigger on phrases like "今日のタスク決めて". Candidate listing, selection, and Slack draft creation (サブワークフロー1) are normally triggered via the `daily-planning` agent (model: haiku) instead of this Skill directly — see that agent's description — but this Skill still contains and can directly run サブワークフロー1 when explicitly invoked. Direct implementation (サブワークフロー2) always runs at the caller session's own model, after the agent returns the confirmed list.
 ---
 
-# Daily Task Planning
+# Daily Task Workflow
 
 Notionの担当タスクと、PR対応・レビュー(`pr-task-planning`/`pr-workflow` Skill)を合わせて一覧にし、その日やるものをユーザーに選んでもらい(サブワークフロー1)、選ばれたタスク中の実装/不具合修正タスクにこのセッション内で直接着手する(サブワークフロー2)。
 
