@@ -1,6 +1,6 @@
 ---
 name: dev-workflow-shared
-description: Shared steps used by genre-specific development workflow Skills (`bug-investigation-workflow`, `implementation-workflow`, and any future dev-genre Skill) after their genre-specific investigation/design step — repo-freshness pre-check, tiered test execution, handoff to `notion-task-workflow`, and PR draft prep. Invoked by those Skills as sub-steps; not typically triggered directly by the user.
+description: Shared steps used by genre-specific development workflow Skills (`bug-investigation-workflow`, `implementation-workflow`, and any future dev-genre Skill) before and after their genre-specific investigation/design step — repo-freshness pre-check, previous-progress check (Notion page history and daily-task-logs carryover), tiered test execution, handoff to `notion-task-workflow`, and PR draft prep. Invoked by those Skills as sub-steps; not typically triggered directly by the user.
 ---
 
 # Dev Workflow Shared
@@ -20,6 +20,13 @@ description: Shared steps used by genre-specific development workflow Skills (`b
 1. 作業対象に関連するローカルの各リポジトリ(サブモジュールを含む)について、本流ブランチ名を`develop`と決め打ちせず、`git symbolic-ref refs/remotes/origin/HEAD --short`(または`git remote show origin`)で確認する。その上で`git fetch`し、ローカルの本流ブランチが`origin/<本流ブランチ>`から遅れていないか確認する
 2. 遅れているリポジトリがあれば一覧にしてユーザーに提示し、先に最新化(pull等)するよう促す。更新作業自体は自動実行せず、ユーザーに依頼する
 3. 全て最新であることを確認できてから、呼び出し元のジャンル固有のステップ(原因調査・要件確認など)に進む
+
+## 事前準備: 前回までの進捗確認
+
+Notionタスク対象の場合、リポジトリの最新化確認と合わせて、ジャンル固有のステップに進む前に行う。持ち越しタスク(前回セッションで完了しなかったもの)を、初見のタスクとして扱って重複調査・手戻りを起こさないようにするため。
+
+1. 対象のNotionタスクページ全体を確認し、`notion-task-workflow`のサブワークフロー1(進捗記録)で過去に追記された内容が無いか確認する。あれば、前回までの調査・実装状況(何を確認済みか、次にやろうとしていたこと)を踏まえた上でジャンル固有のステップに進む
+2. `daily-task-logs`の直近の`daily/*.md`(`notion-task-planning`が持ち越し把握に読むのと同じ)も確認し、当該タスクについてのコンテキスト区切り時の途中経過メモがあれば参照する
 
 ## テスト実行
 
