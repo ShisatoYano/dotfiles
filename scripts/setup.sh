@@ -459,32 +459,6 @@ if [ ! -e ~/.claude/CLAUDE.md ]; then
   echo "CLAUDE.mdをリンクしました"
 fi
 
-echo "=== tab-check(bukuのURLを決まったタイミングでタブで開く/アクティブにする) ==="
-mkdir -p ~/.config/systemd/user
-for unit in notion-check attendance-check schedule-check; do
-  if [ ! -e ~/.config/systemd/user/"$unit".service ]; then
-    ln -s ~/dotfiles/systemd/"$unit".service ~/.config/systemd/user/"$unit".service
-    ln -s ~/dotfiles/systemd/"$unit".timer ~/.config/systemd/user/"$unit".timer
-    systemctl --user daemon-reload
-    systemctl --user enable --now "$unit".timer
-    echo "$unit.timerを有効化しました"
-  else
-    echo "$unit.timer はリンク済みです。スキップします。"
-  fi
-done
-# login-tab-checkはOnCalendarタイマーではなく、ログインのたびに確実に走るよう
-# graphical-session.targetに直接フックしている(WantedBy指定のservice単体)
-if [ ! -e ~/.config/systemd/user/login-tab-check.service ]; then
-  ln -s ~/dotfiles/systemd/login-tab-check.service ~/.config/systemd/user/login-tab-check.service
-  systemctl --user daemon-reload
-  systemctl --user enable login-tab-check.service
-  echo "login-tab-check.serviceを有効化しました"
-else
-  echo "login-tab-check.service はリンク済みです。スキップします。"
-fi
-echo "(bukuで対象URLに'notion_check'/'attendance_check'/'slack_check'/'schedule_check'/'mail_check'タグを付けてください)"
-echo "(login-tab-checkは平日のログイン時のみ実行されます)"
-
 echo "=== ログイン時の自動起動(WezTerm/Chrome/xhost-docker) ==="
 mkdir -p ~/.config/autostart
 for app in wezterm google-chrome xhost-docker; do

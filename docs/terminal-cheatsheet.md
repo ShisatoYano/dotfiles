@@ -37,36 +37,6 @@ WezTermのキーバインド、シェル関数、Claude Code操作など、nvim�
 
 Docker関連(`dc`/`dexec`/`dstop`等)は`docs/docker-cheatsheet.md`(`<leader>dh`)を参照。
 
-## tab-check(bukuのURLを決まったタイミングでタブで開く/アクティブにする)
-bukuに特定のタグを付けたURLを、systemdユーザーユニットが決まったタイミングで確認する。
-既に開いていればそのタブをアクティブにするだけ(ウィンドウのフォーカスは奪わない)、開いていなければ新規タブで開く。
-`~/dotfiles/scripts/tab-check.sh <bukuタグ名>`が本体で、タグ・スケジュールごとにsystemdユニットを分けている。
-
-| タグ | 実行タイミング(平日) |
-|---|---|
-| `notion_check` | ログイン時・13時・16時 |
-| `attendance_check` | ログイン時・19時 |
-| `slack_check` | ログイン時 |
-| `schedule_check` | ログイン時・13時・16時 |
-| `mail_check` | ログイン時 |
-
-「ログイン時」は`login-tab-check.service`(`graphical-session.target`にひもづけ、平日のみ`ExecCondition`で判定)が担当。
-`OnCalendar`+`Persistent=true`のタイマーは1日1回しか追いつき実行しない(PCが起動したまま日付をまたぐと、その日は二度と追いつかない)ため、
-「毎ログインで実行したい」用途にはtimerではなく`graphical-session.target`への直接フックを使う。
-
-| コマンド | 動作 |
-|---|---|
-| `buku --nostdin -u <番号> --tag + <タグ名>` | 既存ブックマークに対象タグを追加 |
-| `~/dotfiles/scripts/tab-check.sh <タグ名>` | 手動実行(動作確認用) |
-| `systemctl --user list-timers` | 各タイマーの次回実行予定を確認 |
-| `systemctl --user status notion-check.timer` 等 | 有効化状態を確認 |
-| `journalctl --user -u notion-check.service` 等 | 実行結果・エラーを確認 |
-
-catch-up実行(電源オフ中に逃した回の追いつき)はセッションPATHが未反映な場合があるため、
-各`.service`で`Environment=PATH=...`を明示指定している。またWezTerm/Chromeは
-`~/.config/autostart/`(dotfilesの`autostart/`配下)でログイン時に自動起動する設定にしており、
-catch-up実行時にChromeが起動済みである可能性を上げている。
-
 ## Claude Code
 | キー | 動作 |
 |---|---|
