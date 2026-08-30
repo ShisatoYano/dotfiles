@@ -29,4 +29,7 @@ Notionの担当タスクと、PR対応・レビュー(`pr-task-planning`/`pr-wor
 `サブワークフロー1`で確定したリストを受け取って実行する。呼び出し元セッションのモデルでそのまま実行する。
 
 1. 確定リスト中の実装/不具合修正系Notionタスクを上から順に、このセッション内で1件ずつ直接着手する。`種類`が`Issue (Fix)`なら`bug-investigation-workflow`、それ以外なら`implementation-workflow`を呼び出す
-2. 1件が完了する、またはその日の作業として区切りがついたら、次のタスクに進む。全件処理し終えたら終了する
+2. 1件が完了する、またはその日の作業として区切りがついたら、次のタスクに進む
+3. 確定リストを全件処理し終えたら、`AskUserQuestion`ツールで「終業まとめを作る」か「追加で他のタスクに着手する」かを選択式で確認する
+   - 終業まとめを選んだ場合: `daily-summary` agent(`~/dotfiles/claude/agents/daily-summary.md`)を実行して終了する
+   - 追加で着手を選んだ場合: `notion-task-planning` SkillをAgentツール(`model: haiku`)に再度委譲実行し、その時点での未完了Notionタスク全件リストを取得する。`AskUserQuestion`(チェックボックス)で追加するタスクを選んでもらい、手順1〜2の要領で直接着手する。全件処理し終えたら3に戻る
