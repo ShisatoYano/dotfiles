@@ -1,7 +1,7 @@
 # nb(メモ管理CLI)やgit commit等で使うエディタをnvimに固定する
 export EDITOR=nvim
 
-# ghq管理下のリポジトリ + ~/worktrees配下のHerdr worktree(サブモジュール含む)を
+# ghq管理下のリポジトリ + ~/worktrees配下のworktree(サブモジュール含む)を
 # まとめてfzfであいまい検索して移動する。worktree側は[wt]を付けて表示し、
 # 普段の癖でgcdを使っても誤ってghq本体側に移動しないようにする
 # (~/worktreesが未作成でも、findが何も出力せずghq側だけの一覧になるだけで問題ない)
@@ -303,71 +303,4 @@ luaci() {
   echo "=== luacheck ==="
   luacheck lua || status=1
   return "$status"
-}
-
-# herdr workspace/worktree create のJSON出力からworkspace_idを取り出し、
-# sidebar表示用の$idトークンとして登録する(herdr/config.tomlの[ui.sidebar.spaces]と対)
-_herdr_report_id() {
-  local id
-  id=$(jq -r '.result.workspace.workspace_id' <<< "$1")
-  [ -n "$id" ] && [ "$id" != "null" ] && herdr workspace report-metadata "$id" --source dotfiles --token "id=$id" >/dev/null
-}
-
-# カレントディレクトリを対象にHerdr workspaceを作成する(ラベル省略時はディレクトリ名)
-hwsnew() {
-  local label="${1:-$(basename "$PWD")}"
-  local out
-  out=$(herdr workspace create --cwd "$PWD" --label "$label") || return
-  echo "$out"
-  _herdr_report_id "$out"
-}
-
-# Herdr workspaceをfzfであいまい検索して切り替える
-hwsswitch() {
-  local id
-  id=$(herdr workspace list | jq -r '.result.workspaces[] | "\(.workspace_id)\t\(.label)"' | fzf --reverse --header="ID	LABEL" | cut -f1) || return
-  [ -n "$id" ] && herdr workspace focus "$id"
-}
-
-# Herdr workspaceをfzfであいまい検索して閉じる(Tabキーで複数選択可)。
-# worktreeに紐づくworkspaceはgit worktree自体も一緒に削除する(そうでないとgit worktree側だけ残り続ける)
-hwsclose() {
-  local list
-  list=$(herdr workspace list)
-  echo "$list" | jq -r '.result.workspaces[] | "\(.workspace_id)\t\(.label)"' | fzf --reverse --multi --header="ID	LABEL" | cut -f1 | while read -r id; do
-    if echo "$list" | jq -e --arg id "$id" '.result.workspaces[] | select(.workspace_id == $id) | .worktree.is_linked_worktree // false' | grep -q true; then
-      local wt_path repo_root
-      wt_path=$(echo "$list" | jq -r --arg id "$id" '.result.workspaces[] | select(.workspace_id == $id) | .worktree.checkout_path')
-      repo_root=$(echo "$list" | jq -r --arg id "$id" '.result.workspaces[] | select(.workspace_id == $id) | .worktree.repo_root')
-      herdr worktree remove --workspace "$id" --force
-      # herdr worktree removeは、Herdr自身の管理からは消しても実際のgit worktree削除に
-      # 失敗することがある(サブモジュール付きリポジトリで確認)。残っていれば素のgitで保険をかける
-      if [ -d "$wt_path" ]; then
-        git -C "$repo_root" worktree remove --force "$wt_path" 2>/dev/null
-      fi
-      # herdr worktree remove/git worktree removeともworktree自体のディレクトリしか消さないため、
-      # ~/worktrees/<branch>/配下の親ディレクトリが空で残る。空なら片付ける
-      rmdir "$(dirname "$wt_path")" 2>/dev/null
-    else
-      herdr workspace close "$id"
-    fi
-  done
-}
-
-# カレントディレクトリのリポジトリを対象に、新規ブランチでHerdr worktreeを作成する。
-# baseを指定すると、そのブランチ/refを起点に新規ブランチを作る(例: hwtnew task-4595 develop)。
-# 既存ブランチ名をそのままbranchに指定すると、他のworktree(メインチェックアウト含む)で
-# 既にチェックアウト済みの場合エラーになる(gitの制約。baseとして使うこと)
-hwtnew() {
-  if [ -z "$1" ]; then
-    echo "Usage: hwtnew <branch> [base] [label]" >&2
-    return 1
-  fi
-  local branch="$1" base="${2:-}" label="${3:-$1}"
-  local -a opts=(--cwd "$PWD" --path "$HOME/worktrees/${branch}/$(basename "$PWD")" --branch "$branch" --label "$label")
-  [ -n "$base" ] && opts+=(--base "$base")
-  local out
-  out=$(herdr worktree create "${opts[@]}") || return
-  echo "$out"
-  _herdr_report_id "$out"
 }

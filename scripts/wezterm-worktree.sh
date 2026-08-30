@@ -51,7 +51,7 @@ cmd_create() {
   local repo_root="$1" worktree_path="$2" workspace_name="$3" purpose="$4"
   ensure_registry
 
-  # 複数タスクを並列でcreateする運用(Herdr連携)を想定し、registry.jsonへの
+  # 複数タスクを並列でcreateする運用を想定し、registry.jsonへの
   # 存在チェック・書き込みはflockで直列化する。git worktree add/サブモジュール初期化は
   # ロックの外で行うため、並列実行時の速度メリット自体は損なわれない
   exec {lock_fd}>"$REGISTRY_LOCK"
