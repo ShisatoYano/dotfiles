@@ -222,16 +222,6 @@ else
 fi
 
 # ---------------------------------------------
-# Herdr(複数AIコーディングエージェントの状態を一括で見える化するターミナル多重化ツール、公式インストーラーでユーザー領域にインストール)
-# ---------------------------------------------
-echo "=== Herdr ==="
-if ! command -v herdr &> /dev/null; then
-  curl -fsSL https://herdr.dev/install.sh | sh
-else
-  echo "herdr はインストール済みです。スキップします。"
-fi
-
-# ---------------------------------------------
 # Go(ccsession等のGo製CLIツールのビルド用)
 # ---------------------------------------------
 echo "=== Go ==="
@@ -401,11 +391,6 @@ if [ ! -e ~/.config/lazygit/config.yml ]; then
   ln -s ~/dotfiles/lazygit/config.yml ~/.config/lazygit/config.yml
   echo "lazygit設定をリンクしました"
 fi
-mkdir -p ~/.config/herdr
-if [ ! -e ~/.config/herdr/config.toml ]; then
-  ln -s ~/dotfiles/herdr/config.toml ~/.config/herdr/config.toml
-  echo "herdr設定をリンクしました"
-fi
 if [ ! -e ~/.config/starship.toml ]; then
   ln -s ~/dotfiles/starship/starship.toml ~/.config/starship.toml
   echo "starship設定をリンクしました"
@@ -444,13 +429,6 @@ echo "=== Claude Codeのagents ==="
 if [ ! -e ~/.claude/agents ]; then
   ln -s ~/dotfiles/claude/agents ~/.claude/agents
   echo "agentsディレクトリをリンクしました"
-fi
-
-echo "=== HerdrのClaude Code連携(複数エージェントの状態検知hook) ==="
-if command -v herdr &> /dev/null && [ ! -f ~/.claude/hooks/herdr-agent-state.sh ]; then
-  herdr integration install claude
-else
-  echo "Herdrのclaude連携hookはインストール済みか、herdr未インストールのためスキップします。"
 fi
 
 echo "=== Claude CodeのCLAUDE.md(全プロジェクト共通の指示) ==="
