@@ -15,7 +15,7 @@ description: Use for test/verification work — either a Notion task whose purpo
 
 ## 事前準備
 
-独立したNotionタスクとして着手する場合は、`dev-workflow-shared`の「事前準備: リポジトリの最新化確認」を実行する。実装/不具合修正ワークフローの一部として呼ばれた場合は、呼び出し元ですでに実施済みのためスキップする。
+独立したNotionタスクとして着手する場合は、`dev-workflow-shared`の「事前準備: リポジトリの最新化確認」「事前準備: 前回までの進捗確認」を実行する。実装/不具合修正ワークフローの一部として呼ばれた場合は、呼び出し元ですでに実施済みのためスキップする。
 
 ## テスト対象・期待結果の確認
 
