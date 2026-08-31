@@ -8,6 +8,5 @@ require("config.smart-splits").setup(config) -- Ctrl+h/j/k/lでリーダー不�
 require("config.cmdpicker").setup(config)
 require("config.tab_title").setup(config)
 require("config.sessions").setup(config)
-require("config.worktree_workspace").setup(config)
 
 return config
