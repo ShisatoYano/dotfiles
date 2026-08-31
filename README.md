@@ -31,6 +31,7 @@ git clone git@github.com:あなたのユーザー名/dotfiles.git ~/dotfiles
 |---|---|
 | `gcd` | ghq管理下のリポジトリをあいまい検索して移動 |
 | `bb` | bukuのブックマークをあいまい検索してブラウザで開く |
+| `workstart` | 毎日の業務開始時に開くページ(bukuの`*_check`タグ=Notion/勤怠/Slack等)をまとめて開く |
 | `ff` | 指定ディレクトリ以下のファイルをあいまい検索 |
 | `dc` / `dexec` / `dstop` | docker composeの短縮形、コンテナ選択して入る/停止 |
 | `prs` | 自分に関するPRを横断で確認 |

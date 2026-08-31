@@ -28,6 +28,7 @@ WezTermのキーバインド、シェル関数、Claude Code操作など、nvim�
 |---|---|
 | `gcd` | ghq管理下のリポジトリをあいまい検索して移動 |
 | `bb` | bukuのブックマークをあいまい検索してブラウザで開く(Tabで複数選択可) |
+| `workstart` | 毎日の業務開始時に開くページ(bukuの`*_check`タグ=`notion_check`/`attendance_check`/`slack_check`/`schedule_check`/`mail_check`)をまとめて新規タブで開く(fzf不要) |
 | `ff [ディレクトリ]` | 指定ディレクトリ以下(省略時はカレント)のファイルをあいまい検索し、パスを出力 |
 | `prs` | 自分に関するPR(自分が出したもの/レビュー依頼が来ているもの)を横断で確認(fzf不要) |
 
