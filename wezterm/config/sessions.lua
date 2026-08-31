@@ -4,7 +4,6 @@ local M = {}
 
 M.STATE_DIR = wezterm.home_dir .. "/.local/share/wezterm-sessions/state/"
 
--- worktree_workspace.luaもworkspace削除時に保存済みstateファイルを掃除するため参照する
 function M.escape_file_name(name)
   return (name:gsub("[^%w_%-]", "_"))
 end

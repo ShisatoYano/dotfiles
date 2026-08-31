@@ -1,16 +1,14 @@
 local wezterm = require("wezterm")
 local tab_title = require("config.tab_title")
 local theme = require("config.theme")
-local worktree_workspace = require("config.worktree_workspace")
 local M = {}
 
 -- Key table of mode label
 local KEY_TABLE_LABELS = {
   resize_pane = "RESIZE_MODE",
-  worktree_workspace = "WORKTREE",
 }
 
--- Display active mode + worktree workspace badge on status area.
+-- Display active mode on status area.
 -- config reloadのたびにLuaインタプリタ状態は作り直され、古いreloadで登録した
 -- wezterm.onは自然に破棄されるため、多重登録を気にして登録をガードする必要はない
 -- (むしろガードすると、reload後もこのハンドラの中身が最初の版のまま固定されてしまう)
@@ -21,16 +19,6 @@ wezterm.on("update-right-status", function(window, _)
     or tab_title.TAB_COLORS_DARK
 
   local segments = {}
-
-  local badge = worktree_workspace.badge()
-  if badge ~= "" then
-    -- 目立たせるためactiveタブと同じ配色(アクセント色の地)を使う
-    table.insert(segments, {
-      { Foreground = { Color = colors.foreground_active } },
-      { Background = { Color = colors.background_active } },
-      { Text = "  " .. badge .. "  " },
-    })
-  end
 
   local key_table_name = window:active_key_table()
   if key_table_name then
