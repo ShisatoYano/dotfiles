@@ -1,11 +1,11 @@
 ---
 name: daily-task-workflow
-description: Use when the user wants to decide what to work on today, combining their assigned Notion tasks with PR/review work from the `pr-workflow` Skill into one list for the user to pick today's tasks from by checking them off, draft a Slack work-thread post linking that day's selected Notion tasks, then work through implementation/bugfix tasks directly in the caller session. Trigger on phrases like "今日のタスク決めて". Candidate listing, selection, and Slack draft creation (サブワークフロー1) are normally triggered via the `daily-planning` agent (model: haiku) instead of this Skill directly — see that agent's description — but this Skill still contains and can directly run サブワークフロー1 when explicitly invoked. Direct implementation (サブワークフロー2) always runs at the caller session's own model, after the agent returns the confirmed list.
+description: Use when the user wants to decide what to work on today, combining their assigned Notion tasks with PR/review work from the `pr-workflow` Skill into one list for the user to pick today's tasks from by checking them off, draft a Slack work-thread post linking that day's selected Notion tasks, then work through the selected PR/review items and implementation/bugfix tasks directly in the caller session, in whichever order the user picks that day. Trigger on phrases like "今日のタスク決めて". Candidate listing, selection, and Slack draft creation (サブワークフロー1) are normally triggered via the `daily-planning` agent (model: haiku) instead of this Skill directly — see that agent's description — but this Skill still contains and can directly run サブワークフロー1 when explicitly invoked. Direct implementation (サブワークフロー2) always runs at the caller session's own model, after the agent returns the confirmed list; it also asks the user each day whether to start with PR/review items or Notion tasks.
 ---
 
 # Daily Task Workflow
 
-Notionの担当タスクと、PR対応・レビュー(`pr-task-planning`/`pr-workflow` Skill)を合わせて一覧にし、その日やるものをユーザーに選んでもらい(サブワークフロー1)、選ばれたタスク中の実装/不具合修正タスクにこのセッション内で直接着手する(サブワークフロー2)。
+Notionの担当タスクと、PR対応・レビュー(`pr-task-planning`/`pr-workflow` Skill)を合わせて一覧にし、その日やるものをユーザーに選んでもらい(サブワークフロー1)、選ばれたPR/レビュー項目・Notionタスクにこのセッション内で直接着手する(サブワークフロー2)。どちらから先に着手するかはその日の予定次第で前後するため、サブワークフロー2側でその都度選んでもらう。
 
 ## サブワークフロー1: 候補選定(candidate-selection)
 
@@ -28,8 +28,11 @@ Notionの担当タスクと、PR対応・レビュー(`pr-task-planning`/`pr-wor
 
 `サブワークフロー1`で確定したリストを受け取って実行する。呼び出し元セッションのモデルでそのまま実行する。
 
-1. 確定リスト中の実装/不具合修正系Notionタスクを上から順に、このセッション内で1件ずつ直接着手する。`種類`が`Issue (Fix)`なら`bug-investigation-workflow`、それ以外なら`implementation-workflow`を呼び出す
-2. 1件が完了する、またはその日の作業として区切りがついたら、次のタスクに進む
-3. 確定リストを全件処理し終えたら、`AskUserQuestion`ツールで「終業まとめを作る」か「追加で他のタスクに着手する」かを選択式で確認する
+1. 確定リストにPR/レビュー項目とNotionタスクの両方が含まれる場合、`AskUserQuestion`で「PRタスクから着手するか、Notionタスクから着手するか」を選んでもらう(その日の予定次第で前後するため固定順にしない)。片方の種類しかなければ確認を省略する
+2. 1で決めた順に、グループ単位で以下を行う
+   - PR/レビュー項目: リスト上から順に1件ずつ、`pr-workflow` Skillの該当ステップ(自分のPRなら「レビューコメントへの対応支援」→「マージ可否チェック」、アサインされたレビューなら「レビュー実施そのものの支援」)をこのセッション内で実行する。実際の投稿・マージ等の操作はユーザー自身が行うため、支援・下書き作成が終わった時点でそのPRは完了とする
+   - Notionタスク: リスト上から順に1件ずつ、このセッション内で直接着手する。`種類`が`Issue (Fix)`なら`bug-investigation-workflow`、それ以外なら`implementation-workflow`を呼び出す
+3. 1件が完了する、またはその日の作業として区切りがついたら、次のタスクに進む
+4. 確定リストを全件処理し終えたら、`AskUserQuestion`ツールで「終業まとめを作る」か「追加で他のタスクに着手する」かを選択式で確認する
    - 終業まとめを選んだ場合: `daily-summary` agent(`~/dotfiles/claude/agents/daily-summary.md`)を実行して終了する
-   - 追加で着手を選んだ場合: `notion-task-planning` SkillをAgentツール(`model: haiku`)に再度委譲実行し、その時点での未完了Notionタスク全件リストを取得する。`AskUserQuestion`(チェックボックス)で追加するタスクを選んでもらい、手順1〜2の要領で直接着手する。全件処理し終えたら3に戻る
+   - 追加で着手を選んだ場合: `notion-task-planning` SkillをAgentツール(`model: haiku`)に再度委譲実行し、その時点での未完了Notionタスク全件リストを取得する。`AskUserQuestion`(チェックボックス)で追加するタスクを選んでもらい、手順1〜3の要領で直接着手する。全件処理し終えたら4に戻る
