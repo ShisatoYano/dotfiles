@@ -31,8 +31,17 @@ WezTermのキーバインド、シェル関数、Claude Code操作など、nvim�
 | `workstart` | 毎日の業務開始時に開くページ(bukuの`*_check`タグ=`notion_check`/`attendance_check`/`slack_check`/`schedule_check`/`mail_check`)をまとめて新規タブで開く(fzf不要) |
 | `ff [ディレクトリ]` | 指定ディレクトリ以下(省略時はカレント)のファイルをあいまい検索し、パスを出力 |
 | `prs` | 自分に関するPR(自分が出したもの/レビュー依頼が来ているもの)を横断で確認(fzf不要) |
+| `prsd` | `prs`と同内容を`gh dash`でインタラクティブに見る(リポジトリ横断) |
+| `ghd` | サブモジュール構成でも対象リポジトリ(親/サブモジュール)を選んでから`gh dash`を起動(単一リポジトリに絞り込み) |
 
 Docker関連(`dc`/`dexec`/`dstop`等)は`docs/docker-cheatsheet.md`(`<leader>dh`)を参照。
+
+## PRレビュー(gh dash)
+`prs`が一覧のみなのに対し、`gh dash`はTUIでdiff表示・checkout・approve・merge・コメント・CIチェック監視までその場で操作できる。設定は`gh-dash/config.yml`(`~/.config/gh-dash/config.yml`にリンク)。
+`filters`はcwdがgitリポジトリとして認識される場合のみ`repo:owner/name`が自動付与されて絞り込まれる(Octoと同様、cwd依存)。リポジトリ外から起動するとリポジトリ横断のグローバル検索になる(`prsd`はこれを利用)。
+サブモジュール構成のプロジェクトで単一リポジトリに絞り込みたい場合は`gh dash`を直接叩かず`ghd`を使う。
+checkoutは`repoPaths`未登録のリポジトリではエラーになる(現状は未設定、diff/approve/merge/commentはAPI経由なので影響なし)。
+PR一覧で`M`キーを押すと、PR本文(Overview)に添付された画像/動画をブラウザを開かずにその場で表示できる(`scripts/gh-pr-media.sh`、画像はWezTerm imgcat、動画はmpv)。
 
 ## Claude Code
 | キー | 動作 |

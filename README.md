@@ -14,7 +14,7 @@ git clone git@github.com:あなたのユーザー名/dotfiles.git ~/dotfiles
 - WezTerm、Neovim(最新版)
 - tree-sitter CLI、Node.js / npm(LSP, git-cz用)
 - ripgrep, fd-find, fzf
-- gh, ghq, git-cz, lazygit, git-delta, gibo
+- gh(gh-dash拡張含む), ghq, git-cz, lazygit, git-delta, gibo
 - Go(ccsession等のビルド用)、ccsession
 - Docker(公式apt repo経由)、`docker`グループへの追加
 - starship(プロンプト)

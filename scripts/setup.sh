@@ -151,6 +151,16 @@ else
   echo "gh はインストール済みです。スキップします。"
 fi
 
+# ---------------------------------------------
+# gh-dash(PR/Issueをターミナルで一覧・操作するghの拡張)
+# ---------------------------------------------
+echo "=== gh-dash ==="
+if ! gh extension list 2>/dev/null | grep -q dlvhdr/gh-dash; then
+  gh extension install dlvhdr/gh-dash
+else
+  echo "gh-dash はインストール済みです。スキップします。"
+fi
+
 
 # ---------------------------------------------
 # fzf(公式インストーラー、apt版は機能が古いため使わない)
@@ -372,6 +382,11 @@ mkdir -p ~/.config/lazygit
 if [ ! -e ~/.config/lazygit/config.yml ]; then
   ln -s ~/dotfiles/lazygit/config.yml ~/.config/lazygit/config.yml
   echo "lazygit設定をリンクしました"
+fi
+mkdir -p ~/.config/gh-dash
+if [ ! -e ~/.config/gh-dash/config.yml ]; then
+  ln -s ~/dotfiles/gh-dash/config.yml ~/.config/gh-dash/config.yml
+  echo "gh-dash設定をリンクしました"
 fi
 if [ ! -e ~/.config/starship.toml ]; then
   ln -s ~/dotfiles/starship/starship.toml ~/.config/starship.toml

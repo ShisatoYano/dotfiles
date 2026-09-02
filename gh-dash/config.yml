@@ -1,0 +1,30 @@
+prSections:
+  - title: Needs My Review
+    filters: is:open review-requested:@me
+  - title: My Pull Requests
+    filters: is:open author:@me
+  - title: Draft
+    filters: is:draft author:@me
+
+issuesSections:
+  - title: Assigned to Me
+    filters: is:open assignee:@me
+
+defaults:
+  view: prs
+  refetchIntervalMinutes: 30
+
+pager:
+  diff: delta
+
+keybindings:
+  prs:
+    - key: "M"
+      name: view attached media
+      command: >
+        $HOME/dotfiles/scripts/gh-pr-media.sh {{.RepoName}} {{.PrNumber}}
+
+# repoPaths(owner/repo -> ローカルパス)はローカルcheckout用の設定だが、
+# 非公開リポジトリ名を公開dotfilesに書きたくないため今は未設定(checkout以外は影響なし)。
+# 設定ファイルはマージされず1つだけ読まれる仕様のため、リポジトリ直下に.gh-dash.ymlを
+# 置く方法は使わない(prSections等をそのファイルに複製する必要が出るため)。
