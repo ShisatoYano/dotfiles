@@ -13,6 +13,7 @@ issuesSections:
 defaults:
   view: prs
   refetchIntervalMinutes: 30
+  prApproveComment: ""
 
 pager:
   diff: delta
@@ -23,6 +24,10 @@ keybindings:
       name: view attached media
       command: >
         $HOME/dotfiles/scripts/gh-pr-media.sh {{.RepoName}} {{.PrNumber}}
+    - key: "I"
+      name: comment on diff line
+      command: >
+        $HOME/dotfiles/scripts/gh-pr-comment.sh {{.RepoName}} {{.PrNumber}}
 
 # repoPaths(owner/repo -> ローカルパス)はローカルcheckout用の設定だが、
 # 非公開リポジトリ名を公開dotfilesに書きたくないため今は未設定(checkout以外は影響なし)。
