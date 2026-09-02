@@ -42,6 +42,7 @@ Docker関連(`dc`/`dexec`/`dstop`等)は`docs/docker-cheatsheet.md`(`<leader>dh`
 サブモジュール構成のプロジェクトで単一リポジトリに絞り込みたい場合は`gh dash`を直接叩かず`ghd`を使う。
 checkoutは`repoPaths`未登録のリポジトリではエラーになる(現状は未設定、diff/approve/merge/commentはAPI経由なので影響なし)。
 PR一覧で`M`キーを押すと、PR本文(Overview)に添付された画像/動画をブラウザを開かずにその場で表示できる(`scripts/gh-pr-media.sh`、画像はWezTerm imgcat、動画はmpv)。
+`I`キーを押すと、変更ファイルをfzfで選び行番号・side(追加後/削除前)を指定してレビューコメントを付けられる(`scripts/gh-pr-comment.sh`、本文は`$EDITOR`で編集)。行番号は`d`キーの差分表示のガター表示に合わせる。
 
 ## Claude Code
 | キー | 動作 |
