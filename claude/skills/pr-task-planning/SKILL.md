@@ -23,13 +23,13 @@ gh search prs --author @me --state open --review required          # レビュ�
 gh search prs --author @me --state open --review approved          # approve済み(マージ判断へ)
 ```
 
-`reviewDecision`(`--review approved` などの分類の元)は「必須承認数を満たしたか」しか見ていないため、一部のレビュアーがコメントのみで承認していない状態でも `approved` に分類されうる。これを見落とさないよう、各PRについて `gh pr view <number> --repo <owner/repo> --json reviews,comments,reviewRequests` を取得し、
+各PRについて `gh pr view <number> --repo <owner/repo> --json reviews,comments,reviewRequests` を取得し、
 
 - レビュアーごとの状態(`APPROVED` / `COMMENTED` / `CHANGES_REQUESTED`)を一覧表示する
 - 未回答のレビュー依頼(`reviewRequests`)が残っていないか確認する
 - PRコメントの有無を確認し、あれば要約する。特にPR作者(ユーザー自身)が「修正します」のように対応を約束している発言があれば控えておく(後続の判断で使うことがある)
 
-これらを踏まえて優先度を判定する。優先度: CI失敗中 → 変更要求あり → 一部レビュアーがコメントのみ・未回答のまま止まっているもの(実質レビュー未完了) → (様子見)レビュー待ち → 全員承認済み。draft PRは参考として別枠で扱う。
+これらを踏まえ、`references/priority-criteria.md`の観点に照らして優先度を判定する。
 
 ## 自分にアサインされたレビューの一覧・優先度整理
 

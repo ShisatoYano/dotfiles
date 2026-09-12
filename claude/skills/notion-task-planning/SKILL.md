@@ -16,8 +16,5 @@ description: Use as a sub-step of `daily-task-workflow` to list the user's curre
 
 1. `nb search --path` などで`daily-task-logs` notebook(`notion-task-workflow` Skillが書き出す)内の直近の`daily/*.md`を確認し、前日までの持ち越し・未完了タスクがあれば把握する
 2. 自分の未完了タスクの一覧を取得する。ユーザーが用意した「自分のタスク」ビューがあればそれを`query_data_sources`(view mode)で取得する。無ければ、タスクDBを`担当者`に自分を含む条件で検索する
-3. 全タスクを以下の目安で並び替える(機械的な絶対順位ではなく判断材料として扱う):
-   - `ステータス`が`Doing`(着手済み)のタスクは基本的に他より優先するが、絶対ではない
-   - 次点は以下の2グループを**同格**として扱う(どちらかを機械的に優先しない): (a) `期限`があるタスクを期限昇順・優先度順に並べたもの、(b) `期限`が未設定でも`種類`が`Issue (Fix)`かつ`優先度`が`Highest`のタスク
-   - 上記以外(期限なし・Issueでもない)は優先度順で最後に並べる
+3. `references/priority-criteria.md`の観点に照らして全タスクを並び替える
 4. 3で並び替えた未完了タスクを全件リストアップする(予算による絞り込みはしない。その日どれをやるかはユーザーが`daily-task-workflow`側で選ぶ)
