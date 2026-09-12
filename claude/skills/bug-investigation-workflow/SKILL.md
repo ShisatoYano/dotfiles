@@ -10,7 +10,7 @@ description: Use when starting work on a bug/defect task — either a Notion tas
 ## 前提
 
 - 対象は、Notionタスクの`種類`が`Issue (Fix)`のもの、またはユーザーから直接依頼された不具合調査
-- 実装の進め方は、このdotfilesの`~/.claude/CLAUDE.md`の「コーディング」節に従う: 既存コードのスタイル・流用できるものをまず調べる、コメントは「why」のみ簡潔に
+- 実装の進め方は、このdotfilesの`~/.claude/CLAUDE.md`の「コーディング」節に従う
 
 ## 事前準備
 

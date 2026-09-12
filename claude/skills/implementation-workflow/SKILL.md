@@ -10,7 +10,7 @@ description: Use when starting implementation work on a task — either a Notion
 ## 前提
 
 - 対象は、Notionタスクの`種類`が`機能追加 (Add)`/`改善 (Change)`などの実装系タスク、または`種類`未設定でタイトル・説明から実装作業と判断できるタスク、あるいはユーザーから直接依頼された実装作業。`種類`が`Issue (Fix)`のタスクは`bug-investigation-workflow`の対象
-- 実装の進め方は、このdotfilesの`~/.claude/CLAUDE.md`の「コーディング」節に従う: 既存コードのスタイル・流用できるものをまず調べる、コメントは「why」のみ簡潔に
+- 実装の進め方は、このdotfilesの`~/.claude/CLAUDE.md`の「コーディング」節に従う
 
 ## 事前準備
 
