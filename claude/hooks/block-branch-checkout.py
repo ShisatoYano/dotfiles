@@ -5,9 +5,9 @@ git branch (git checkout <ref>, git checkout -b, git switch, gh pr checkout).
 Root cause this guards against: a Claude-driven Bash call (main agent or a
 skill's subagent) checked out a PR under a local branch name and never
 switched back, leaving the user's working tree on an unexpected branch with
-no notice. Exploration of another branch's contents should go through
-`git worktree add <path> <branch>` instead, which never touches the current
-working tree's branch.
+no notice. Worktree creation is separately blocked by
+block-worktree-creation.py, so this hook no longer suggests it as a
+workaround — branch exploration needs the user's own confirmation instead.
 
 Exit 2 blocks the tool call and feeds stderr back to the model (Claude Code
 PreToolUse hook contract). Any unexpected error here fails open (exit 0) so a
@@ -20,8 +20,8 @@ import sys
 GUIDANCE = (
     "ブランチの切替(git checkout/switch, gh pr checkout)は禁止されています。 "
     "(matched: {reason})\n"
-    "作業ツリーのブランチを変えずに調べたい場合は "
-    "git worktree add <path> <branch> で別ディレクトリにチェックアウトしてください。\n"
+    "worktree の作成も別途禁止されているため、別ブランチの内容を調べたい場合は"
+    "ユーザー自身に意図を確認してください。\n"
     "ユーザー自身が現在の作業ツリーのブランチを切り替えることを明示的に依頼した場合は、"
     "その旨を伝えて一時的に `!git checkout ...` をユーザー自身に実行してもらってください。"
 )

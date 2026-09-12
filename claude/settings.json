@@ -33,6 +33,19 @@
           {
             "type": "command",
             "command": "python3 ~/dotfiles/claude/hooks/block-git-push.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/dotfiles/claude/hooks/block-worktree-creation.py"
+          }
+        ]
+      },
+      {
+        "matcher": "EnterWorktree",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/dotfiles/claude/hooks/block-worktree-creation.py"
           }
         ]
       }
