@@ -38,14 +38,7 @@ PRの状態を変更する操作(`gh pr merge`、`gh pr review`、`gh pr comment
 
 ### 3. マージ可否チェック
 
-対象PRについて `gh pr view <number> --repo <owner/repo> --json reviewDecision,statusCheckRollup,mergeStateStatus,mergeable,reviews,comments` を取得し、以下を確認して結論(マージ可能 / まだ対応が必要:理由)を提示する。
-
-- `reviewDecision` が `APPROVED`
-- `statusCheckRollup` が全て成功
-- `mergeStateStatus` が `CLEAN`(コンフリクトなし)
-- 未解決のレビュースレッドが残っていない
-- `reviews` を個別に確認し、コメントのみで承認していないレビュアーが残っていないか(`reviewDecision`は必須承認数の充足を見ているだけで、全員の承認を意味しない)
-- `comments` の中でユーザー自身が対応を約束した発言があれば、それが実際にコミットへ反映されているか(コメント日時と最新コミット日時、diffの内容を突き合わせて確認する)
+対象PRについて `gh pr view <number> --repo <owner/repo> --json reviewDecision,statusCheckRollup,mergeStateStatus,mergeable,reviews,comments` を取得し、`references/merge-checklist.md`の観点に照らして確認し、結論(マージ可能 / まだ対応が必要:理由)を提示する。
 
 ## 自分にアサインされたレビューのワークフロー
 
