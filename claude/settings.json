@@ -87,6 +87,6 @@
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true
   },
-  "autoMemoryEnabled": false,
-  "feedbackDrafts": "off"
+  "feedbackDrafts": "off",
+  "autoMemoryEnabled": false
 }
