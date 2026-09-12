@@ -38,7 +38,7 @@ description: Use when starting work on a bug/defect task — either a Notion tas
 
 1. 承認された修正方針に沿って実装する。既存コードのスタイル・命名規則に合わせ、流用できる既存の関数・ユーティリティがあれば新規実装せずそれを使う
 2. 修正は原因に対して必要最小限にとどめる。承認された影響範囲を超える変更が必要になった場合は、その旨をユーザーに報告し、方針の見直しを確認する
-3. diffを見直し、意図しない変更(デバッグ用の記述の残存、無関係な差分など)が混入していないか自己レビューする
+3. diffを見直し、`dev-workflow-shared`の`references/self-review-checklist.md`の観点に照らして自己レビューする
 
 ## テスト以降
 

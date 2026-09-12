@@ -34,7 +34,7 @@ description: Use when starting implementation work on a task — either a Notion
 
 1. 承認された実装方針に沿って実装する。既存コードのスタイル・命名規則に合わせ、流用できる既存の関数・ユーティリティがあれば新規実装せずそれを使う
 2. 承認された影響範囲を超える変更が必要になった場合は、その旨をユーザーに報告し、方針の見直しを確認する
-3. diffを見直し、意図しない変更(デバッグ用の記述の残存、無関係な差分など)や、過剰な抽象化・不要なエラーハンドリングが混入していないか自己レビューする
+3. diffを見直し、`dev-workflow-shared`の`references/self-review-checklist.md`の観点に照らして自己レビューする
 
 ## テスト以降
 
