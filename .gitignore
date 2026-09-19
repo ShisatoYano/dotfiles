@@ -6,3 +6,6 @@ __pycache__/
 *.swo
 *~
 .DS_Store
+
+# Claude Codeが自動取得するビルトインSkillのキャッシュ(パスにorg/user UUIDを含むため公開しない)
+claude/skills/synced/
