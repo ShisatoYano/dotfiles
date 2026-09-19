@@ -49,11 +49,26 @@ return {
     end
 
     require("nvim-tree").setup({
+      -- デフォルトのファイル名の色は種類別(ディレクトリ/実行可能/その他)で、
+      -- 作業中に知りたいgitの状態は小さなアイコンにしか出ない。
+      -- ファイル名自体を変更/新規/ステージ済みで色分けして、変更箇所を一目で追えるようにする
+      renderer = { highlight_git = "name" },
       on_attach = function(bufnr)
         api.map.on_attach.default(bufnr)
         vim.keymap.set("n", "i", paste_image_here, { buffer = bufnr, desc = "Paste image from clipboard here" })
       end,
     })
+
+    -- 実行可能ファイル(とイメージファイル)のデフォルト色はステージ済みと同じシアンで、
+    -- scripts/やhooks/が常にステージ済みに見えてしまう。色はgitの状態専用にする。
+    -- カラースキーム切り替え時の"highlight clear"で消えるため、ColorSchemeで貼り直す
+    local function unset_exec_file_hl()
+      vim.api.nvim_set_hl(0, "NvimTreeExecFile", { link = "NvimTreeNormal" })
+      vim.api.nvim_set_hl(0, "NvimTreeImageFile", { link = "NvimTreeNormal" })
+    end
+    unset_exec_file_hl()
+    vim.api.nvim_create_autocmd("ColorScheme", { callback = unset_exec_file_hl })
+
     vim.keymap.set("n", "<leader>e", "<cmd>NvimTreeFindFile<CR>", { desc = "Focus current file in tree" })
     vim.keymap.set("n", "<leader>E", "<cmd>NvimTreeToggle<CR>", { desc = "Toggle file tree" })
     -- ツリーを開いていなくても、ファイル操作(コピー/リネーム/削除等)のキー一覧をすぐ確認できるようにする
