@@ -101,5 +101,6 @@
     "pyright-lsp@claude-plugins-official": true
   },
   "feedbackDrafts": "off",
-  "autoMemoryEnabled": false
+  "autoMemoryEnabled": false,
+  "model": "opus[1m]"
 }
