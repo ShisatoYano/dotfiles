@@ -35,6 +35,12 @@ function M.setup(config)
     top = 5,
     bottom = 5,
   }
+  -- システムのx-cursor-theme(alternatives)が古いDMZ-Whiteを指しており、
+  -- ew-resize等のリサイズカーソルが無いためペイン境界に触れるたびにエラーログが出る。
+  -- GNOME本体(gsettings)と同じYaruを明示して揃える
+  config.xcursor_theme = "Yaru"
+  config.xcursor_size = 24
+
   config.automatically_reload_config = true
   -- タブバーの見た目調整
   config.show_new_tab_button_in_tab_bar = false -- 新規タブの「+」を消す
