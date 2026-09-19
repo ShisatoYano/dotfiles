@@ -22,6 +22,28 @@ vim.opt.expandtab = true
 vim.opt.shiftwidth = 2
 vim.opt.tabstop = 2
 
+-- CursorHoldの発火を実用的な速さにする(既定の4秒では下のchecktimeが遅すぎる)
+vim.opt.updatetime = 500
+
+-- 別プロセス(Claude Code、gitコマンド等)が書き換えたファイルを、開いているバッファに取り込む。
+-- autoreadは「変更を検知したら読み直す」だけの設定で、検知のきっかけ(checktime)は自前で作る必要がある
+-- (これがないとバッファに入り直すまで内容もgitsignsの差分表示も古いまま)
+vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold", "TermLeave" }, {
+  callback = function()
+    -- コマンドライン入力中のchecktimeは入力を妨げるため避ける
+    if vim.fn.mode() ~= "c" then
+      pcall(vim.cmd.checktime)
+    end
+  end,
+})
+
+-- 読み直しは黙って起きると混乱するので通知する(編集中のバッファは上書きされず警告が出る)
+vim.api.nvim_create_autocmd("FileChangedShellPost", {
+  callback = function()
+    vim.notify("外部で変更されたため再読み込みしました: " .. vim.fn.expand("<afile>:t"), vim.log.levels.WARN)
+  end,
+})
+
 -- Markdownなど文章系のファイルだけ折り返しを有効にする
 vim.api.nvim_create_autocmd("FileType", {
   pattern = { "markdown", "text" },

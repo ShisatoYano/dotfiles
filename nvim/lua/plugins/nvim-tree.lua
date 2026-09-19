@@ -53,6 +53,10 @@ return {
       -- 作業中に知りたいgitの状態は小さなアイコンにしか出ない。
       -- ファイル名自体を変更/新規/ステージ済みで色分けして、変更箇所を一目で追えるようにする
       renderer = { highlight_git = "name" },
+      -- gitステータスの再取得は.gitの変更か展開済みディレクトリの変更検知でしか走らず、
+      -- 折りたたみ中に変更されたファイルは古いキャッシュのまま表示される。
+      -- ツリーを見に行った時点で最新になるようにする
+      reload_on_bufenter = true,
       on_attach = function(bufnr)
         api.map.on_attach.default(bufnr)
         vim.keymap.set("n", "i", paste_image_here, { buffer = bufnr, desc = "Paste image from clipboard here" })
