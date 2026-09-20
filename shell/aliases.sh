@@ -8,26 +8,6 @@ gcd() {
   cd "$dir" || return
 }
 
-# gh dashはcwdで検出したリポジトリのPR/Issueしか表示しないため、
-# サブモジュール構成のプロジェクトで対象を選んでからgh dashを起動する
-ghd() {
-  local root
-  root=$(git rev-parse --show-toplevel 2>/dev/null) || { gh dash; return; }
-
-  # サブモジュール内から実行された場合も、最上位のスーパープロジェクトまで遡る
-  while true; do
-    local super
-    super=$(git -C "$root" rev-parse --show-superproject-working-tree 2>/dev/null)
-    [ -z "$super" ] && break
-    root="$super"
-  done
-
-  local target
-  target=$( { echo "$root"; git -C "$root" submodule foreach --recursive --quiet pwd; } | fzf --prompt="gh dash対象> ") || return
-  [ -n "$target" ] || return
-  (cd "$target" && gh dash)
-}
-
 # bukuのブックマークをfzfであいまい検索してブラウザで開く(Tabキーで複数選択可)
 bb() {
   local urls
