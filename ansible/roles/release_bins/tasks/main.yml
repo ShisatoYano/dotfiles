@@ -1,0 +1,51 @@
+---
+- name: GitHubリリースのバイナリを配置する
+  ansible.builtin.include_tasks: install_bin.yml
+  loop: "{{ system_bins }}"
+  loop_control:
+    loop_var: bin
+    label: "{{ bin.name }}"
+
+- name: 単一ファイル配布ツールの置き場所を作る
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+  loop: "{{ user_files | map(attribute='dest') | map('dirname') | unique }}"
+
+- name: 単一ファイル配布ツールの導入状況を確認する
+  ansible.builtin.stat:
+    path: "{{ item.dest }}"
+  register: user_file_state
+  loop: "{{ user_files }}"
+  loop_control:
+    label: "{{ item.dest }}"
+
+# get_urlは既存ファイルでも上流が新しければ置き換えるので、
+# 導入済みのものは対象から外して「無ければ入れる」に揃える
+- name: 単一ファイル配布のツールを取得する
+  ansible.builtin.get_url:
+    url: "{{ item.url }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode }}"
+  loop: "{{ user_file_state.results | rejectattr('stat.exists') | map(attribute='item') | list }}"
+  loop_control:
+    label: "{{ item.dest }}"
+
+- name: Nerd Fontの置き場所を作る
+  ansible.builtin.file:
+    path: "{{ nerd_font_dir }}"
+    state: directory
+
+- name: Nerd Fontを展開する
+  ansible.builtin.unarchive:
+    src: "{{ nerd_font_url }}"
+    dest: "{{ nerd_font_dir }}"
+    remote_src: true
+    # zip内の1ファイルを目印にして、展開済みなら丸ごとスキップする
+    creates: "{{ nerd_font_dir }}/JetBrainsMonoNerdFont-Regular.ttf"
+  register: nerd_font
+
+- name: フォントキャッシュを更新する
+  ansible.builtin.command: fc-cache -f {{ nerd_font_dir | dirname }}
+  when: nerd_font is changed
+  changed_when: true

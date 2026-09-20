@@ -1,0 +1,22 @@
+---
+- name: aptパッケージを入れる
+  ansible.builtin.apt:
+    name: "{{ apt_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  become: true
+
+- name: クリップボード連携ツールを入れる
+  ansible.builtin.apt:
+    name: "{{ 'wl-clipboard' if session_type == 'wayland' else 'xclip' }}"
+    state: present
+  become: true
+  when: session_type in ['wayland', 'x11']
+
+- name: セッション種別を判定できなかったことを知らせる
+  ansible.builtin.debug:
+    msg: >-
+      XDG_SESSION_TYPEを自動検出できませんでした(値: '{{ session_type }}')。
+      クリップボードツール(wl-clipboardまたはxclip)を手動で入れてください。
+  when: session_type not in ['wayland', 'x11']

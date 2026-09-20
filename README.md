@@ -25,6 +25,34 @@ git clone git@github.com:あなたのユーザー名/dotfiles.git ~/dotfiles
 - ログイン時の自動起動(WezTerm、Chrome、xhost-docker)
 - `~/.config/wezterm`, `~/.config/nvim` 等へのシンボリックリンク
 
+### 構築手順の実体はAnsible
+
+`scripts/setup.sh` はansibleを用意してplaybookを流すだけのブートストラップで、
+実際の手順は `ansible/` 以下にあります。何を入れるか(パッケージ名・ダウンロードURL・
+リンクの対応表)は `ansible/group_vars/all.yml` に集約してあるので、
+**ツールの追加・削除は基本このファイルだけを編集**すれば済みます。
+
+`setup.sh` に渡した引数はそのまま `ansible-playbook` に渡ります。
+
+```bash
+~/dotfiles/scripts/setup.sh --check       # 何が変わるかだけ見る(dry-run)
+~/dotfiles/scripts/setup.sh --tags bins   # リリースバイナリの配置だけやり直す
+~/dotfiles/scripts/setup.sh --list-tasks  # 実行される手順の一覧
+```
+
+使えるタグは `apt` / `repos` / `packages` / `bins` / `lang` / `links` です。
+再実行は安全で、既に入っているものはスキップされます。
+
+`--check` は構築済みのマシンで差分を見る用途向けです。以下は仕様上の制約なので、
+出ても異常ではありません。
+
+- 署名鍵の取得が `changed` と出ることがある。`get_url` はmtimeベースの条件付きGETで
+  判定し、dry-runでは中身を比較できないため。本実行では内容を比較するので `ok` になる
+- tar.gz で配布されるツール(nvim/lazygit/gibo/mdroll)の展開は表示されない。
+  `unarchive` が tar をcheckモードで扱えずスキップするため。本実行では正常に入る
+- まっさらなマシンでは途中で止まる。リポジトリ登録が実際には行われないので、
+  直後の `apt install` がパッケージを見つけられない。素のマシンではそのまま本実行する
+
 ## 主なシェル関数(`shell/aliases.sh`)
 
 | コマンド | 動作 |

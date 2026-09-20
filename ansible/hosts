@@ -1,0 +1,3 @@
+# このplaybookは自分のマシンを構築するためだけのもの。対象はlocalhost固定
+[local]
+localhost ansible_connection=local
