@@ -133,7 +133,16 @@ nbq() {
 
   local query="$*"
   local results
-  results=$(nb search "$query" --all --path --no-color 2>/dev/null | grep -v '/\.index$')
+  # nb search --pathは非ASCIIファイル名を二重引用符+8進エスケープで返しそのままでは開けないため、
+  # 引用符を外し\343を printf %b が解釈できる\0343形式に直してデコードする。
+  # あわせて.mdのみ通す(検索対象に画像等が含まれ、バイナリ内の偶然の一致も拾ってしまうため)
+  results=$(nb search "$query" --all --path --no-color 2>/dev/null |
+            grep -v '/\.index$' |
+            sed 's/"//g; s/\\\([0-7][0-7][0-7]\)/\\0\1/g' |
+            while IFS= read -r path; do
+              path=$(printf '%b' "$path")
+              case "$path" in *.md) echo "$path" ;; esac
+            done)
 
   if [ -z "$results" ]; then
     echo "No results found for: $query"
