@@ -1,0 +1,196 @@
+---
+# セットアップ対象の一覧。ツールの追加・削除は基本このファイルだけを編集する。
+# 手順(ダウンロード・展開・配置)はroles側に1つずつしか書かれていない。
+
+dotfiles_dir: "{{ playbook_dir | dirname }}"
+home_dir: "{{ ansible_env.HOME }}"
+
+# aptはamd64表記だが、ansible_architectureはx86_64を返すので変換する
+deb_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}.get(ansible_architecture, ansible_architecture) }}"
+
+# Waylandとx11でクリップボード連携ツールが変わるため、セッション種別で分岐する
+session_type: "{{ lookup('env', 'XDG_SESSION_TYPE') }}"
+
+# ---------------------------------------------
+# Ubuntu公式リポジトリから入るもの
+# ---------------------------------------------
+apt_packages:
+  - build-essential # treesitterのパーサーのビルド用
+  - unzip # リリースzipの展開用
+  - ca-certificates
+  - curl
+  - wget
+  - git
+  - lua-check # Neovim設定のlint(luacheck)
+  - imagemagick # Neovimでの画像プレビュー(image.nvim)
+  - python3-venv # デバッガ(debugpy)用
+  - ripgrep
+  - fd-find
+  - pipx
+  - poppler-utils # pdftotext/pdfinfo。aliases.shのnba/nbsumでPDF論文を要約する
+  - golang-go # Go製CLI(ccsession)のビルド用
+  - git-delta # git diffを見やすくするページャー
+  - jq # Claude Codeのstatuslineで使用
+  - fontconfig # Nerd Font導入後のfc-cacheで使う
+
+# ---------------------------------------------
+# サードパーティのaptリポジトリを足して入れるもの
+# ---------------------------------------------
+apt_repos:
+  - name: wezterm
+    key_url: https://apt.fury.io/wez/gpg.key
+    key_path: /etc/apt/keyrings/wezterm-fury.asc
+    repo: "deb [signed-by=/etc/apt/keyrings/wezterm-fury.asc] https://apt.fury.io/wez/ * *"
+    packages: [wezterm]
+
+  - name: github-cli
+    key_url: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+    key_path: /etc/apt/keyrings/githubcli-archive-keyring.gpg
+    repo: "deb [arch={{ deb_arch }} signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main"
+    packages: [gh]
+
+  - name: docker
+    key_url: https://download.docker.com/linux/ubuntu/gpg
+    key_path: /etc/apt/keyrings/docker.asc
+    repo: "deb [arch={{ deb_arch }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    packages:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+
+# ---------------------------------------------
+# GitHubリリースから /usr/local/bin へ配置するもの
+#   include:    アーカイブから取り出すファイル(省略時は中身を丸ごと展開)
+#   extra_opts: 展開コマンドへの追加オプション
+#   dest:       展開先(省略時は /usr/local/bin)
+#   link_src:   /usr/local/bin/<name> をこのパスへのリンクにする
+#   version_repo: ダウンロードURLにバージョン番号が要るツールだけ指定する。
+#                 urlの {version} が最新リリースのバージョンに置き換わる。
+#                 ansibleはloopのリストを組む時点でアイテム内のJinjaを展開してしまうため、
+#                 ここは {{ }} ではなくリテラルのプレースホルダにしてある
+# ---------------------------------------------
+system_bins:
+  - name: nvim
+    url: https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+    dest: /opt
+    link_src: /opt/nvim-linux-x86_64/bin/nvim
+
+  - name: tree-sitter
+    url: https://github.com/tree-sitter/tree-sitter/releases/latest/download/tree-sitter-cli-linux-x64.zip
+    include: [tree-sitter]
+
+  - name: stylua # Neovim設定のフォーマッタ
+    url: https://github.com/JohnnyMorganz/StyLua/releases/latest/download/stylua-linux-x86_64.zip
+    include: [stylua]
+
+  - name: ghq
+    url: https://github.com/x-motemen/ghq/releases/latest/download/ghq_linux_amd64.zip
+    include: [ghq_linux_amd64/ghq]
+    extra_opts: ["-j"] # zip内のディレクトリ階層を捨てて、バイナリだけを置く
+
+  - name: lazygit
+    version_repo: jesseduffield/lazygit
+    url: "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_{version}_Linux_x86_64.tar.gz"
+    include: [lazygit]
+
+  - name: gibo # .gitignoreテンプレート生成CLI
+    url: https://github.com/simonwhitaker/gibo/releases/latest/download/gibo_Linux_x86_64.tar.gz
+    include: [gibo]
+
+  - name: mdroll # WezTerm向けTUI Markdownビューア
+    version_repo: tokuhirom/mdroll
+    url: "https://github.com/tokuhirom/mdroll/releases/latest/download/mdroll-v{version}-x86_64-unknown-linux-gnu.tar.gz"
+    include: [mdroll]
+
+# ---------------------------------------------
+# 単一ファイルで配布されていて、ユーザー領域に置くもの
+# ---------------------------------------------
+user_files:
+  # メモ管理CLI。aliases.shのnba/nbq関数、nvim/lua/plugins/nb.luaから使う
+  - url: https://raw.githubusercontent.com/xwmx/nb/master/nb
+    dest: "{{ home_dir }}/.local/bin/nb"
+    mode: "0755"
+  # nbのbash補完。bash-completionのユーザーディレクトリなのでsudo不要
+  - url: https://raw.githubusercontent.com/xwmx/nb/master/etc/nb-completion.bash
+    dest: "{{ home_dir }}/.local/share/bash-completion/completions/nb"
+    mode: "0644"
+
+nerd_font_url: https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip
+nerd_font_dir: "{{ home_dir }}/.local/share/fonts/JetBrainsMonoNerdFont"
+
+# ---------------------------------------------
+# 各言語のパッケージマネージャ経由で入れるもの
+# ---------------------------------------------
+nvm_version: v0.40.1
+
+npm_globals:
+  - git-cz
+  - "@anthropic-ai/claude-code"
+
+go_packages:
+  - name: ccsession # Claude Codeのセッション検索
+    module: github.com/sorafujitani/ccsession/cmd/ccsession@latest
+
+pipx_packages:
+  - buku # CLIブックマーク管理。fzf連携はaliases.shのbb関数
+
+gh_extensions:
+  - name: gh-dash # PR/Issueをターミナルで一覧・操作する
+    repo: dlvhdr/gh-dash
+
+# ---------------------------------------------
+# dotfilesからのシンボリックリンク
+# ---------------------------------------------
+dotfile_links:
+  - src: "{{ dotfiles_dir }}/wezterm"
+    dest: "{{ home_dir }}/.config/wezterm"
+  - src: "{{ dotfiles_dir }}/nvim"
+    dest: "{{ home_dir }}/.config/nvim"
+  - src: "{{ dotfiles_dir }}/lazygit/config.yml"
+    dest: "{{ home_dir }}/.config/lazygit/config.yml"
+  - src: "{{ dotfiles_dir }}/gh-dash/config.yml"
+    dest: "{{ home_dir }}/.config/gh-dash/config.yml"
+  - src: "{{ dotfiles_dir }}/starship/starship.toml"
+    dest: "{{ home_dir }}/.config/starship.toml"
+  # ghq.rootの設定もこのgitconfigに入っているので、git config --globalでの設定は不要
+  - src: "{{ dotfiles_dir }}/git/gitconfig"
+    dest: "{{ home_dir }}/.gitconfig"
+  # Claude Code。permissions/hooks/statusLineはsettings.jsonにまとめて宣言する。
+  # theme/enabledPluginsなど機械固有の可変設定は~/.claude/settings.local.json
+  # (リンクしない、ユーザースコープのローカルオーバーライド)に置き、dotfiles管理下から意図的に外す
+  - src: "{{ dotfiles_dir }}/claude/settings.json"
+    dest: "{{ home_dir }}/.claude/settings.json"
+  - src: "{{ dotfiles_dir }}/claude/statusline-command.sh"
+    dest: "{{ home_dir }}/.claude/statusline-command.sh"
+  - src: "{{ dotfiles_dir }}/claude/skills"
+    dest: "{{ home_dir }}/.claude/skills"
+  - src: "{{ dotfiles_dir }}/claude/agents"
+    dest: "{{ home_dir }}/.claude/agents"
+  - src: "{{ dotfiles_dir }}/claude/CLAUDE.md"
+    dest: "{{ home_dir }}/.claude/CLAUDE.md"
+  # ログイン時の自動起動
+  - src: "{{ dotfiles_dir }}/autostart/wezterm.desktop"
+    dest: "{{ home_dir }}/.config/autostart/wezterm.desktop"
+  - src: "{{ dotfiles_dir }}/autostart/google-chrome.desktop"
+    dest: "{{ home_dir }}/.config/autostart/google-chrome.desktop"
+  - src: "{{ dotfiles_dir }}/autostart/xhost-docker.desktop"
+    dest: "{{ home_dir }}/.config/autostart/xhost-docker.desktop"
+
+# ---------------------------------------------
+# ~/.bashrcへの追記
+#   regexp: この正規表現に一致する行が既にあれば追記しない(重複防止)
+# ---------------------------------------------
+bashrc_lines:
+  - regexp: '^export NVM_DIR='
+    line: 'export NVM_DIR="$HOME/.nvm"'
+  - regexp: 'nvm\.sh'
+    line: '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"'
+  - regexp: '\$NVM_DIR/bash_completion'
+    line: '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"'
+  # ユーザー名に依存しないよう、HOME配下なら ~ 表記のまま書く
+  - regexp: 'dotfiles/shell/aliases\.sh'
+    line: "source {{ dotfiles_dir | replace(home_dir, '~') }}/shell/aliases.sh"
+  - regexp: "starship init bash"
+    line: 'eval "$(starship init bash)"'

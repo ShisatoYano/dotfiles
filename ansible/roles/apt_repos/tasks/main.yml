@@ -1,0 +1,37 @@
+---
+- name: aptのキーリングディレクトリを作る
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: サードパーティリポジトリの署名鍵を配置する
+  ansible.builtin.get_url:
+    url: "{{ item.key_url }}"
+    dest: "{{ item.key_path }}"
+    mode: "0644"
+  loop: "{{ apt_repos }}"
+  loop_control:
+    label: "{{ item.name }}"
+  become: true
+
+# apt_repositoryモジュールは同じファイルに行を追記するので、鍵のパスを変えると
+# 古い行が残り、aptが「同一ソースでSigned-Byが矛盾」としてパッケージリスト全体の
+# 読み込みを拒否する。ファイルの内容そのものを宣言して上書きし、常に1行に保つ
+- name: サードパーティリポジトリを登録する
+  ansible.builtin.copy:
+    content: "{{ item.repo }}\n"
+    dest: "/etc/apt/sources.list.d/{{ item.name }}.list"
+    mode: "0644"
+  loop: "{{ apt_repos }}"
+  loop_control:
+    label: "{{ item.name }}"
+  become: true
+
+- name: サードパーティリポジトリのパッケージを入れる
+  ansible.builtin.apt:
+    name: "{{ apt_repos | map(attribute='packages') | flatten }}"
+    state: present
+    update_cache: true
+  become: true

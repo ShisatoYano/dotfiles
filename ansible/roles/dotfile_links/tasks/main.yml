@@ -1,0 +1,53 @@
+---
+# modeは指定しない。$HOME自身(~/.gitconfigの親)も対象に含まれるので、
+# 指定すると既存ディレクトリのパーミッションまで書き換えてしまう
+- name: リンク先の親ディレクトリを作る
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+  loop: "{{ dotfile_links | map(attribute='dest') | map('dirname') | unique }}"
+
+- name: リンク先の現状を確認する
+  ansible.builtin.stat:
+    path: "{{ item.dest }}"
+  register: link_state
+  loop: "{{ dotfile_links }}"
+  loop_control:
+    label: "{{ item.dest }}"
+
+- name: シンボリックリンクを張る
+  ansible.builtin.file:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    state: link
+  loop: "{{ link_state.results | rejectattr('stat.exists') | map(attribute='item') | list }}"
+  loop_control:
+    label: "{{ item.dest }}"
+
+# 実ファイルを勝手に消すと、機械固有の設定(~/.claude/settings.local.jsonへ分けるべき内容など)を
+# 失いかねない。退避はユーザーに任せ、ここでは気付けるように警告だけ出す
+- name: 実ファイルが居座っていてリンクできなかったものを知らせる
+  ansible.builtin.debug:
+    msg: >-
+      {{ item.dest }} が実ファイルとして存在するためリンクしていません。
+      残したい内容を {{ item.src }} へ移してから、元ファイルを消して再実行してください。
+  loop: "{{ link_state.results | selectattr('stat.exists') | rejectattr('stat.islnk') | map(attribute='item') | list }}"
+  loop_control:
+    label: "{{ item.dest }}"
+
+- name: ~/.bashrcに読み込み設定を追記する
+  ansible.builtin.lineinfile:
+    path: "{{ home_dir }}/.bashrc"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop: "{{ bashrc_lines }}"
+  loop_control:
+    label: "{{ item.line }}"
+
+# sudoなしでdockerコマンドを使えるようにする(反映にはログアウト/インし直す必要がある)
+- name: dockerグループに追加する
+  ansible.builtin.user:
+    name: "{{ ansible_user_id }}"
+    groups: docker
+    append: true
+  become: true

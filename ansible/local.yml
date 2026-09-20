@@ -1,0 +1,19 @@
+---
+- name: dotfilesの開発環境をセットアップする
+  hosts: local
+  gather_facts: true
+  # $HOME配下にroot所有のファイルを作る事故を防ぐため、プレイ全体はbecomeせず
+  # sudoが要るタスクにだけ become: true を付ける
+  become: false
+
+  roles:
+    - role: apt_repos
+      tags: [apt, repos]
+    - role: apt_packages
+      tags: [apt, packages]
+    - role: release_bins
+      tags: [bins]
+    - role: lang_tools
+      tags: [lang]
+    - role: dotfile_links
+      tags: [links]

@@ -1,0 +1,60 @@
+---
+# 導入済みなら以降を丸ごと飛ばす(GitHub APIもダウンロードも走らせない)
+- name: "{{ bin.name }}: 導入済みか確認する"
+  ansible.builtin.stat:
+    path: "/usr/local/bin/{{ bin.name }}"
+  register: bin_installed
+
+- name: "{{ bin.name }}: 最新リリースのバージョンを調べる"
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ bin.version_repo }}/releases/latest"
+    return_content: true
+  register: latest_release
+  check_mode: false # 問い合わせるだけなので --check でも実行する
+  when:
+    - not bin_installed.stat.exists
+    - bin.version_repo is defined
+
+# ダウンロードURLにバージョン番号を含むツール(lazygit/mdroll)向け
+- name: "{{ bin.name }}: URLに埋めるバージョン番号を決める"
+  ansible.builtin.set_fact:
+    bin_version: "{{ latest_release.json.tag_name | regex_replace('^v', '') }}"
+  when:
+    - not bin_installed.stat.exists
+    - bin.version_repo is defined
+
+- name: "{{ bin.name }}: ダウンロードして展開する"
+  ansible.builtin.unarchive:
+    src: "{{ bin.url | replace('{version}', bin_version | default('')) }}"
+    dest: "{{ bin.dest | default('/usr/local/bin') }}"
+    remote_src: true
+    include: "{{ bin.include | default(omit) }}"
+    extra_opts: "{{ bin.extra_opts | default(omit) }}"
+  become: true
+  when: not bin_installed.stat.exists
+
+# アーカイブに記録された所有者がそのまま復元されることがあるため、毎回root所有に揃える。
+# /usr/local/bin のバイナリが非root所有だと、一般ユーザー権限で書き換えられてしまう。
+# 未導入かつ --check のときだけは、展開が行われず対象ファイルがまだ無いので対象外にする
+- name: "{{ bin.name }}: 所有者と実行権限を揃える"
+  ansible.builtin.file:
+    path: "/usr/local/bin/{{ bin.name }}"
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+  when:
+    - bin.link_src is not defined
+    - bin_installed.stat.exists or not ansible_check_mode
+
+# --check では上の展開が行われず、リンク先がまだ無いので対象外にする
+- name: "{{ bin.name }}: /usr/local/bin からリンクする"
+  ansible.builtin.file:
+    src: "{{ bin.link_src }}"
+    dest: "/usr/local/bin/{{ bin.name }}"
+    state: link
+  become: true
+  when:
+    - not bin_installed.stat.exists
+    - bin.link_src is defined
+    - not ansible_check_mode

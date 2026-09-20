@@ -1,0 +1,94 @@
+---
+# ---------------------------------------------
+# nvm / Node.js
+#   nvmはシェル関数なので、どのタスクも nvm.sh を読み込んでから叩く必要がある
+# ---------------------------------------------
+- name: nvmを入れる
+  ansible.builtin.shell: |
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/{{ nvm_version }}/install.sh | bash
+  args:
+    creates: "{{ home_dir }}/.nvm/nvm.sh"
+    executable: /bin/bash
+
+- name: nodeが入っているか確認する
+  ansible.builtin.shell: . "{{ home_dir }}/.nvm/nvm.sh" && command -v node
+  args:
+    executable: /bin/bash
+  register: node_check
+  changed_when: false
+  failed_when: false
+  check_mode: false # 状態を見るだけなので --check でも実行する
+
+- name: Node.js(LTS)を入れる
+  ansible.builtin.shell: . "{{ home_dir }}/.nvm/nvm.sh" && nvm install --lts
+  args:
+    executable: /bin/bash
+  when: node_check.rc != 0
+
+- name: nvm配下のnpmのパスを調べる
+  ansible.builtin.shell: . "{{ home_dir }}/.nvm/nvm.sh" && dirname "$(nvm which current)"
+  args:
+    executable: /bin/bash
+  register: nvm_bin
+  changed_when: false
+  check_mode: false
+  # 本実行では直前でnodeが入っているので失敗したら異常。
+  # --check ではnvm自体が未導入のことがあるので、そこだけ許容する
+  failed_when: nvm_bin.rc != 0 and not ansible_check_mode
+
+- name: npmのグローバルパッケージを入れる
+  community.general.npm:
+    name: "{{ item }}"
+    global: true
+    state: present
+  environment:
+    PATH: "{{ nvm_bin.stdout }}:{{ ansible_env.PATH }}"
+  loop: "{{ npm_globals }}"
+  when: nvm_bin.rc == 0
+
+# ---------------------------------------------
+# Go / pipx
+# ---------------------------------------------
+- name: Go製のCLIを入れる
+  ansible.builtin.command: go install {{ item.module }}
+  args:
+    creates: "{{ home_dir }}/go/bin/{{ item.name }}"
+  loop: "{{ go_packages }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: pipxのパッケージを入れる
+  community.general.pipx:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ pipx_packages }}"
+
+# ---------------------------------------------
+# 公式インストーラを使うもの
+# ---------------------------------------------
+- name: fzfを取得する # aptの版は機能が古いので公式のものを使う
+  ansible.builtin.git:
+    repo: https://github.com/junegunn/fzf.git
+    dest: "{{ home_dir }}/.fzf"
+    depth: 1
+    version: master
+    update: false
+
+- name: fzfを入れる
+  ansible.builtin.command: "{{ home_dir }}/.fzf/install --all"
+  args:
+    creates: "{{ home_dir }}/.fzf/bin/fzf"
+
+- name: starshipを入れる # ユーザー領域に入れるのでsudo不要
+  ansible.builtin.shell: |
+    curl -sS https://starship.rs/install.sh | sh -s -- -y -b "{{ home_dir }}/.local/bin"
+  args:
+    creates: "{{ home_dir }}/.local/bin/starship"
+
+- name: ghの拡張を入れる
+  ansible.builtin.command: gh extension install {{ item.repo }}
+  args:
+    creates: "{{ home_dir }}/.local/share/gh/extensions/{{ item.name }}"
+  loop: "{{ gh_extensions }}"
+  loop_control:
+    label: "{{ item.name }}"
