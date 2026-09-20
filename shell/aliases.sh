@@ -55,15 +55,6 @@ dstop() {
   docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}' | fzf --reverse --multi --header="NAMES	IMAGE	STATUS" | cut -f1 | xargs -r docker stop
 }
 
-# 自分に関するPRを横断で確認する(自分が出したもの/レビュー依頼が来ているもの)
-prs() {
-  echo "=== 自分が出したPR ==="
-  gh search prs --author @me --state open
-  echo
-  echo "=== 自分がレビュアーのPR ==="
-  gh search prs --review-requested @me --state open
-}
-
 # prsの内容をgh dashでインタラクティブに見る。
 # gh dashはgitリポジトリ内で起動するとそのリポジトリにのみ絞り込むため、
 # リポジトリ外(~)で起動してリポジトリ横断のグローバル検索にする
