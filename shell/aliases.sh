@@ -124,6 +124,7 @@ nba() {
 
 # nbのメモをfzfであいまい検索し、プレビューを見ながら選んでnvimで編集する
 # note_id(数字)ではなく絶対パスで選択・オープンするので、フォルダ配下のノートも問題なく扱える
+# --allで全notebookを対象にするため、事前にnb useで切り替える必要がない
 nbq() {
   if [ -z "$1" ]; then
     echo "Usage: nbq <search query>"
@@ -132,7 +133,7 @@ nbq() {
 
   local query="$*"
   local results
-  results=$(nb search "$query" --path --no-color 2>/dev/null | grep -v '/\.index$')
+  results=$(nb search "$query" --all --path --no-color 2>/dev/null | grep -v '/\.index$')
 
   if [ -z "$results" ]; then
     echo "No results found for: $query"
@@ -155,15 +156,19 @@ nbq() {
 }
 
 # nbのメモをfzfで選び、mdroll(--watch)でMarkdownプレビューする(パス入力不要)
+# 全notebookを対象にするため、事前にnb useで切り替える必要がない
 # フォルダ配下のノートも拾えるよう、notebookディレクトリ配下を再帰的にfindする
+# nb notebooks addで追加したnotebookは~/.nb配下がシンボリックリンクになるため、-Lで辿る
+# 一覧は「notebook名/ノート名」を表示し、実パスはタブ区切りの2列目に隠して持たせる
 nbmd() {
-  local notebook_dir selected
-  notebook_dir=$(nb notebooks current --path) || return
-  selected=$(find "$notebook_dir" -type f -name '*.md' | fzf \
-    --preview 'cat {}' \
+  local selected
+  selected=$(nb notebooks --paths | while read -r dir; do
+    find -L "$dir" -type f -name '*.md' -printf "$(basename "$dir")/%P\t%p\n"
+  done | fzf --delimiter=$'\t' --with-nth=1 \
+    --preview 'cat {2}' \
     --preview-window=right:60%:wrap) || return
   [ -n "$selected" ] || return
-  mdroll --watch "$selected"
+  mdroll --watch "$(printf '%s' "$selected" | cut -f2)"
 }
 
 # nba等で作成したノート内のURLをClaudeに要約させ、本文に追記する(nbsum <note id>)
