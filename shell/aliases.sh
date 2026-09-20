@@ -20,7 +20,6 @@ bb() {
 
 # 毎日の業務開始時に必ず開くページ(bukuで"*_check"タグ = notion_check/attendance_check/
 # slack_check/schedule_check/mail_check等を付けたURL)をまとめて新規タブで開く。
-# systemdによる自動巡回(tab-check一式)を廃止した代わりに、手動で1コマンド実行する運用にするためのもの
 workstart() {
   buku --nostdin -p -f4 --nc 2>/dev/null | awk -F'\t' '
     { n = split($4, tags, /[ ,]+/); for (i = 1; i <= n; i++) if (tags[i] ~ /_check$/) { print $2; break } }
