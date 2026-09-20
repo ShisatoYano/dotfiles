@@ -28,11 +28,17 @@ WezTermのキーバインド、シェル関数、Claude Code操作など、nvim�
 |---|---|
 | `gcd` | ghq管理下のリポジトリをあいまい検索して移動 |
 | `bb` | bukuのブックマークをあいまい検索してブラウザで開く(Tabで複数選択可) |
+| `tabarchive` | 開いているタブをあいまい検索し、選んだものをbukuに保存してから閉じる(Tabで複数選択可、既存URLは保存をスキップ) |
+| `tabarchive-all` | 開いている全タブをbukuに保存してから閉じる |
 | `workstart` | 毎日の業務開始時に開くページ(bukuの`*_check`タグ=`notion_check`/`attendance_check`/`slack_check`/`schedule_check`/`mail_check`)をまとめて新規タブで開く(fzf不要) |
 | `ff [ディレクトリ]` | 指定ディレクトリ以下(省略時はカレント)のファイルをあいまい検索し、パスを出力 |
 | `prs` | 自分に関するPR(自分が出したもの/レビュー依頼が来ているもの)を横断で確認(fzf不要) |
 | `prsd` | `prs`と同内容を`gh dash`でインタラクティブに見る(リポジトリ横断) |
 | `ghd` | サブモジュール構成でも対象リポジトリ(親/サブモジュール)を選んでから`gh dash`を起動(単一リポジトリに絞り込み) |
+
+`tabarchive`系はtabctl(`~/.local/bin`)に加えてブラウザ拡張が要る。
+セットアップ時に入らないのは拡張だけなので、[Chrome拡張](https://chromewebstore.google.com/detail/tabctl/baomblllgemcgbignhpbipgiofmjdhpn)を入れてChromeを再起動する。
+拡張とバイナリは版を揃える必要があり、`tabctl status`で両者の版と疎通を確認できる。
 
 Docker関連(`dc`/`dexec`/`dstop`等)は`docs/docker-cheatsheet.md`(`<leader>dh`)を参照。
 

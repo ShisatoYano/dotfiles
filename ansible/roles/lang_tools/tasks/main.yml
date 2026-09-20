@@ -85,6 +85,13 @@
   args:
     creates: "{{ home_dir }}/.local/bin/starship"
 
+# tabctl本体はrelease_bins(user_files)で~/.local/binに配置済み。
+# ここで書くマニフェストにはmediatorの絶対パスが載るので、置き場所を変えたら登録し直す
+- name: tabctlのネイティブメッセージングホストを登録する
+  ansible.builtin.command: "{{ home_dir }}/.local/bin/tabctl install"
+  args:
+    creates: "{{ home_dir }}/.config/google-chrome/NativeMessagingHosts/tabctl_mediator.json"
+
 - name: ghの拡張を入れる
   ansible.builtin.command: gh extension install {{ item.repo }}
   args:
