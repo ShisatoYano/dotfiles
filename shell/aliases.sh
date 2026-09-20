@@ -29,6 +29,32 @@ workstart() {
   done
 }
 
+# 標準入力からタブ(id\ttitle\turl)を受け取り、bukuに保存してから閉じる共通処理
+# 比較はURLのみで行う(タブタイトルは未読件数などで頻繁に変わり、
+# 保存済みブックマークのタイトルとは一致しないことが多いため)
+_tabarchive_process() {
+  local existing
+  existing=$(buku --nostdin -p -f1 --nc | cut -f2)
+  while IFS=$'\t' read -r id title url; do
+    if grep -Fxq "$url" <<< "$existing"; then
+      echo "skip (既存): $title"
+    else
+      buku --nostdin -a "$url" tab-archive
+    fi
+    tabctl close "$id"
+  done
+}
+
+# 選択したタブをbukuに保存してから閉じる(Tabキーで複数選択可)
+tabarchive() {
+  tabctl list | fzf --reverse --multi --delimiter="\t" --with-nth=2,3 | _tabarchive_process
+}
+
+# 開いている全タブをbukuに保存してから閉じる
+tabarchive-all() {
+  tabctl list | _tabarchive_process
+}
+
 # 指定ディレクトリ以下のファイルをfdfindで再帰的に検索し、fzfで選んだパスを出力する
 # (省略時はカレントディレクトリ以下)
 ff() {

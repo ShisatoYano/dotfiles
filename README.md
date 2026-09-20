@@ -1,6 +1,6 @@
 # My dotfiles
 
-WezTerm / Neovim / Git を中心に、ターミナル作業環境全体(ブックマーク管理・プロンプトなど)をまとめて管理するリポジトリ
+WezTerm / Neovim / Git を中心に、ターミナル作業環境全体(ブックマーク管理・ブラウザタブ操作・プロンプトなど)をまとめて管理するリポジトリ
 
 ## 環境構築
 
@@ -21,7 +21,7 @@ git clone git@github.com:あなたのユーザー名/dotfiles.git ~/dotfiles
 - jq、Claude Codeのstatusline(モデル名/コンテキスト使用率/利用制限%を表示)
 - Claude Codeのskills(`claude/skills/` を `~/.claude/skills` にリンク。日々の定型作業をSkill化して蓄積していく)
 - Claude CodeのCLAUDE.md(`claude/CLAUDE.md` を `~/.claude/CLAUDE.md` にリンク。全プロジェクト共通の指示)
-- pipx, buku(CLIブックマーク管理)
+- pipx, buku(CLIブックマーク管理)、tabctl(ブラウザタブ操作)
 - ログイン時の自動起動(WezTerm、Chrome、xhost-docker)
 - `~/.config/wezterm`, `~/.config/nvim` 等へのシンボリックリンク
 
@@ -59,6 +59,7 @@ git clone git@github.com:あなたのユーザー名/dotfiles.git ~/dotfiles
 |---|---|
 | `gcd` | ghq管理下のリポジトリをあいまい検索して移動 |
 | `bb` | bukuのブックマークをあいまい検索してブラウザで開く |
+| `tabarchive` / `tabarchive-all` | タブをbukuに保存してから閉じる |
 | `workstart` | 毎日の業務開始時に開くページ(bukuの`*_check`タグ=Notion/勤怠/Slack等)をまとめて開く |
 | `ff` | 指定ディレクトリ以下のファイルをあいまい検索 |
 | `dc` / `dexec` / `dstop` | docker composeの短縮形、コンテナ選択して入る/停止 |
