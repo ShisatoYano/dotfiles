@@ -122,62 +122,62 @@ nba() {
   echo "Note created: [${title}](${url})"
 }
 
-# nbのメモをfzfであいまい検索し、プレビューを見ながら選んでnvimで編集する
-# note_id(数字)ではなく絶対パスで選択・オープンするので、フォルダ配下のノートも問題なく扱える
-# --allで全notebookを対象にするため、事前にnb useで切り替える必要がない
-nbq() {
-  if [ -z "$1" ]; then
-    echo "Usage: nbq <search query>"
+# 全notebookのノートをrgで検索させ、選ばれたヒット行のノートの絶対パスを返す(nbq/nbmdで共有)
+# 第1引数はEnterを押したら何が起きるかのヘッダー表示、残りはfzfの初期クエリ
+# 入力のたびrgを走らせ直す(--disabled + reload)。fzfに本文全体を食わせてあいまい検索させると
+# 飛び飛びの一致で無関係なノートが大量に並ぶため、絞り込みはrgに任せている
+# nb notebooks addで追加したnotebookは~/.nb配下がシンボリックリンクになるため--followで辿る
+# rgは~/.nb上で相対パスとして走らせ、一覧を「notebook名/ノート名:行番号」の短い表示に保つ
+_nb_pick_note() {
+  local action="$1"
+  shift
+
+  local nb_root
+  nb_root=$(nb notebooks --paths | head -1)
+  if [ -z "$nb_root" ]; then
+    echo "Error: No notebooks found" >&2
     return 1
   fi
+  nb_root=$(dirname "$nb_root")
 
-  local query="$*"
-  local results
-  # nb search --pathは非ASCIIファイル名を二重引用符+8進エスケープで返しそのままでは開けないため、
-  # 引用符を外し\343を printf %b が解釈できる\0343形式に直してデコードする。
-  # あわせて.mdのみ通す(検索対象に画像等が含まれ、バイナリ内の偶然の一致も拾ってしまうため)
-  results=$(nb search "$query" --all --path --no-color 2>/dev/null |
-            grep -v '/\.index$' |
-            sed 's/"//g; s/\\\([0-7][0-7][0-7]\)/\\0\1/g' |
-            while IFS= read -r path; do
-              path=$(printf '%b' "$path")
-              case "$path" in *.md) echo "$path" ;; esac
-            done)
+  local -a books=()
+  local path
+  while IFS= read -r path; do books+=("$(basename "$path")"); done < <(nb notebooks --paths)
 
-  if [ -z "$results" ]; then
-    echo "No results found for: $query"
-    return 1
-  fi
-
-  export _NBQ_QUERY="$query"
+  # 本文検索だけだと、ファイル名が本文に出てこないノート(連番ファイル名等)に辿り着けない。
+  # ファイル名一致を:1:の行として先に並べ、本文ヒットと同じ「パス:行番号:内容」の形に揃える
+  local books_q rg_cmd
+  books_q=$(printf '%q ' "${books[@]}")
+  rg_cmd="{ rg --follow --files --glob '*.md' $books_q | rg --color=always --smart-case -- {q} | sed 's/\$/:1:/';
+             rg --follow --line-number --no-heading --color=always --smart-case --glob '*.md' -- {q} $books_q; }"
 
   local selected
-  selected=$(echo "$results" | fzf \
-    --preview 'echo "=== $(basename {}) ==="
-               echo ""
-               grep -i --color=always -C 2 "$_NBQ_QUERY" {} | head -30' \
-    --preview-window=right:60%:wrap \
-    --header "Search: $query")
+  # ヒットなしでrgが1を返してもfzfを終了させないよう|| trueで受ける
+  selected=$(cd "$nb_root" && fzf --ansi --disabled --query="$*" \
+    --bind "start:reload:$rg_cmd || true" \
+    --bind "change:reload:$rg_cmd || true" \
+    --delimiter=: \
+    --preview 'cat {1}' \
+    --preview-window='right:60%:wrap:+{2}-5' \
+    --header "ripgrepで本文+ファイル名を検索 / Enter: $action") || return
+  [ -n "$selected" ] || return 1
 
-  unset _NBQ_QUERY
-
-  [ -n "$selected" ] && nb edit "$selected"
+  printf '%s/%s\n' "$nb_root" "$(printf '%s' "$selected" | cut -d: -f1)"
 }
 
-# nbのメモをfzfで選び、mdroll(--watch)でMarkdownプレビューする(パス入力不要)
-# 全notebookを対象にするため、事前にnb useで切り替える必要がない
-# フォルダ配下のノートも拾えるよう、notebookディレクトリ配下を再帰的にfindする
-# nb notebooks addで追加したnotebookは~/.nb配下がシンボリックリンクになるため、-Lで辿る
-# 一覧は「notebook名/ノート名」を表示し、実パスはタブ区切りの2列目に隠して持たせる
+# nbのメモを検索し、ヒットしたノートをnvimで編集する(nbq [初期クエリ])
+# nb editは行番号を取れないので、ヒット行の位置はプレビュー側(+{2}-5)で見せるに留める
+nbq() {
+  local path
+  path=$(_nb_pick_note "nvimで編集" "$@") || return
+  [ -n "$path" ] && nb edit "$path"
+}
+
+# nbのメモを検索し、ヒットしたノートをmdroll(--watch)でMarkdownプレビューする(nbmd [初期クエリ])
 nbmd() {
-  local selected
-  selected=$(nb notebooks --paths | while read -r dir; do
-    find -L "$dir" -type f -name '*.md' -printf "$(basename "$dir")/%P\t%p\n"
-  done | fzf --delimiter=$'\t' --with-nth=1 \
-    --preview 'cat {2}' \
-    --preview-window=right:60%:wrap) || return
-  [ -n "$selected" ] || return
-  mdroll --watch "$(printf '%s' "$selected" | cut -f2)"
+  local path
+  path=$(_nb_pick_note "mdrollでプレビュー" "$@") || return
+  [ -n "$path" ] && mdroll --watch "$path"
 }
 
 # nba等で作成したノート内のURLをClaudeに要約させ、本文に追記する(nbsum <note id>)
