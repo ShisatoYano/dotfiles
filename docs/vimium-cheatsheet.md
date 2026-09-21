@@ -40,3 +40,17 @@ ChromeでVimライクな操作を行う拡張機能のキーバインドをま�
 | `gi` | 最初の入力欄にフォーカス |
 | `gu` / `gU` | URLを1階層/ルートまで遡る |
 | `ge` / `gE` | 現在のURLを編集(`gE`は新規タブで開く) |
+
+## URL別の除外設定(`vimium/excluded-urls.txt`)
+Options → **Excluded URLs and keys** に登録する。Keys欄に書いたキーだけがページ側に渡り、
+残りはVimiumが処理する(Keys欄を空にすると、そのURLでVimiumが全面的に無効になる)。
+
+| Patterns | Keys | 理由 |
+|---|---|---|
+| `http://localhost:*` / `http://127.0.0.1:*` | `fodg` | Slidevの発表画面のショートカット(`f`=全画面 / `o`=スライド一覧 / `d`=ダーク切替 / `g`=ページ移動)を通すため |
+
+Vimiumはkeydownをcapture段階で止めるので、譲らないとページ側(Slidev)には一切届かない。
+このURLでは`f`/`o`/`d`/`g`がVimiumの機能(リンクヒント・Vomnibar・半ページスクロール・`gg`等の前置キー)として使えなくなる。
+スクロールは`j`/`k`、ページ末尾へは`G`で代替できる。
+
+発表中だけ一時的に全キーをページへ渡したいときは`i`(insertモード)に入る手もある(`Esc`で解除)。

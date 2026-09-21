@@ -1,0 +1,14 @@
+" Vimium CのOptions → "Excluded URLs and keys" に手で登録する内容。
+" 拡張の設定は拡張側のストレージに入るため、custom-key-mappings.txtと同様、
+" ファイルをリンクしても反映されない(貼り付け用の控え)。
+"
+" 書式: <Patterns欄>  <Keys欄>
+" Keys欄に書いたキーだけがページ側に渡る(残りはVimiumが処理する)。
+" Keys欄を空にすると、そのURLではVimiumが全面的に無効になる。
+
+" Slidevの発表画面(localhostの任意ポート)。
+" f=全画面 / o=スライド一覧 / d=ダーク切替 / g=ページ移動 が、Vimiumの
+" リンクヒント / Vomnibar / 半ページスクロール / gg等の前置キー と衝突する。
+" Vimiumはkeydownをcapture段階で止めるため、譲らないとSlidev側には一切届かない。
+http://localhost:*    fodg
+http://127.0.0.1:*    fodg
