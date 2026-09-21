@@ -10,8 +10,8 @@
     creates: "{{ home_dir }}/.nvm/nvm.sh"
     executable: /bin/bash
 
-- name: nodeが入っているか確認する
-  ansible.builtin.shell: . "{{ home_dir }}/.nvm/nvm.sh" && command -v node
+- name: nodeのバージョンを確認する
+  ansible.builtin.shell: . "{{ home_dir }}/.nvm/nvm.sh" && node --version
   args:
     executable: /bin/bash
   register: node_check
@@ -19,14 +19,25 @@
   failed_when: false
   check_mode: false # 状態を見るだけなので --check でも実行する
 
+# 未導入のときだけでなく、node_min_version(Slidevの要件)に届かないときも入れ直す。
+# --reinstall-packages-from は移行元が要るので既存版があるときだけ付ける。
+# nvmはグローバルパッケージをバージョンごとに持つため、移行しないとclaude-code等が消える
 - name: Node.js(LTS)を入れる
-  ansible.builtin.shell: . "{{ home_dir }}/.nvm/nvm.sh" && nvm install --lts
+  ansible.builtin.shell: |
+    . "{{ home_dir }}/.nvm/nvm.sh"
+    nvm install --lts {{ '--reinstall-packages-from=current' if node_check.rc == 0 else '' }}
+    nvm alias default 'lts/*'
   args:
     executable: /bin/bash
-  when: node_check.rc != 0
+  # rcが0でないときstdoutは空なので、バージョン比較まで進まないようorの左側で先に弾く
+  when: node_check.rc != 0 or
+        node_check.stdout | regex_replace('^v', '') is version(node_min_version, '<')
 
+# currentではなくdefaultを見る。ansibleを起動したシェルに古いnodeが読み込まれていると
+# currentがそちらを指してしまい、更新前のnpmでインストールしてしまうため
+# (npm 8ではオプショナル依存の取りこぼしが起きる。rolldown等のネイティブバイナリが入らない)
 - name: nvm配下のnpmのパスを調べる
-  ansible.builtin.shell: . "{{ home_dir }}/.nvm/nvm.sh" && dirname "$(nvm which current)"
+  ansible.builtin.shell: . "{{ home_dir }}/.nvm/nvm.sh" && dirname "$(nvm which default)"
   args:
     executable: /bin/bash
   register: nvm_bin
@@ -44,6 +55,26 @@
   environment:
     PATH: "{{ nvm_bin.stdout }}:{{ ansible_env.PATH }}"
   loop: "{{ npm_globals }}"
+  when: nvm_bin.rc == 0
+
+# Slidev一式。~/slides からは node_modules と package.json のリンク越しに使うので、
+# インストール自体はdotfiles側で行い、package-lock.jsonもdotfilesで管理する
+- name: Slidevワークスペースの依存を入れる
+  community.general.npm:
+    path: "{{ dotfiles_dir }}/slidev"
+  environment:
+    PATH: "{{ nvm_bin.stdout }}:{{ ansible_env.PATH }}"
+  when: nvm_bin.rc == 0
+
+# slidev exportはplaywrightのChromiumで描画する。npm installのpostinstallでは
+# ブラウザ本体まで落ちてこないので、明示的に入れる(~/.cache/ms-playwrightに入る)
+- name: SlidevのPDF出力に使うChromiumを入れる
+  ansible.builtin.command: npx playwright install chromium
+  args:
+    chdir: "{{ dotfiles_dir }}/slidev"
+    creates: "{{ home_dir }}/.cache/ms-playwright"
+  environment:
+    PATH: "{{ nvm_bin.stdout }}:{{ ansible_env.PATH }}"
   when: nvm_bin.rc == 0
 
 # ---------------------------------------------

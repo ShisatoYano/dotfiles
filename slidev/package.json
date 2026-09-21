@@ -1,0 +1,14 @@
+{
+  "name": "slides-workspace",
+  "type": "module",
+  "private": true,
+  "//": "~/slides/package.json はこのファイルへのリンク。依存の追加・更新は必ずこのディレクトリ(dotfiles/slidev)で行う(~/slides側でnpm installするとリンクが実ファイルに置き換わる)",
+  "dependencies": {
+    "@slidev/cli": "^53.0.0",
+    "@slidev/theme-default": "^0.25.0",
+    "vue": "^3.5.43"
+  },
+  "devDependencies": {
+    "playwright-chromium": "^1.63.0"
+  }
+}

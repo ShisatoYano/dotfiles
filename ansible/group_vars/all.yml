@@ -136,6 +136,10 @@ nerd_font_dir: "{{ home_dir }}/.local/share/fonts/JetBrainsMonoNerdFont"
 # ---------------------------------------------
 nvm_version: v0.40.1
 
+# Node本体の下限。Slidev(@slidev/cli 53系)の要件に合わせてある。
+# 既存のnodeがこれに届かなければLTSへ入れ直す
+node_min_version: "22.12.0"
+
 npm_globals:
   - git-cz
   - "@anthropic-ai/claude-code"
@@ -181,6 +185,15 @@ dotfile_links:
     dest: "{{ home_dir }}/.claude/agents"
   - src: "{{ dotfiles_dir }}/claude/CLAUDE.md"
     dest: "{{ home_dir }}/.claude/CLAUDE.md"
+  # Slidev。発表資料そのもの(~/slides/decks配下)はdotfilesの管理外に置き、
+  # ワークスペースの共有設定だけをリンクする。node_modulesはdotfiles側に実体があり、
+  # ~/slides/decks/<デッキ>/slides.md からの依存解決がこのリンク経由で通る
+  - src: "{{ dotfiles_dir }}/slidev/package.json"
+    dest: "{{ home_dir }}/slides/package.json"
+  - src: "{{ dotfiles_dir }}/slidev/node_modules"
+    dest: "{{ home_dir }}/slides/node_modules"
+  - src: "{{ dotfiles_dir }}/slidev/gitignore"
+    dest: "{{ home_dir }}/slides/.gitignore"
   # ログイン時の自動起動
   - src: "{{ dotfiles_dir }}/autostart/wezterm.desktop"
     dest: "{{ home_dir }}/.config/autostart/wezterm.desktop"

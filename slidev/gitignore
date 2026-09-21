@@ -1,0 +1,5 @@
+node_modules/
+
+# Slidevが生成するもの
+dist/
+.slidev/
