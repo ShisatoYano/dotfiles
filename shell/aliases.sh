@@ -41,7 +41,9 @@ _tabarchive_process() {
     if grep -Fxq "$url" <<< "$existing"; then
       echo "skip (既存): $title"
     else
-      buku --nostdin -a "$url" tab-archive
+      # タイトルを省略するとbukuがページを取りに行き、失敗すると
+      # 「429 Too Many Requests」等がそのままタイトルとして残るため、タブのタイトルを渡す
+      buku --nostdin -a "$url" tab-archive --title "$(_tab_title_clean "$title")"
     fi
     # 要約まで通らなかったタブは閉じずに残し、取りこぼしに気づけるようにする
     if [ "$summarize" = "summarize" ] && ! _tabnote_summarize "$title" "$url"; then
@@ -167,11 +169,16 @@ nba() {
   echo "Note created: [$(basename "$path" .md)](${url})"
 }
 
-# タイトルはノートのフォルダ名とファイル名にそのまま使われるため、
-# パス区切りを潰し、タブタイトル特有の未読件数の接頭辞(「(9+) 」等)を落とす
+# タブタイトル特有のノイズ(「(9+) 」等の未読件数)を落とす(buku/nbの両方で使う)
+_tab_title_clean() {
+  printf '%s' "$1" | perl -pe 's{^\(\d+\+?\)\s*}{}; s/^\s+|\s+$//g; s/\s+/ /g'
+}
+
+# タイトルはノートのフォルダ名とファイル名にそのまま使われるため、パス区切りも潰す
 # (GitHubの「ユーザー名/リポジトリ名: ...」のようなタイトルが入れ子フォルダになるのを防ぐ)
+# bukuのタイトルは/を含んでも困らないので、この置換はnb側だけに掛ける
 _nb_sanitize_title() {
-  printf '%s' "$1" | perl -pe 's{^\(\d+\+?\)\s*}{}; s{[/\\]}{-}g; s/^\s+|\s+$//g; s/\s+/ /g'
+  _tab_title_clean "$1" | perl -pe 's{[/\\]}{-}g'
 }
 
 # 指定したノートブックが無ければ作る(nb notebooks addは既存でも終了コード0を返すので、
