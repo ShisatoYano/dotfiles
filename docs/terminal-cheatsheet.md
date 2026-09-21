@@ -30,11 +30,16 @@ WezTermのキーバインド、シェル関数、Claude Code操作など、nvim�
 | `bb` | bukuのブックマークをあいまい検索してブラウザで開く(Tabで複数選択可) |
 | `tabarchive` | 開いているタブをあいまい検索し、選んだものをbukuに保存してから閉じる(Tabで複数選択可、既存URLは保存をスキップ) |
 | `tabarchive-all` | 開いている全タブをbukuに保存してから閉じる |
+| `tabnote` | 選んだタブをbukuに保存し、ページ内容をClaudeで要約したメモをnbの`tab-archive`ノートブックに作ってから閉じる(Tabで複数選択可)。要約はタブごとに`claude -p`を呼ぶので時間がかかる |
 | `workstart` | 毎日の業務開始時に開くページ(bukuの`*_check`タグ=`notion_check`/`attendance_check`/`slack_check`/`schedule_check`/`mail_check`)をまとめて新規タブで開く(fzf不要) |
 | `ff [ディレクトリ]` | 指定ディレクトリ以下(省略時はカレント)のファイルをあいまい検索し、パスを出力 |
 | `prs` | 自分に関するPR(自分が出したもの/レビュー依頼が来ているもの)を横断で確認(fzf不要) |
 | `prsd` | `prs`と同内容を`gh dash`でインタラクティブに見る(リポジトリ横断) |
 | `ghd` | サブモジュール構成でも対象リポジトリ(親/サブモジュール)を選んでから`gh dash`を起動(単一リポジトリに絞り込み) |
+
+`tabnote`は`nba`(メモ作成)と`nbsum`(Claudeでの要約)を流用しているので、要約の体裁を変えるなら`nbsum`側を直す。
+メモの保存先は専用ノートブック`tab-archive`(無ければ初回実行時に自動作成)で、カレントノートブックは変わらない。
+要約に失敗したタブは閉じずに残すので、取りこぼしはタブが残っているかで判断できる。
 
 `tabarchive`系はtabctl(`~/.local/bin`)に加えてブラウザ拡張が要る。
 セットアップ時に入らないのは拡張だけなので、[Chrome拡張](https://chromewebstore.google.com/detail/tabctl/baomblllgemcgbignhpbipgiofmjdhpn)を入れてChromeを再起動する。

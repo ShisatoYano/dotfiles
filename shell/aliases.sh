@@ -30,9 +30,11 @@ workstart() {
 }
 
 # 標準入力からタブ(id\ttitle\turl)を受け取り、bukuに保存してから閉じる共通処理
+# 第1引数にsummarizeを渡すと、閉じる前にページ内容の要約をnbのメモとして残す(tabnote)
 # 比較はURLのみで行う(タブタイトルは未読件数などで頻繁に変わり、
 # 保存済みブックマークのタイトルとは一致しないことが多いため)
 _tabarchive_process() {
+  local summarize="${1:-}"
   local existing
   existing=$(buku --nostdin -p -f1 --nc | cut -f2)
   while IFS=$'\t' read -r id title url; do
@@ -41,8 +43,22 @@ _tabarchive_process() {
     else
       buku --nostdin -a "$url" tab-archive
     fi
+    # 要約まで通らなかったタブは閉じずに残し、取りこぼしに気づけるようにする
+    if [ "$summarize" = "summarize" ] && ! _tabnote_summarize "$title" "$url"; then
+      echo "skip (要約に失敗、タブは開いたまま): $title"
+      continue
+    fi
     tabctl close "$id"
   done
+}
+
+# タブのタイトルとURLからnbのメモを作り、ページ内容の要約(nbsum)まで済ませる
+# メモは作業中のカレントノートブックを汚さないよう、専用ノートブック(bukuのタグ名と揃える)に入れる
+_tabnote_summarize() {
+  local path
+  echo "Note: $1"
+  path=$(_nb_create_note "$1" "$2" tab-archive) || return 1
+  nbsum "$path"
 }
 
 # 選択したタブをbukuに保存してから閉じる(Tabキーで複数選択可)
@@ -53,6 +69,12 @@ tabarchive() {
 # 開いている全タブをbukuに保存してから閉じる
 tabarchive-all() {
   tabctl list | _tabarchive_process
+}
+
+# 選択したタブをbukuに保存し、ページ内容をClaudeで要約したメモをnbに残してから閉じる
+# (Tabキーで複数選択可。要約はタブごとにclaude -pを呼ぶので、タブ数に比例して時間がかかる)
+tabnote() {
+  tabctl list | fzf --reverse --multi --delimiter="\t" --with-nth=2,3 | _tabarchive_process summarize
 }
 
 # 指定ディレクトリ以下のファイルをfdfindで再帰的に検索し、fzfで選んだパスを出力する
@@ -140,15 +162,58 @@ nba() {
     url="$2"
   fi
 
-  local content="# ${title}
+  local path
+  path=$(_nb_create_note "$title" "$url") || return 1
+  echo "Note created: [$(basename "$path" .md)](${url})"
+}
+
+# タイトルはノートのフォルダ名とファイル名にそのまま使われるため、
+# パス区切りを潰し、タブタイトル特有の未読件数の接頭辞(「(9+) 」等)を落とす
+# (GitHubの「ユーザー名/リポジトリ名: ...」のようなタイトルが入れ子フォルダになるのを防ぐ)
+_nb_sanitize_title() {
+  printf '%s' "$1" | perl -pe 's{^\(\d+\+?\)\s*}{}; s{[/\\]}{-}g; s/^\s+|\s+$//g; s/\s+/ /g'
+}
+
+# 指定したノートブックが無ければ作る(nb notebooks addは既存でも終了コード0を返すので、
+# 「Already exists」を毎回出さないよう先に存在を確かめる)
+_nb_ensure_notebook() {
+  local name="$1" path
+  while IFS= read -r path; do
+    [ "$(basename "$path")" = "$name" ] && return 0
+  done < <(nb notebooks --paths)
+  nb notebooks add "$name" >&2
+}
+
+# タイトルとURLからノートを作り、作成したノートの絶対パスを返す(nba/tabnoteで共有)
+# 第3引数でノートブックを指定できる(省略時はカレントノートブック)
+_nb_create_note() {
+  local title url notebook prefix content
+  title=$(_nb_sanitize_title "$1")
+  url="$2"
+  notebook="${3:-}"
+  [ -n "$title" ] || return 1
+
+  prefix=""
+  if [ -n "$notebook" ]; then
+    _nb_ensure_notebook "$notebook" || return 1
+    prefix="${notebook}:" # nbはサブコマンド側に付けた接頭辞で保存先を切り替える(カレントは変えない)
+  fi
+
+  content="# ${title}
 
 参照: [${title}](${url})"
 
-  nb add --filename "${title}/${title}.md" --content "$content"
-  echo "Note created: [${title}](${url})"
+  # stdoutはパスを返すのに使うので、nb addが出すノートIDの表示はstderrへ逃がす。
+  # またnb addはパイプされた標準入力を本文として読むため、tabnoteのように
+  # タブ一覧を流し込むループの中から呼ばれても残りを食わないよう/dev/nullをつなぐ
+  nb "${prefix}add" --filename "${title}/${title}.md" --content "$content" >&2 < /dev/null || return 1
+  nb show "${prefix}${title}/${title}.md" --path
 }
 
-# 全notebookのノートをrgで検索させ、選ばれたヒット行のノートの絶対パスを返す(nbq/nbmdで共有)
+# 全notebookのノートをrgで検索させ、選ばれたヒット行のノートをnbの識別子
+# (<notebook名>:<notebook内の相対パス>)として返す(nbq/nbmdで共有)
+# 絶対パスではなく識別子で返すのは、nbが絶対パスをカレントnotebook内でしか解決できず、
+# 他のnotebook(tabnoteが使うtab-archive等)のノートがnb editで開けないため
 # 第1引数はEnterを押したら何が起きるかのヘッダー表示、残りはfzfの初期クエリ
 # 入力のたびrgを走らせ直す(--disabled + reload)。fzfに本文全体を食わせてあいまい検索させると
 # 飛び飛びの一致で無関係なノートが大量に並ぶため、絞り込みはrgに任せている
@@ -188,22 +253,26 @@ _nb_pick_note() {
     --header "ripgrepで本文+ファイル名を検索 / Enter: $action") || return
   [ -n "$selected" ] || return 1
 
-  printf '%s/%s\n' "$nb_root" "$(printf '%s' "$selected" | cut -d: -f1)"
+  # rgの出力は「notebook名/ノート名:行番号:内容」なので、先頭の/を:に替えればnbの識別子になる
+  printf '%s' "$selected" | cut -d: -f1 | sed 's|/|:|'
 }
 
 # nbのメモを検索し、ヒットしたノートをnvimで編集する(nbq [初期クエリ])
 # nb editは行番号を取れないので、ヒット行の位置はプレビュー側(+{2}-5)で見せるに留める
 nbq() {
-  local path
-  path=$(_nb_pick_note "nvimで編集" "$@") || return
-  [ -n "$path" ] && nb edit "$path"
+  local id
+  id=$(_nb_pick_note "nvimで編集" "$@") || return
+  [ -n "$id" ] && nb edit "$id"
 }
 
 # nbのメモを検索し、ヒットしたノートをmdroll(--watch)でMarkdownプレビューする(nbmd [初期クエリ])
 nbmd() {
-  local path
-  path=$(_nb_pick_note "mdrollでプレビュー" "$@") || return
-  [ -n "$path" ] && mdroll --watch "$path"
+  local id path
+  id=$(_nb_pick_note "mdrollでプレビュー" "$@") || return
+  [ -n "$id" ] || return
+  # mdrollはnbの識別子を解釈しないので、実ファイルのパスに直してから渡す
+  path=$(nb show "$id" --path) || return 1
+  mdroll --watch "$path"
 }
 
 # nba等で作成したノート内のURLをClaudeに要約させ、本文に追記する(nbsum <note id>)
