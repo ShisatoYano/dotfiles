@@ -36,6 +36,11 @@ npx slidev export decks/2026-09-21-ekf/slides.md \
 
 発表者ビューはURL末尾に`/presenter`(ノート・次スライド・経過時間)。`/overview`で全体一覧。
 
+> **Vimiumとの衝突に注意**: `f`/`o`/`d`/`g`はVimiumのリンクヒント・Vomnibar・半ページスクロール・`gg`の前置キーと
+> 衝突し、そのままではSlidevに届かない。`vimium/excluded-urls.txt`の内容をVimiumの
+> 「Excluded URLs and keys」に登録して`localhost`でこの4キーを譲ること(`docs/vimium-cheatsheet.md`参照)。
+> 未設定のまま使うなら、左下にホバーで出るUIボタン(全画面・一覧・ダーク・発表者モード)で代替できる。
+
 ## 基本の記法
 スライドの区切りは空行を挟んだ`---`。先頭ブロックが全体設定(headmatter)、2枚目以降の`---`直後に書けばそのスライドだけの設定になる。
 
