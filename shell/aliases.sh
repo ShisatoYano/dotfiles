@@ -382,3 +382,78 @@ luaci() {
   luacheck lua || status=1
   return "$status"
 }
+
+# Slidev(Markdownで書く発表資料)のワークスペース。
+# package.jsonとnode_modulesはdotfiles/slidevへのリンクなので、slidevコマンドは
+# デッキのフォルダではなく必ずこのディレクトリをカレントにして呼ぶ(依存解決がここで通る)
+SLIDES_DIR="$HOME/slides"
+
+# 新しい発表資料を ~/slides/decks/<日付>-<スラッグ>/slides.md として作り、nvimで開く
+slidenew() {
+  if [ $# -lt 1 ]; then
+    echo "Usage: slidenew <タイトル>"
+    return 1
+  fi
+
+  local title="$*" slug dir
+  # 日本語タイトルはスラッグにできないので、英数字以外を潰した結果が空なら日付だけのフォルダ名にする
+  slug=$(printf '%s' "$title" | perl -pe 's/[^A-Za-z0-9]+/-/g; s/^-|-$//g; $_ = lc')
+  dir="$SLIDES_DIR/decks/$(date +%F)${slug:+-$slug}"
+
+  if [ -e "$dir" ]; then
+    echo "Error: already exists: $dir"
+    return 1
+  fi
+  mkdir -p "$dir" || return 1
+
+  # タイトルに含まれる記号をsedの区切りと誤認しないよう、置換値は環境変数で渡す
+  TITLE="$title" DATE="$(date +%F)" \
+    perl -pe 's/__TITLE__/$ENV{TITLE}/g; s/__DATE__/$ENV{DATE}/g' \
+    "$HOME/dotfiles/slidev/template/slides.md" > "$dir/slides.md" || return 1
+
+  echo "Created: $dir/slides.md"
+  nvim "$dir/slides.md"
+}
+
+# デッキをfzfで選び、~/slides から見た相対パスを返す(slidedev/slideexportで共有)
+_slide_pick_deck() {
+  local rel
+  if [ ! -d "$SLIDES_DIR/decks" ]; then
+    echo "Error: $SLIDES_DIR/decks がありません(slidenewで作成してください)" >&2
+    return 1
+  fi
+
+  # フォルダ名が日付始まりなので、逆順に並べると新しいデッキが上に来る
+  rel=$(cd "$SLIDES_DIR/decks" && fdfind --type f '^slides\.md$' . | sed 's|^\./||' | sort -r |
+    fzf --reverse --delimiter=/ --with-nth=1 \
+      --preview "head -40 $SLIDES_DIR/decks/{}" --header "Enter: $1") || return 1
+  [ -n "$rel" ] || return 1
+  printf 'decks/%s' "$rel"
+}
+
+# 選んだデッキの開発サーバを起動する(ブラウザが開き、編集内容は保存のたび反映される)
+slidedev() {
+  local deck
+  deck=$(_slide_pick_deck "開発サーバを起動") || return
+  (cd "$SLIDES_DIR" && npx slidev "$deck" --open)
+}
+
+# 選んだデッキをPDF/PPTX/PNGに書き出す(出力先はデッキのフォルダ内)
+slideexport() {
+  local deck format dir base out
+  deck=$(_slide_pick_deck "書き出し") || return
+  format=$(printf 'pdf\npptx\npng\n' | fzf --reverse --header="出力形式") || return
+  [ -n "$format" ] || return
+
+  dir=$(dirname "$deck")
+  base=$(basename "$dir")
+  # pngはスライド1枚ごとにファイルができるので、単一ファイルの形式と分けてフォルダに出す
+  if [ "$format" = "png" ]; then
+    out="$dir/export"
+  else
+    out="$dir/$base.$format"
+  fi
+
+  (cd "$SLIDES_DIR" && npx slidev export "$deck" --format "$format" --output "$out") || return
+  echo "Exported: $SLIDES_DIR/$out"
+}

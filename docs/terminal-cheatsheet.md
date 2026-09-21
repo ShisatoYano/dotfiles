@@ -46,6 +46,7 @@ WezTermのキーバインド、シェル関数、Claude Code操作など、nvim�
 拡張とバイナリは版を揃える必要があり、`tabctl status`で両者の版と疎通を確認できる。
 
 Docker関連(`dc`/`dexec`/`dstop`等)は`docs/docker-cheatsheet.md`(`<leader>dh`)を参照。
+発表資料関連(`slidenew`/`slidedev`/`slideexport`)は`docs/slidev-cheatsheet.md`(`<leader>sh`)を参照。
 
 ## PRレビュー(gh dash)
 `prs`が一覧のみなのに対し、`gh dash`はTUIでdiff表示・checkout・approve・merge・コメント・CIチェック監視までその場で操作できる。設定は`gh-dash/config.yml`(`~/.config/gh-dash/config.yml`にリンク)。

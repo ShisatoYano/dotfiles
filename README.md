@@ -22,6 +22,7 @@ git clone git@github.com:あなたのユーザー名/dotfiles.git ~/dotfiles
 - Claude Codeのskills(`claude/skills/` を `~/.claude/skills` にリンク。日々の定型作業をSkill化して蓄積していく)
 - Claude CodeのCLAUDE.md(`claude/CLAUDE.md` を `~/.claude/CLAUDE.md` にリンク。全プロジェクト共通の指示)
 - pipx, buku(CLIブックマーク管理)、tabctl(ブラウザタブ操作)
+- Slidev(Markdownで書く発表資料。`~/slides`にワークスペースを用意し、PDF/PPTX/PNG書き出し用のChromiumまで入れる)
 - ログイン時の自動起動(WezTerm、Chrome、xhost-docker)
 - `~/.config/wezterm`, `~/.config/nvim` 等へのシンボリックリンク
 
@@ -65,15 +66,20 @@ git clone git@github.com:あなたのユーザー名/dotfiles.git ~/dotfiles
 | `ff` | 指定ディレクトリ以下のファイルをあいまい検索 |
 | `dc` / `dexec` / `dstop` | docker composeの短縮形、コンテナ選択して入る/停止 |
 | `prs` | 自分に関するPRを横断で確認 |
+| `slidenew` / `slidedev` / `slideexport` | Slidevの発表資料を作成・プレビュー・書き出し |
 
 詳しい使い方や、その他のキーバインドは `docs/terminal-cheatsheet.md` を参照。
 Git操作は `docs/git-cheatsheet.md`、Neovimの標準操作は `docs/nvim-cheatsheet.md` にまとめている
 (Neovim内から `<leader>wh` / `<leader>gh` / `<leader>nh` でそれぞれ開ける)。
+発表資料(Slidev)の記法とコマンドは `docs/slidev-cheatsheet.md`(`<leader>sh`)にまとめている。
 
 ## 補足
 
 - Neovimのプラグイン本体は初回起動時に `lazy.nvim` が自動インストールします
 - LSPサーバー(clangd, pyright, lua_ls)とデバッガ(codelldb, debugpy)は初回起動時に `mason.nvim` が自動インストールします
+- 発表資料は `~/slides/decks/<日付>-<タイトル>/slides.md` に置く。`~/slides` の `package.json` と
+  `node_modules` は `slidev/` へのリンクなので、**依存の追加は `~/dotfiles/slidev` で `npm install <パッケージ>`** する
+  (`~/slides` 側で実行するとリンクが実ファイルに置き換わる)
 - ROS 2ワークスペースでC++の補完を効かせるには `colcon build --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON` でビルドしてください
 - ROS 2ワークスペースでPythonの自作パッケージ補完を効かせるには、ワークスペース直下で
   `python3 ~/dotfiles/scripts/generate_pyright_paths.py` を実行してください
