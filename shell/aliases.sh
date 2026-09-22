@@ -181,13 +181,17 @@ _nb_sanitize_title() {
   _tab_title_clean "$1" | perl -pe 's{[/\\]}{-}g'
 }
 
+# nbはカレントnotebookがdirtyまたはremoteと未同期だと、git checkpointの完了を待つ間
+# スピナーをstdoutへ描く。以降のnb呼び出しで出力を変数に受ける箇所は、それが混入して
+# パスが壊れるため/dev/nullをつなぐ(nbはstdinが端末のときだけスピナーを出す)
+
 # 指定したノートブックが無ければ作る(nb notebooks addは既存でも終了コード0を返すので、
 # 「Already exists」を毎回出さないよう先に存在を確かめる)
 _nb_ensure_notebook() {
   local name="$1" path
   while IFS= read -r path; do
     [ "$(basename "$path")" = "$name" ] && return 0
-  done < <(nb notebooks --paths)
+  done < <(nb notebooks --paths < /dev/null)
   nb notebooks add "$name" >&2
 }
 
@@ -214,7 +218,7 @@ _nb_create_note() {
   # またnb addはパイプされた標準入力を本文として読むため、tabnoteのように
   # タブ一覧を流し込むループの中から呼ばれても残りを食わないよう/dev/nullをつなぐ
   nb "${prefix}add" --filename "${title}/${title}.md" --content "$content" >&2 < /dev/null || return 1
-  nb show "${prefix}${title}/${title}.md" --path
+  nb show "${prefix}${title}/${title}.md" --path < /dev/null
 }
 
 # 全notebookのノートをrgで検索させ、選ばれたヒット行のノートをnbの識別子
@@ -231,7 +235,7 @@ _nb_pick_note() {
   shift
 
   local nb_root
-  nb_root=$(nb notebooks --paths | head -1)
+  nb_root=$(nb notebooks --paths < /dev/null | head -1)
   if [ -z "$nb_root" ]; then
     echo "Error: No notebooks found" >&2
     return 1
@@ -240,7 +244,7 @@ _nb_pick_note() {
 
   local -a books=()
   local path
-  while IFS= read -r path; do books+=("$(basename "$path")"); done < <(nb notebooks --paths)
+  while IFS= read -r path; do books+=("$(basename "$path")"); done < <(nb notebooks --paths < /dev/null)
 
   # 本文検索だけだと、ファイル名が本文に出てこないノート(連番ファイル名等)に辿り着けない。
   # ファイル名一致を:1:の行として先に並べ、本文ヒットと同じ「パス:行番号:内容」の形に揃える
@@ -278,7 +282,7 @@ nbmd() {
   id=$(_nb_pick_note "mdrollでプレビュー" "$@") || return
   [ -n "$id" ] || return
   # mdrollはnbの識別子を解釈しないので、実ファイルのパスに直してから渡す
-  path=$(nb show "$id" --path) || return 1
+  path=$(nb show "$id" --path < /dev/null) || return 1
   mdroll --watch "$path"
 }
 
@@ -291,7 +295,7 @@ nbsum() {
 
   local note_id="$1"
   local path note_dir url
-  path=$(nb show "$note_id" --path) || return 1
+  path=$(nb show "$note_id" --path < /dev/null) || return 1
   note_dir=$(dirname "$path")
   url=$(grep -oE 'https?://[^)]+' "$path" | head -1)
 
