@@ -1,6 +1,7 @@
 # Slidev(発表資料) チートシート
 
-Markdownで書いてブラウザで発表するスライドツール。資料は`~/slides/decks/<日付>-<スラッグ>/slides.md`に置く。
+Markdownで書いてブラウザで発表するスライドツール。資料は`~/slides/decks/<公開区分>/<日付>-<スラッグ>/slides.md`に置く。
+`~/slides`は公開リポジトリなので、業務資料は`decks/private/`(コミット対象外)、公開資料は`decks/public/`に置く。
 
 `~/slides`の`package.json`と`node_modules`は`dotfiles/slidev`へのシンボリックリンクで、
 Slidev本体・テーマ・playwright(書き出し用)はここに1セットだけ入っている。デッキを増やしても`npm install`は要らない。
@@ -8,7 +9,8 @@ Slidev本体・テーマ・playwright(書き出し用)はここに1セットだ�
 ## シェル関数(`shell/aliases.sh`、要fzf)
 | コマンド | 動作 |
 |---|---|
-| `slidenew <タイトル>` | `~/slides/decks/<日付>-<スラッグ>/slides.md`をテンプレートから作ってnvimで開く |
+| `slidenew <タイトル>` | `decks/private/<日付>-<スラッグ>/slides.md`をテンプレートから作ってnvimで開く |
+| `slidenew --public <タイトル>` | 公開してよい資料として`decks/public/`配下に作る |
 | `slidedev` | デッキをあいまい検索して開発サーバを起動(ブラウザが開き、保存のたび反映される) |
 | `slideexport` | デッキと形式(pdf/pptx/png)を選んで書き出し。出力先はデッキのフォルダ内 |
 
@@ -16,9 +18,9 @@ Slidev本体・テーマ・playwright(書き出し用)はここに1セットだ�
 
 ```bash
 cd ~/slides
-npx slidev decks/2026-09-21-ekf/slides.md --open        # 開発サーバ
-npx slidev export decks/2026-09-21-ekf/slides.md \
-  --format pdf --with-clicks --output decks/2026-09-21-ekf/ekf.pdf
+npx slidev decks/private/2026-09-21-ekf/slides.md --open        # 開発サーバ
+npx slidev export decks/private/2026-09-21-ekf/slides.md \
+  --format pdf --with-clicks --output decks/private/2026-09-21-ekf/ekf.pdf
 ```
 
 `--with-clicks`を付けるとクリックアニメーションの各段階を別ページとして書き出す。`--range 1,3-5`でページを絞れる。
