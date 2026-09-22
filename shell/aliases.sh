@@ -388,17 +388,24 @@ luaci() {
 # デッキのフォルダではなく必ずこのディレクトリをカレントにして呼ぶ(依存解決がここで通る)
 SLIDES_DIR="$HOME/slides"
 
-# 新しい発表資料を ~/slides/decks/<日付>-<スラッグ>/slides.md として作り、nvimで開く
+# 新しい発表資料を ~/slides/decks/<公開区分>/<日付>-<スラッグ>/slides.md として作り、nvimで開く。
+# ~/slides は公開リポジトリなので、既定は非公開のprivate側。公開資料のときだけ --public を明示する
 slidenew() {
+  local scope=private
+  if [ "$1" = "--public" ]; then
+    scope=public
+    shift
+  fi
+
   if [ $# -lt 1 ]; then
-    echo "Usage: slidenew <タイトル>"
+    echo "Usage: slidenew [--public] <タイトル>"
     return 1
   fi
 
   local title="$*" slug dir
   # 日本語タイトルはスラッグにできないので、英数字以外を潰した結果が空なら日付だけのフォルダ名にする
   slug=$(printf '%s' "$title" | perl -pe 's/[^A-Za-z0-9]+/-/g; s/^-|-$//g; $_ = lc')
-  dir="$SLIDES_DIR/decks/$(date +%F)${slug:+-$slug}"
+  dir="$SLIDES_DIR/decks/$scope/$(date +%F)${slug:+-$slug}"
 
   if [ -e "$dir" ]; then
     echo "Error: already exists: $dir"
@@ -423,9 +430,12 @@ _slide_pick_deck() {
     return 1
   fi
 
-  # フォルダ名が日付始まりなので、逆順に並べると新しいデッキが上に来る
-  rel=$(cd "$SLIDES_DIR/decks" && fdfind --type f '^slides\.md$' . | sed 's|^\./||' | sort -r |
-    fzf --reverse --delimiter=/ --with-nth=1 \
+  # パスは <公開区分>/<デッキ名>/slides.md。デッキ名が日付始まりなので、2列目の逆順で
+  # 新しいデッキが上に来る(1列目で並べるとpublic/privateごとに分かれてしまう)
+  # --no-ignore: ~/slides の .gitignore は decks/* を除外しているため、既定のfdだと
+  # デッキが1つも見つからない。ここではGitの追跡有無と関係なく全デッキを選ばせたい
+  rel=$(cd "$SLIDES_DIR/decks" && fdfind --no-ignore --type f '^slides\.md$' . | sed 's|^\./||' | sort -t/ -k2 -r |
+    fzf --reverse --delimiter=/ --with-nth=1,2 \
       --preview "head -40 $SLIDES_DIR/decks/{}" --header "Enter: $1") || return 1
   [ -n "$rel" ] || return 1
   printf 'decks/%s' "$rel"

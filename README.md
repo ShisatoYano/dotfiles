@@ -77,7 +77,8 @@ Git操作は `docs/git-cheatsheet.md`、Neovimの標準操作は `docs/nvim-chea
 
 - Neovimのプラグイン本体は初回起動時に `lazy.nvim` が自動インストールします
 - LSPサーバー(clangd, pyright, lua_ls)とデバッガ(codelldb, debugpy)は初回起動時に `mason.nvim` が自動インストールします
-- 発表資料は `~/slides/decks/<日付>-<タイトル>/slides.md` に置く。`~/slides` の `package.json` と
+- 発表資料は `~/slides/decks/<公開区分>/<日付>-<タイトル>/slides.md` に置く(`~/slides` は公開リポジトリで、
+  業務資料は `decks/private/` 配下に置いてコミット対象外にしている)。`~/slides` の `package.json` と
   `node_modules` は `slidev/` へのリンクなので、**依存の追加は `~/dotfiles/slidev` で `npm install <パッケージ>`** する
   (`~/slides` 側で実行するとリンクが実ファイルに置き換わる)
 - ROS 2ワークスペースでC++の補完を効かせるには `colcon build --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON` でビルドしてください

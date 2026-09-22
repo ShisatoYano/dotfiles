@@ -185,15 +185,14 @@ dotfile_links:
     dest: "{{ home_dir }}/.claude/agents"
   - src: "{{ dotfiles_dir }}/claude/CLAUDE.md"
     dest: "{{ home_dir }}/.claude/CLAUDE.md"
-  # Slidev。発表資料そのもの(~/slides/decks配下)はdotfilesの管理外に置き、
-  # ワークスペースの共有設定だけをリンクする。node_modulesはdotfiles側に実体があり、
-  # ~/slides/decks/<デッキ>/slides.md からの依存解決がこのリンク経由で通る
+  # Slidev。発表資料そのもの(~/slides)は独立したGitリポジトリなのでdotfilesの管理外に置き、
+  # 依存だけをリンクする。node_modulesはdotfiles側に実体があり、
+  # ~/slides/decks/<公開区分>/<デッキ>/slides.md からの依存解決がこのリンク経由で通る。
+  # .gitignoreは~/slides側の実ファイル(Git 2.28以降はシンボリックリンクの.gitignoreを読まない)
   - src: "{{ dotfiles_dir }}/slidev/package.json"
     dest: "{{ home_dir }}/slides/package.json"
   - src: "{{ dotfiles_dir }}/slidev/node_modules"
     dest: "{{ home_dir }}/slides/node_modules"
-  - src: "{{ dotfiles_dir }}/slidev/gitignore"
-    dest: "{{ home_dir }}/slides/.gitignore"
   # ログイン時の自動起動
   - src: "{{ dotfiles_dir }}/autostart/wezterm.desktop"
     dest: "{{ home_dir }}/.config/autostart/wezterm.desktop"
