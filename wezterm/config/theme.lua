@@ -3,7 +3,7 @@ local M = {}
 
 -- Dark theme settings
 M.dark_scheme = "Solarized Osaka"
-M.dark_opacity = 0.87
+M.dark_opacity = 0.85
 
 -- Light theme settings
 M.light_scheme = "Builtin Solarized Light"
