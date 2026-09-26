@@ -23,20 +23,44 @@ return {
         vim.cmd.colorscheme("solarized")
       end
 
-      apply_dark()
+      -- ライト/ダークの状態はWezTerm(config/theme.lua)と共有するファイルに置き、
+      -- どちらでトグルしても監視経由で両方(とClaude Code)が追従するようにする
+      local state_file = vim.fn.expand("~/.local/state/theme-mode")
+      local state_dir = vim.fs.dirname(state_file)
+      local current
 
-      local M = { is_dark = true }
+      local function read_mode()
+        local ok, lines = pcall(vim.fn.readfile, state_file)
+        return (ok and lines[1] == "light") and "light" or "dark"
+      end
 
-      function M.toggle()
-        if M.is_dark then
+      local function sync()
+        local mode = read_mode()
+        if mode == current then
+          return -- 自分の書き込みやWezTerm側の書き込みで複数回イベントが来ても再適用しない
+        end
+        current = mode
+        if mode == "light" then
           apply_light()
         else
           apply_dark()
         end
-        M.is_dark = not M.is_dark
       end
 
-      vim.keymap.set("n", "<leader>t", M.toggle, { desc = "Toggle light/dark colorscheme" })
+      sync()
+
+      vim.fn.mkdir(state_dir, "p")
+      -- ファイル単体ではなくディレクトリを監視し、置き換え(rename)で書かれても監視が外れないようにする
+      local watcher = vim.uv.new_fs_event()
+      watcher:start(state_dir, {}, vim.schedule_wrap(function(err, filename)
+        if not err and filename == vim.fs.basename(state_file) then
+          sync()
+        end
+      end))
+
+      vim.keymap.set("n", "<leader>t", function()
+        vim.fn.writefile({ current == "dark" and "light" or "dark" }, state_file)
+      end, { desc = "Toggle light/dark colorscheme (shared with WezTerm/Claude)" })
     end,
   },
   {

@@ -13,8 +13,7 @@ local KEY_TABLE_LABELS = {
 -- wezterm.onは自然に破棄されるため、多重登録を気にして登録をガードする必要はない
 -- (むしろガードすると、reload後もこのハンドラの中身が最初の版のまま固定されてしまう)
 wezterm.on("update-right-status", function(window, _)
-  local overrides = window:get_config_overrides() or {}
-  local colors = overrides.color_scheme == theme.light_scheme
+  local colors = window:effective_config().color_scheme == theme.light_scheme
     and tab_title.TAB_COLORS_LIGHT
     or tab_title.TAB_COLORS_DARK
 

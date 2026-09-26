@@ -23,7 +23,6 @@ end
 function M.setup(config)
   config.font = wezterm.font("JetBrainsMono Nerd Font Mono")
   config.font_size = 10.0
-  config.color_scheme = theme.dark_scheme
 
   register_transparent_tab_bar(config, theme.dark_scheme)
   register_transparent_tab_bar(config, theme.light_scheme)
@@ -53,8 +52,6 @@ function M.setup(config)
   }
   config.tab_bar_at_bottom = true -- タブバーを画面下部に表示
   config.tab_max_width = 40 -- タブタイトルが途中で切れないよう広めに確保
-  -- 背景を透過(GNOME/Mutterはリアルタイムのぼかしに対応していないため透過のみ)
-  config.window_background_opacity = theme.dark_opacity
   -- "Hold"だと、wezterm-sessionsが復元処理で不要になった初期タブを閉じるために
   -- 送る"exit"コマンドの後もペインが残ってしまうため、正常終了時は自動で閉じる設定にする
   config.exit_behavior = "CloseOnCleanExit"
