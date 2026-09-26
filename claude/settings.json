@@ -17,6 +17,7 @@
       "Bash(systemctl --user status *)"
     ]
   },
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -102,5 +103,5 @@
   },
   "feedbackDrafts": "off",
   "autoMemoryEnabled": false,
-  "model": "opus[1m]"
+  "theme": "dark"
 }
