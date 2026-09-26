@@ -45,7 +45,7 @@ def find_branch_switch(command: str) -> str | None:
         rest = m.group(1)
         tokens = rest.split()
         if "--" in tokens:
-            continue  # file-restore form: `git checkout -- <path>` / `<ref> -- <path>`
+            continue  # file-restore form: blocked separately by block-discard-changes.py
 
         flags = [t for t in tokens if t.startswith("-")]
         nonflags = [t for t in tokens if not t.startswith("-")]
