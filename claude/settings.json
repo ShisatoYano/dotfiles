@@ -107,5 +107,5 @@
   },
   "feedbackDrafts": "off",
   "autoMemoryEnabled": false,
-  "theme": "dark"
+  "theme": "auto"
 }
