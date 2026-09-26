@@ -193,6 +193,9 @@ dotfile_links:
     dest: "{{ home_dir }}/slides/package.json"
   - src: "{{ dotfiles_dir }}/slidev/node_modules"
     dest: "{{ home_dir }}/slides/node_modules"
+  # ログインセッションの環境変数(自動起動・Dock等どこから起動したアプリにも効く。反映は再ログイン後)
+  - src: "{{ dotfiles_dir }}/environment.d/wezterm.conf"
+    dest: "{{ home_dir }}/.config/environment.d/wezterm.conf"
   # ログイン時の自動起動
   - src: "{{ dotfiles_dir }}/autostart/wezterm.desktop"
     dest: "{{ home_dir }}/.config/autostart/wezterm.desktop"
