@@ -1,6 +1,6 @@
 ---
 name: pr-workflow
-description: Use when the user wants to check on their own open pull requests (status, CI, review feedback, merge readiness) or on pull requests assigned to them for review (triage, review support, follow-up). Trigger on phrases like "PRの状況教えて", "自分のPRどうなってる", "レビュー待ちのPRある?", "アサインされてるレビュー確認して", "PRレビューして", "マージしていいか確認して". This skill only produces summaries, prioritized lists, and draft text — it never runs commands that change PR state (merge, approve/request-changes, posting comments); the user always performs those actions themselves.
+description: Use when the user wants to check on their own open pull requests (status, CI, review feedback, merge readiness) or on pull requests assigned to them for review (triage, review support, follow-up). Trigger on phrases like "PRの状況教えて", "自分のPRどうなってる", "レビュー待ちのPRある?", "アサインされてるレビュー確認して", "PRレビューして", "マージしていいか確認して". This skill only produces summaries, prioritized lists, and draft text — it never runs commands that change PR state (merge, approve/request-changes, posting comments); the user always performs those actions themselves. For a repository that has its own `pr-review` Skill (`.claude/skills/pr-review`), the actual code review is delegated to that Skill.
 ---
 
 # PR Workflow
@@ -49,6 +49,8 @@ PRの状態を変更する操作(`gh pr merge`、`gh pr review`、`gh pr comment
 ### 2. レビュー着手前の軽量ブリーフィング
 
 コードレビュー自体の生成(diff読解・観点出し・指摘文面のドラフト作成)は行わない。トークン消費に対して得られる価値が見合わないため、実際のレビューはユーザー自身が行う(gh-dashの`I`キーでのインラインコメント投稿などを利用)。ここではその前段としての軽い情報整理のみを行う。
+
+ただし、対象リポジトリに専用の`pr-review` Skill(`.claude/skills/pr-review`)がある場合は、このステップの代わりにそのSkillに委譲してコードレビューまで行う(そのリポジトリでは代行レビューをユーザーが求めているため)。
 
 対象PRごとに以下を行う。複数ある場合も逐次処理でよい(サブエージェントは立てない)。
 
