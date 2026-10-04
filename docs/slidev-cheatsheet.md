@@ -100,4 +100,10 @@ layout: two-cols    # このスライドだけのレイアウト
 ## 注意
 - フォント(Noto Sans JP等)は初回ビルド時にGoogle Fontsから取得する。オフラインで作業するならheadmatterの`fonts:`を消すか`local:`指定にする
 - **依存を足すときは`~/dotfiles/slidev`で`npm install <パッケージ>`する**。`~/slides`側で実行すると、リンクしてある`package.json`が実ファイルに置き換わってdotfilesの管理から外れる
+- Slidev 53はNode 22.12以上が必要。`node -v`が古い場合はターミナルを開き直す(nvmのdefaultはLTS)
+- 業務資料の混入は二重に止めている。`.gitignore`が`decks/*`を除外して`!decks/public/`だけを戻し、
+  `.githooks/pre-commit`が`decks/public/`以外のデッキを含むコミットを拒否する
+- **別マシンで`~/slides`をcloneしたら`git config core.hooksPath .githooks`を実行する**。clone直後はフックが効いていない
+- **`~/slides/.gitignore`をdotfilesへのシンボリックリンクにしてはいけない**。Git 2.28以降はシンボリックリンクの
+  `.gitignore`を読まないため、無視ルールが一切効かなくなる(`warning: unable to access '.gitignore'`が出る)
 - テーマを変えたい場合は、`dotfiles/slidev/package.json`にテーマを足してからheadmatterの`theme:`を書き換える
