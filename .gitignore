@@ -9,6 +9,8 @@ __pycache__/
 
 # Claude Codeが自動取得するビルトインSkillのキャッシュ(パスにorg/user UUIDを含むため公開しない)
 claude/skills/synced/
+# Claude Codeが不要になったSkillを退避させるゴミ箱
+claude/skills/.trash/
 
 # Slidevの依存(~/slides/node_modules はここへのリンク)
 slidev/node_modules/
