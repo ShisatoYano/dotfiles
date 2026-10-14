@@ -1,6 +1,6 @@
 ---
 name: dev-workflow-shared
-description: Shared steps used by genre-specific development workflow Skills (`bug-investigation-workflow`, `implementation-workflow`, and any future dev-genre Skill) before and after their genre-specific investigation/design step — repo-freshness pre-check, previous-progress check (Notion page history and daily-task-logs carryover), tiered test execution, handoff to `notion-task-workflow`, and PR draft prep. Invoked by those Skills as sub-steps; not typically triggered directly by the user.
+description: Shared steps used by genre-specific development workflow Skills (`bug-investigation-workflow`, `implementation-workflow`, and any future dev-genre Skill) before and after their genre-specific investigation/design step — repo-freshness pre-check, previous-progress check (the Notion page's latest progress section and daily-task-logs carryover), tiered test execution, handoff to `notion-task-workflow`, and PR draft prep. Invoked by those Skills as sub-steps; not typically triggered directly by the user.
 ---
 
 # Dev Workflow Shared
@@ -25,8 +25,8 @@ description: Shared steps used by genre-specific development workflow Skills (`b
 
 Notionタスク対象の場合、リポジトリの最新化確認と合わせて、ジャンル固有のステップに進む前に行う。持ち越しタスク(前回セッションで完了しなかったもの)を、初見のタスクとして扱って重複調査・手戻りを起こさないようにするため。
 
-1. 対象のNotionタスクページ全体を確認し、`notion-task-workflow`のサブワークフロー1(進捗記録)で過去に追記された内容が無いか確認する。あれば、前回までの調査・実装状況(何を確認済みか、次にやろうとしていたこと)を踏まえた上でジャンル固有のステップに進む
-2. `daily-task-logs`の直近の`daily/*.md`(`notion-task-planning`が持ち越し把握に読むのと同じ)も確認し、当該タスクについてのコンテキスト区切り時の途中経過メモがあれば参照する
+1. 対象のNotionタスクページを取得し、`notion-task-workflow`のサブワークフロー1(進捗記録)が書いた`現状`セクションを確認する。あれば、そこに書かれた確定事項・コードの状態・次にやることを踏まえた上でジャンル固有のステップに進む。旧形式(日付ごとの追記が積み重なったページ)の場合は最新の記述を優先し、古い記述は最新の記述だけでは判断できないときに限って参照する(古い記述は後で訂正されていることがあるため)
+2. `daily-task-logs`の直近の`daily/*.md`(`notion-task-planning`が持ち越し把握に読むのと同じ)のうち、当該タスクについての最新のセクションだけを参照する
 
 ## テスト実行
 
