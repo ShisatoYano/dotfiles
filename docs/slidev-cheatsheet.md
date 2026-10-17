@@ -86,6 +86,10 @@ layout: two-cols    # このスライドだけのレイアウト
 ```python {*}{maxHeight:'400px'}  # 長いコードはスクロール
 ````
 
+## 自作部品
+`~/slides/addons/slidev-addon-yano/`の部品(`<KeyMessage>`・`<Callout>`・`<Ref>`、章扉の`layout: section`)はテンプレートから作ったデッキで使える。
+使い方の見本は`~/slides/decks/public/showcase/`、使い分けのルールは`~/slides/CLAUDE.md`。
+
 ## 数式・図
 | 記法 | 動作 |
 |---|---|
