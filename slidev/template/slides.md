@@ -7,9 +7,16 @@ fonts:
   sans: Noto Sans JP
   serif: Noto Serif JP
   mono: JetBrains Mono
+  weights: '400,700,900'
+# ~/slides/addons の自作部品。Slidevはデッキのフォルダの「親」を起点に解決するため、../ は2つで ~/slides に届く
+addons:
+  - ../../addons/slidev-addon-yano
 transition: slide-left
 mdc: true
+layout: cover
+hideInToc: true
 # 記法の早見表は ~/dotfiles/docs/slidev-cheatsheet.md(nvimなら <leader>sh)
+# 構成のルールと部品の見本は ~/slides/CLAUDE.md と ~/slides/decks/public/showcase/
 ---
 
 # __TITLE__
@@ -18,39 +25,61 @@ __DATE__ / Shisato Yano
 
 ---
 
-## 目次
+## 自己紹介
 
-1. 背景
-2. 本題
-3. まとめ
+- Shisato Yano
 
----
-
-## 背景
-
-- ここに内容を書く
+<Callout label="今日のゴール" class="mt-10">
+  この発表で持ち帰ってほしいことを1文で
+</Callout>
 
 <!-- ここはプレゼンターノート(発表者ビューにだけ出る) -->
 
+<!--
+15分以上の発表では、ここに目次を置き、本編を章ごとに分ける。
+
+## 目次
+
+<Toc maxDepth="1" />
+
 ---
-layout: two-cols
+src: ./pages/01-xxx.md
 ---
 
-## 左
+pages/01-xxx.md の先頭は layout: section の章扉(# 見出し)にし、通常のスライドは ## 見出しにする。
+-->
 
-- 箇条書き
+---
 
-::right::
+## 課題
 
-## 右
+- 聴衆が抱えている困りごと
 
-- 図やコードを置く
+<KeyMessage v-click>このスライドの結論を一文で</KeyMessage>
+
+---
+
+## 解決
+
+- 提案するやり方と、なぜそのやり方なのか
+
+---
+
+## 実例
+
+- コマンドやコード、デモ
+
+---
+
+## まとめ
+
+- 冒頭の「今日のゴール」を回収する
 
 ---
 layout: center
 class: text-center
 ---
 
-# まとめ
+# ご清聴ありがとうございました
 
-ご清聴ありがとうございました
+試してほしいコマンド・リポジトリへのリンクなど、持ち帰れるものを置く
