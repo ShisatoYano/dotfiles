@@ -13,6 +13,8 @@ fonts:
 # ~/slides/addons の自作部品。Slidevはデッキのフォルダの「親」を起点に解決するため、../ は2つで ~/slides に届く
 addons:
   - ../../addons/slidev-addon-yano
+# 先読みはビルドで名前が変わる前の画像パスを使い404になるだけなので止める
+preloadImages: false
 transition: slide-left
 mdc: true
 layout: cover
