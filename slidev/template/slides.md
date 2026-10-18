@@ -1,6 +1,8 @@
 ---
 theme: default
 title: __TITLE__
+# GitHub Pages に公開するときだけ、発表直前に次の行を有効にする(既定では公開しない)
+# publish: true
 # 日本語がGoogle Fonts側の欧文フォントにフォールバックして崩れないよう、和文フォントを明示する
 # (初回のみGoogle Fontsから取得。オフラインで作るときは local: を使うか、この項目ごと消す)
 fonts:
