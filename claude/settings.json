@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/dotfiles/claude/hooks/block-branch-checkout.py"
+            "command": "python3 ~/dotfiles/claude/hooks/ask-branch-checkout.py"
           },
           {
             "type": "command",
