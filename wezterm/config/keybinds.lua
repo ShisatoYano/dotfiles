@@ -39,7 +39,31 @@ wezterm.on("update-right-status", function(window, _)
   window:set_right_status(wezterm.format(formatted))
 end)
 
+-- 直前のコマンド行とその出力をまとめてコピーする(シェル統合のOSC 133が前提)
+local function copy_last_command_output(window, pane)
+  local outputs = pane:get_semantic_zones("Output")
+  local output = outputs[#outputs]
+  if not output then
+    return
+  end
+  -- 末尾のInputは入力待ちの現在のプロンプトなので、出力より前にある最後のInputを起点にする
+  local start = output
+  for _, zone in ipairs(pane:get_semantic_zones("Input")) do
+    if zone.start_y <= output.start_y then
+      start = zone
+    end
+  end
+  -- このWezTerm(20240203)のget_text_from_regionはend_yの行を含まないため+1する
+  window:copy_to_clipboard(pane:get_text_from_region(start.start_x, start.start_y, output.end_x, output.end_y + 1))
+end
+
 function M.setup(config)
+  -- Quick Select(Ctrl+Shift+Space)の標準パターン(ハッシュ/IP/URL等)に追加する
+  config.quick_select_patterns = {
+    "[\\w./~-]+\\.\\w+:\\d+(?::\\d+)?", -- path/to/file.py:123(:45)
+    "(?:/[A-Za-z_][\\w]*){2,}", -- ROS 2トピック名・絶対パス
+  }
+
   config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 2000 }
   config.keys = {
     -- Split pane
@@ -57,7 +81,12 @@ function M.setup(config)
     -- Scroll up/down 
     { key = "u", mods = "LEADER", action = wezterm.action.ScrollByPage(-1) },
     { key = "d", mods = "LEADER", action = wezterm.action.ScrollByPage(1) },
-    
+
+    -- Jump to previous/next prompt, copy last command and its output (OSC 133)
+    { key = "[", mods = "LEADER", action = wezterm.action.ScrollToPrompt(-1) },
+    { key = "]", mods = "LEADER", action = wezterm.action.ScrollToPrompt(1) },
+    { key = "z", mods = "LEADER", action = wezterm.action_callback(copy_last_command_output) },
+
     -- Resize pane 
     { key = "r", mods = "LEADER", action = wezterm.action.ActivateKeyTable({ name = "resize_pane", one_shot = false }) },
 
