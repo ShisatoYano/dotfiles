@@ -7,6 +7,8 @@ default branch (main/master or what <remote>/HEAD points to), remote branch
 deletion (--delete/:dst/--prune), --all/--branches/--mirror, and pushes whose
 destination can't be determined (no refspec while HEAD is detached, or after
 a `cd` in the same command, where the hook's cwd is no longer the repo).
+In repos listed in DEFAULT_BRANCH_ASK_REPOS, a default-branch push asks
+instead (force push etc. stay blocked).
 
 Root cause this guards against: `git push` is outward-facing (visible to
 others, triggers CI), and a push to the default branch or a force push can't
@@ -37,6 +39,10 @@ BLOCK_GUIDANCE = (
 ASK_GUIDANCE = "git push にはユーザーの承認が必要です。 (matched: {reason})"
 
 PROTECTED_BRANCHES = {"main", "master"}
+
+# Repos (by toplevel path) where a default-branch push asks instead of blocking.
+# Not a git config key: Claude could set that itself in any repo without a visible diff.
+DEFAULT_BRANCH_ASK_REPOS = {os.path.realpath(os.path.expanduser("~/dotfiles"))}
 
 # git global options that consume the following token as their argument
 OPTS_WITH_ARG = {
@@ -179,7 +185,11 @@ def push_verdict(args: list[str], cwd: str | None) -> tuple[str, str]:
 
     hit = dests & protected
     if hit:
-        return "block", f"push to default branch ({', '.join(sorted(hit))})"
+        label = f"push to default branch ({', '.join(sorted(hit))})"
+        toplevel = git_out(cwd, "rev-parse", "--show-toplevel") if cwd else ""
+        if toplevel and os.path.realpath(toplevel) in DEFAULT_BRANCH_ASK_REPOS:
+            return "ask", label
+        return "block", label
     return "ask", f"push to {', '.join(sorted(dests))}"
 
 
