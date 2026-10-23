@@ -220,3 +220,7 @@ bashrc_lines:
     line: "source {{ dotfiles_dir | replace(home_dir, '~') }}/shell/aliases.sh"
   - regexp: "starship init bash"
     line: 'eval "$(starship init bash)"'
+  # starshipがPS1を作り直してWezTermシェル統合のOSC 133の目印を消すのを防ぐ(starship initより後に置く)
+  # 旧版の1行(__wezterm_semantic_precmdを直接並べ替えていた)も置き換えられるようregexpで両方拾う
+  - regexp: '__wezterm_semantic_precmd|shell/wezterm-integration\.sh'
+    line: "source {{ dotfiles_dir | replace(home_dir, '~') }}/shell/wezterm-integration.sh"
