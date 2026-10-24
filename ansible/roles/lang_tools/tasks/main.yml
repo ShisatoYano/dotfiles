@@ -110,6 +110,13 @@
   args:
     creates: "{{ home_dir }}/.fzf/bin/fzf"
 
+# ~/.fzf/binは.bashrc経由でしかPATHに入らず、WezTermから直接起動したコマンド(gh dash等)では見つからない
+- name: fzfを~/.local/binからリンクする
+  ansible.builtin.file:
+    src: "{{ home_dir }}/.fzf/bin/fzf"
+    dest: "{{ home_dir }}/.local/bin/fzf"
+    state: link
+
 - name: starshipを入れる # ユーザー領域に入れるのでsudo不要
   ansible.builtin.shell: |
     curl -sS https://starship.rs/install.sh | sh -s -- -y -b "{{ home_dir }}/.local/bin"
