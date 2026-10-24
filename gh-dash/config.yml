@@ -1,6 +1,8 @@
 prSections:
   - title: Needs My Review
     filters: is:open review-requested:@me
+  - title: Changes Requested by Me
+    filters: is:open reviewed-by:@me -author:@me -review-requested:@me review:changes_requested
   - title: My Pull Requests
     filters: is:open author:@me
   - title: Contributions to My Repos
