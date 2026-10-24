@@ -33,7 +33,17 @@ end
 function M.setup(config)
   config.keys = config.keys or {}
   table.insert(config.keys, { key = "G", mods = "LEADER|SHIFT", action = open_command({ "lazygit" }) })
-  table.insert(config.keys, { key = "P", mods = "LEADER|SHIFT", action = open_command({ "gh", "dash" }) })
+  -- gh dashは起動したリポジトリにPRを自動で絞り込み、その設定は全体で1つしかないため、
+  -- サブモジュール構成ではリポジトリ外($HOME)で起動してサブモジュール側のPRも出す
+  table.insert(config.keys, {
+    key = "P",
+    mods = "LEADER|SHIFT",
+    action = open_command({
+      "sh",
+      "-c",
+      'top=$(git rev-parse --show-toplevel 2>/dev/null) && [ -f "$top/.gitmodules" ] && cd "$HOME"; exec gh dash',
+    }),
+  })
   table.insert(config.keys, { key = "e", mods = "LEADER", action = wezterm.action_callback(open_scrollback_in_nvim) })
 end
 
