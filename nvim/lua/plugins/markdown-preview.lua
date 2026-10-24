@@ -1,14 +1,14 @@
 return {
   "selimacerbas/markdown-preview.nvim",
-  dependencies = { "selimacerbas/live-server.nvim" },
+  dependencies = { "selimacerbas/kitehost.nvim" },
   ft = { "markdown" },
   config = function()
-    require("markdown_preview").setup({
+    require("mdkite").setup({
       instance_mode = "takeover",
       open_browser = true,
       default_theme = "dark",
     })
-    vim.keymap.set("n", "<leader>mb", "<cmd>MarkdownPreview<CR>", { desc = "Open markdown preview in browser" })
+    vim.keymap.set("n", "<leader>mb", "<cmd>MdKite start<CR>", { desc = "Open markdown preview in browser" })
 
     -- mdrollはKittyグラフィックスで描画するため、nvimの:terminalではなくWezTermのペインで開く
     vim.keymap.set("n", "<leader>mp", function()
