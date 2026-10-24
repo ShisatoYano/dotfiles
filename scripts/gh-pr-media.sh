@@ -37,6 +37,8 @@ while true; do
 
   case "$content_type" in
     image/*)
+      # fzf終了後の画面には前回の画像とreadのプロンプト末尾のカーソル位置が残り、そこから描かれてずれる
+      clear -x
       wezterm imgcat "$tmp"
       read -r -n 1 -s -p "(Enterで一覧に戻ります)"
       ;;
