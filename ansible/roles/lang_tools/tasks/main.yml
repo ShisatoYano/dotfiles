@@ -123,12 +123,27 @@
   args:
     creates: "{{ home_dir }}/.local/bin/starship"
 
+# tabctl installはブラウザの設定ディレクトリでブラウザの有無を判定し、無ければ失敗する。
+# Chromeはこのplaybookの管理外で、一度起動するまでディレクトリができない
+- name: Chromeの設定ディレクトリがあるか確認する
+  ansible.builtin.stat:
+    path: "{{ home_dir }}/.config/google-chrome"
+  register: chrome_config
+
 # tabctl本体はrelease_bins(user_files)で~/.local/binに配置済み。
 # ここで書くマニフェストにはmediatorの絶対パスが載るので、置き場所を変えたら登録し直す
 - name: tabctlのネイティブメッセージングホストを登録する
   ansible.builtin.command: "{{ home_dir }}/.local/bin/tabctl install"
   args:
     creates: "{{ home_dir }}/.config/google-chrome/NativeMessagingHosts/tabctl_mediator.json"
+  when: chrome_config.stat.exists
+
+- name: tabctlを登録できなかったことを知らせる
+  ansible.builtin.debug:
+    msg: >-
+      ~/.config/google-chrome が無いため、tabctlのネイティブメッセージングホストを登録していません。
+      Chromeを一度起動してから再実行してください。
+  when: not chrome_config.stat.exists
 
 - name: ghの拡張を入れる
   ansible.builtin.command: gh extension install {{ item.repo }}

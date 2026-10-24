@@ -1,0 +1,79 @@
+name: setup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ansible/**"
+      - "scripts/setup.sh"
+      - ".github/workflows/setup.yml"
+  pull_request:
+    paths:
+      - "ansible/**"
+      - "scripts/setup.sh"
+      - ".github/workflows/setup.yml"
+  # ツールの多くは上流のlatestを取りに行くので、こちらが何も変えなくても壊れうる
+  schedule:
+    - cron: "0 21 * * 0" # 毎週月曜6:00(JST)
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-24.04
+    # ランナーにはgh/go/node/docker等が最初から入っていて導入漏れが隠れるので、素のイメージで流す
+    container: ubuntu:24.04
+    timeout-minutes: 60
+    env:
+      SETUP_USER: tester
+    # 明示しないとpipefailが付かず、teeの後ろでsetup.shの失敗が握りつぶされる
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # 素のUbuntuデスクトップに最初から入っているもの(gitはREADMEのclone手順で入る前提)だけを足す
+      - name: Prepare a desktop-like base
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update
+          apt-get install -y sudo git ca-certificates tzdata
+
+      - uses: actions/checkout@v4
+
+      # playbookは$HOME配下をroot所有にしないよう一般ユーザーで流す前提なので、
+      # パスワードなしsudoが使える一般ユーザーを用意する
+      - name: Create a non-root user
+        run: |
+          useradd -m -s /bin/bash "$SETUP_USER"
+          echo "$SETUP_USER ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$SETUP_USER"
+          chown -R "$SETUP_USER:" "$GITHUB_WORKSPACE"
+
+      # gh extension installはGitHubへの認証を要求する
+      - name: Run setup.sh (fresh install)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: sudo -u "$SETUP_USER" -H --preserve-env=GH_TOKEN ./scripts/setup.sh
+
+      - name: Run setup.sh again (idempotency)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sudo -u "$SETUP_USER" -H --preserve-env=GH_TOKEN ./scripts/setup.sh | tee second-run.log
+          grep -Eq 'localhost +: .*changed=0 ' second-run.log
+
+      - name: Smoke test
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sudo -u "$SETUP_USER" -H --preserve-env=GH_TOKEN bash -c '
+            set -euo pipefail
+            export PATH="$HOME/.local/bin:$HOME/go/bin:$PATH"
+            . "$HOME/.nvm/nvm.sh"
+            for cmd in nvim tree-sitter stylua ghq lazygit gibo mdroll \
+                       wezterm gh docker rg fdfind delta jq node npm git-cz claude \
+                       fzf starship nb tabctl buku ccsession; do
+              command -v "$cmd" > /dev/null || { echo "missing: $cmd"; exit 1; }
+            done
+            nvim --version | head -n 1
+            gh extension list | grep -q gh-dash
+          '
