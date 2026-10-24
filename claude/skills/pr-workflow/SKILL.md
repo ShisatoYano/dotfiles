@@ -1,77 +1,62 @@
 ---
 name: pr-workflow
-description: Use when the user wants to check on their own open pull requests (status, CI, review feedback, merge readiness) or on pull requests assigned to them for review (triage, review support, follow-up). Trigger on phrases like "PRの状況教えて", "自分のPRどうなってる", "レビュー待ちのPRある?", "アサインされてるレビュー確認して", "PRレビューして", "マージしていいか確認して". This skill only produces summaries, prioritized lists, and draft text — it never runs commands that change PR state (merge, approve/request-changes, posting comments); the user always performs those actions themselves. For a repository that has its own `pr-review` Skill (`.claude/skills/pr-review`), the actual code review is delegated to that Skill.
+description: Use when the user wants to check on their own open pull requests (status, CI, review feedback, merge readiness) or to handle pull requests assigned to them for review (triage, code review, re-review follow-up). Trigger on phrases like "PRの状況教えて", "自分のPRどうなってる", "レビュー待ちのPRある?", "アサインされてるレビュー確認して", "PRレビューして", "マージしていいか確認して". Code review runs in one subagent per PR and returns only must-fix findings (with reason and fix) and premise questions as ready-to-post draft comments. This skill never changes PR state (merge, approve/request-changes, posting comments); the user always performs those actions themselves. For a repository that has its own `pr-review` Skill (`.claude/skills/pr-review`), the code review is delegated to that Skill.
 ---
 
 # PR Workflow
 
-このdotfilesの `prs` エイリアス(`shell/aliases.sh`)は `gh search prs --author @me` / `--review-requested @me` で自分のPRと担当レビューを横断的に一覧表示する。このSkillはその発展形で、状況ごとの分類・優先度整理・下調べを行う。
+このdotfilesの`prs`エイリアス(`shell/aliases.sh`)の発展形として、自分のPRと担当レビューの分類・優先度整理・レビュー実施・下書き作成を行う。一覧・優先度整理は`pr-task-planning`に委譲し、リポジトリ専用の`pr-review` Skillがあればコードレビューはそちらに委譲する。
 
-PRの状態を変更する操作(`gh pr merge`、`gh pr review`、`gh pr comment`)はhook(`claude/hooks/block-pr-write-actions.py`)でシステム的にブロックされている。このSkillが行うのは判断材料の整理と下書き作成までであり、実際の操作は必ずユーザー自身が行う。
+## 前提
 
-実際の確認・支援作業(`gh`呼び出し・diff閲覧・下書き作成など)は、このセッション内で直接行う。
+- PRの状態を変更する操作(`gh pr merge`/`review`/`comment`、およびそれと同等の`gh api`の書き込み・GraphQL mutation)はhook(`claude/hooks/block-pr-write-actions.py`)でブロックされている。行うのは判断材料の整理と下書き作成までで、投稿・approve・マージは必ずユーザー自身が行う
+- `gh`の取得方法(`gh search prs`と`gh pr view`の使い分け、`for`ループ禁止、`--jq`での圧縮)は`pr-task-planning`の「前提」に従う
+- 未解決のレビュースレッドと自分の最新レビュー時点のコミットは`gh pr view`では取れないため、以下のGraphQLで取得する(以降「レビュー状態クエリ」と呼ぶ)
 
-ユーザーの要求に応じて対象を決める。両方確認したい場合や特に指定がなくこのSkillを起動した場合は「自分が出したPRのワークフロー」→「自分にアサインされたレビューのワークフロー」の順に両方実行し、どちらか一方だけを指定した場合(「自分のPRの状況教えて」「レビュー待ちのPRある?」、特定PR1件の指定なども含む)は該当する方だけを実行する。
+  ```bash
+  gh api graphql -F owner=<owner> -F name=<repo> -F number=<number> -f query='query($owner:String!,$name:String!,$number:Int!){viewer{login} repository(owner:$owner,name:$name){pullRequest(number:$number){headRefOid latestReviews(first:50){nodes{author{login} state commit{oid}}} reviewThreads(first:100){nodes{isResolved isOutdated path line comments(first:1){nodes{author{login} body}}}}}}}' --jq '.data.viewer.login as $me | .data.repository.pullRequest | {head:.headRefOid, myReview:([.latestReviews.nodes[] | select(.author.login == $me) | {state, commit:.commit.oid}] | first), openThreads:[.reviewThreads.nodes[] | select(.isResolved | not) | {by:.comments.nodes[0].author.login, path, line, isOutdated, body:.comments.nodes[0].body[:120]}]}'
+  ```
 
-## 共通の使い方
+- 対象の決め方: 特に指定が無ければ「自分が出したPR」→「自分にアサインされたレビュー」の順に両方実行する。一方だけ・特定PR1件の指定ならその部分だけ実行する
 
-`gh search prs` は複数リポジトリを横断して検索できる。フィルタとして以下が使える。
+## 自分が出したPR
 
-- `--checks {pending|success|failure}` — CI状況
-- `--review {none|required|approved|changes_requested}` — レビュー状況
-- `--draft` — draft PRの絞り込み
-- `--sort updated --order asc` — 更新が古い順(=放置されているもの)に並べる
+1. 一覧・優先度整理: `pr-task-planning`の「自分が出したPRの一覧・優先度整理」を実行する
+2. レビューコメント対応支援: 対象PRにレビュー状態クエリを実行し、`openThreads`と`gh pr view --json reviews,comments`の指摘をファイル/観点ごとにまとめ、それぞれ「何を指摘されているか」「対応方針案」「返信文の下書き」を提示する
+3. マージ可否チェック: `gh pr view --json reviewDecision,statusCheckRollup,mergeStateStatus,latestReviews,comments`とレビュー状態クエリの結果を`references/merge-checklist.md`の観点に照らし、結論(マージ可能 / 要対応: 理由)を提示する
 
-`--json` で取れるのは `assignees, author, authorAssociation, body, closedAt, commentsCount, createdAt, id, isDraft, isLocked, isPullRequest, labels, number, repository, state, title, updatedAt, url` まで。CI詳細・レビュー内容・diffサイズ・マージ可否などPR個別の深い情報は含まれないので、対象PRを絞り込んだ後に `gh pr view <number> --repo <owner/repo> --json ...` で個別取得する。
+## 自分にアサインされたレビュー
 
-複数PRについてこれを行う場合、`for`ループでシェル側にまとめて実行させない。`gh pr view`単体はClaude Codeのネイティブな読み取り専用コマンドとして自動的に承認されるが、`for`ループで包むとループ構文(変数展開・複数文)自体が承認対象になり、中身が全てread-onlyでも毎回確認を求められてしまう。PRごとに個別のBashコマンドとして(可能なら1メッセージ内で並列に)実行する。
+### 1. 一覧・深さ判定
 
-## 自分が出したPRのワークフロー
+`pr-task-planning`の「自分にアサインされたレビューの一覧・優先度整理」を実行し、取得したサイズ・変更ファイルから`references/review-criteria.md`の「深さの判定」で各PRの深さを決める。一覧と深さを提示し、どのPRをレビューするかユーザーに選んでもらう。
 
-### 1. 状況の一覧・優先度整理
+### 2. レビュー実施
 
-`pr-task-planning`の「自分が出したPRの一覧・優先度整理」を実行する。
+対象リポジトリに`pr-review` Skill(`.claude/skills/pr-review`)がある場合はそちらに委譲する。それ以外は対象PRごとに以下を行う。
 
-### 2. レビューコメントへの対応支援
-
-対象PRについて `gh pr view <number> --repo <owner/repo> --json reviews,comments,url` を取得する(インラインの行コメントも見たい場合は `gh api repos/<owner>/<repo>/pulls/<number>/comments`)。指摘をファイル/観点ごとにグルーピングして要約し、それぞれについて「何を指摘されているか」「対応方針の提案」「返信文の下書き」を提示する。**投稿は行わない。**
-
-### 3. マージ可否チェック
-
-対象PRについて `gh pr view <number> --repo <owner/repo> --json reviewDecision,statusCheckRollup,mergeStateStatus,mergeable,reviews,comments` を取得し、`references/merge-checklist.md`の観点に照らして確認し、結論(マージ可能 / まだ対応が必要:理由)を提示する。
-
-## 自分にアサインされたレビューのワークフロー
-
-### 1. レビュー待ちPRの一覧・優先度整理
-
-`pr-task-planning`の「自分にアサインされたレビューの一覧・優先度整理」を実行する。
-
-### 2. レビュー着手前の軽量ブリーフィング
-
-コードレビュー自体の生成(diff読解・観点出し・指摘文面のドラフト作成)は行わない。トークン消費に対して得られる価値が見合わないため、実際のレビューはユーザー自身が行う(gh-dashの`I`キーでのインラインコメント投稿などを利用)。ここではその前段としての軽い情報整理のみを行う。
-
-ただし、対象リポジトリに専用の`pr-review` Skill(`.claude/skills/pr-review`)がある場合は、このステップの代わりにそのSkillに委譲してコードレビューまで行う(そのリポジトリでは代行レビューをユーザーが求めているため)。
-
-対象PRごとに以下を行う。複数ある場合も逐次処理でよい(サブエージェントは立てない)。
-
-1. `body`(`gh pr view <number> --repo <owner/repo> --json body` などで取得済みのもの)に、画像・動画の添付を示すパターン(`https://github.com/user-attachments/assets/...` へのリンクや、Markdownの画像記法 `![...](...)`)が含まれていないか確認する。含まれていた場合は、その内容を読み取ることはできない(特に動画は視聴できない)ので、代わりに `gh pr view <number> --repo <owner/repo> --web` でPRページをブラウザで自動的に開き、「添付画像/動画があるためブラウザを開きました。内容をご確認ください」とユーザーに伝える
-2. `gh pr view <number> --repo <owner/repo> --json reviews,comments,additions,deletions` を取得し、diffサイズ・既存レビュー状況(承認/変更要求/コメントのみ)・未解決コメントの有無を数行で要約して提示する(指摘内容の生成や下書き作成はしない)
+1. 添付確認: `body`に画像・動画の添付(`https://github.com/user-attachments/assets/...`や`![...](...)`)があれば、Claudeは内容を確認できないため`gh pr view <number> --repo <owner/repo> --web`でブラウザを開き、「添付画像/動画があるためブラウザを開きました。内容をご確認ください」と伝える
+2. ローカルクローンの特定: `ghq list -p -e github.com/<owner>/<repo>`で探す(無ければdiffのみでレビューし、未確認に記録させる)
+3. サブエージェントへの委譲: diffや周辺コードをメインのコンテキストに載せないよう、1PRにつき1つの`general-purpose`サブエージェントでレビューする。モデルは`references/review-criteria.md`の深さの表に従って指定する。複数PRは1メッセージで並列に起動する(同時3件まで)。ブリーフには以下を含める
+   - 対象(`<owner/repo>#<number>`)、深さ、ローカルクローンのパス(または「なし」)
+   - `~/.claude/skills/pr-workflow/references/review-criteria.md`を読み、その観点・出力ルール・出力形式に厳密に従うこと
+   - diffは`gh pr diff`、既存指摘は上記のレビュー状態クエリと`gh pr view --json body,reviews,comments`で取得すること
+   - ローカルクローンは現在のチェックアウトのまま読むだけ(grep・ファイル閲覧)にし、ブランチの切り替えや変更をしないこと(呼び出し元はベース側にあるので現状のチェックアウトで足りる)
+   - 見出しのタイトルはPRのタイトルを翻訳・要約せずそのまま書くこと(一覧でPRを見分けられなくなるため)
+   - 返答は出力形式のブロックのみとし、調査過程やdiffの引用を含めないこと
+4. 結果の提示: 返ってきたブロックをそのまま並べ、Must・質問があるものを先に出す。【投稿用】の投稿はユーザーが行う(gh-dashの`I`キー等)
 
 ### 3. レビュー後のフォロー
 
-レビュー済みのPRについて `gh pr view <number> --repo <owner/repo> --json reviews,commits,updatedAt` を確認し、レビュー後に新しいコミットが積まれているか・指摘内容が実際に反映されているかを見て、再レビューが必要そうなものを一覧化して提示する。
+1. 自分がレビュー済みで、まだ開いているPRを取得する(レビューを提出すると`--review-requested`の一覧からは外れるため、別に検索する)
+
+   ```bash
+   gh search prs --reviewed-by @me --state open -- -author:@me
+   ```
+
+2. 各PRにレビュー状態クエリを実行し、`myReview.commit`が`head`と異なる(レビュー後にコミットが積まれた)もの、または自分の`openThreads`が残っているものを再レビュー候補として提示する
+3. ユーザーが再レビューを選んだPRは、「レビュー実施」と同じ手順でサブエージェントに委譲する。その際、対象を`gh api -H 'Accept: application/vnd.github.diff' repos/<owner>/<repo>/compare/<myReview.commit>...<head>`の差分に限定し、自分の未解決スレッドの指摘が反映されたかを優先して確認させる
 
 ### 4. 確認漏れの再チェック
 
-一覧にあったPRを一通り確認し終えたら、最後にステップ1と同じクエリをもう一度実行する。
-
-```bash
-gh search prs --review-requested @me --state open --sort updated --order asc
-```
-
-対応済みのPRが一覧から消えていることを確認しつつ、確認作業をしている間に新しく追加されたレビュー依頼が無いかをチェックする。新規のものが見つかった場合はユーザーに知らせ、続けて確認するか尋ねる。
-
-## 補足
-
-- `gh` CLIが必要(このdotfilesの `scripts/setup.sh` でインストール済み)
-- 複数リポジトリを横断する場合は `gh search prs`、特定PRの詳細は `gh pr view --repo <owner/repo> <number>` を使い分ける
+最後に「一覧・深さ判定」と同じ検索をもう一度実行し、対応済みのPRが消えていること、作業中に新しいレビュー依頼が増えていないかを確認する。新規があればユーザーに知らせ、続けて確認するか尋ねる。
