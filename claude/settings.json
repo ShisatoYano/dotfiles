@@ -2,12 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(command -v *)",
+      "Bash(gh api -H 'Accept: application/vnd.github.diff' repos/*/compare/*)",
+      "Bash(gh api graphql *)",
       "Bash(gh api repos/*/pulls/*/comments)",
       "Bash(gh api repos/*/pulls/*/commits)",
       "Bash(gh pr diff *)",
       "Bash(gh pr view *)",
       "Bash(gh search prs *)",
       "Bash(git fetch *)",
+      "Bash(ghq list *)",
       "Bash(git log *)",
       "Bash(nb help *)",
       "Bash(nb ls *)",
