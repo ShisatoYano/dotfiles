@@ -16,7 +16,7 @@ git clone git@github.com:あなたのユーザー名/dotfiles.git ~/dotfiles
 - ripgrep, fd-find, fzf
 - gh(gh-dash拡張含む), ghq, git-cz, lazygit, git-delta, gibo
 - Go(ccsession等のビルド用)、ccsession
-- Docker(公式apt repo経由)、`docker`グループへの追加
+- Docker(公式apt repo経由)、`docker`グループへの追加、lazydocker
 - starship(プロンプト)
 - jq、Claude Codeのstatusline(モデル名/コンテキスト使用率/利用制限%を表示)
 - Claude Codeのskills(`claude/skills/` を `~/.claude/skills` にリンク。日々の定型作業をSkill化して蓄積していく)
@@ -49,7 +49,7 @@ git clone git@github.com:あなたのユーザー名/dotfiles.git ~/dotfiles
 
 - 署名鍵の取得が `changed` と出ることがある。`get_url` はmtimeベースの条件付きGETで
   判定し、dry-runでは中身を比較できないため。本実行では内容を比較するので `ok` になる
-- tar.gz で配布されるツール(nvim/lazygit/gibo/mdroll)の展開は表示されない。
+- tar.gz で配布されるツール(nvim/lazygit/lazydocker/gibo/mdroll)の展開は表示されない。
   `unarchive` が tar をcheckモードで扱えずスキップするため。本実行では正常に入る
 - まっさらなマシンでは途中で止まる。リポジトリ登録が実際には行われないので、
   直後の `apt install` がパッケージを見つけられない。素のマシンではそのまま本実行する
