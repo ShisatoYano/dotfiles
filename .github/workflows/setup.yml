@@ -69,7 +69,7 @@ jobs:
             set -euo pipefail
             export PATH="$HOME/.local/bin:$HOME/go/bin:$PATH"
             . "$HOME/.nvm/nvm.sh"
-            for cmd in nvim tree-sitter stylua ghq lazygit gibo mdroll \
+            for cmd in nvim tree-sitter stylua ghq lazygit lazydocker gibo mdroll \
                        wezterm gh docker rg fdfind delta jq node npm git-cz claude \
                        fzf starship nb tabctl buku ccsession; do
               command -v "$cmd" > /dev/null || { echo "missing: $cmd"; exit 1; }
