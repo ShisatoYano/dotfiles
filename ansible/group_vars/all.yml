@@ -95,6 +95,11 @@ system_bins:
     url: "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_{version}_Linux_x86_64.tar.gz"
     include: [lazygit]
 
+  - name: lazydocker # Dockerコンテナ操作TUI
+    version_repo: jesseduffield/lazydocker
+    url: "https://github.com/jesseduffield/lazydocker/releases/latest/download/lazydocker_{version}_Linux_x86_64.tar.gz"
+    include: [lazydocker]
+
   - name: gibo # .gitignoreテンプレート生成CLI
     url: https://github.com/simonwhitaker/gibo/releases/latest/download/gibo_Linux_x86_64.tar.gz
     include: [gibo]
