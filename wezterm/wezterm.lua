@@ -8,6 +8,6 @@ require("config.smart-splits").setup(config) -- Ctrl+h/j/k/lでリーダー不�
 require("config.cmdpicker").setup(config)
 require("config.tab_title").setup(config)
 require("config.sessions").setup(config)
-require("config.overlay").setup(config) -- Leader+G/P/e: lazygit/gh dash/スクロールバックのnvimをズームペインで開く
+require("config.overlay").setup(config) -- Leader+G/D/P/e: lazygit/lazydocker/gh dash/スクロールバックのnvimをズームペインで開く
 
 return config

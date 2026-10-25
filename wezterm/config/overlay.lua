@@ -33,6 +33,7 @@ end
 function M.setup(config)
   config.keys = config.keys or {}
   table.insert(config.keys, { key = "G", mods = "LEADER|SHIFT", action = open_command({ "lazygit" }) })
+  table.insert(config.keys, { key = "D", mods = "LEADER|SHIFT", action = open_command({ "lazydocker" }) })
   -- gh dashは起動したリポジトリにPRを自動で絞り込み、その設定は全体で1つしかないため、
   -- サブモジュール構成ではリポジトリ外($HOME)で起動してサブモジュール側のPRも出す
   table.insert(config.keys, {
