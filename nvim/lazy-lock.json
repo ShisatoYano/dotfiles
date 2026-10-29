@@ -28,7 +28,7 @@
   "nvim-treesitter": { "branch": "main", "commit": "29212d826054bb2948fa9d3a99eca9bf6a050eb2" },
   "nvim-web-devicons": { "branch": "master", "commit": "ec309a0eaff6ea967e58c275996155ab5c16938d" },
   "plenary.nvim": { "branch": "master", "commit": "74b06c6c75e4eeb3108ec01852001636d85a932b" },
-  "smart-splits.nvim": { "branch": "master", "commit": "dd40c3a03ef71bcdf77fb4b14668cc1320293f48" },
+  "smart-splits.nvim": { "branch": "master", "commit": "ac11b8ed1efe7cca7bb3eae9c588163c926c6894" },
   "snacks.nvim": { "branch": "main", "commit": "882c996cf28183f4d63640de0b4c02ec886d01f2" },
   "solarized": { "branch": "main", "commit": "a8085e29883ddcfb39bd46197eb32ef00df05368" },
   "solarized-osaka.nvim": { "branch": "main", "commit": "a21176efde15fab21fabda0bf2ba123ed6d7332d" },
