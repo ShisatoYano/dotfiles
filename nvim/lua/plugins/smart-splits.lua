@@ -1,5 +1,7 @@
 return {
   "mrjones2014/smart-splits.nvim",
+  -- v3でWezTermへのIS_NVIM通知が別backendプラグインに分離された(backend-weztermは不安定版のため見送り)
+  tag = "v2.1.1-final",
   lazy = false,
   opts = {
     ignored_buftypes = { "nofile", "quickfix", "prompt" },
