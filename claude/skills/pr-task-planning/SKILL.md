@@ -44,4 +44,16 @@ description: Use as a sub-step of `daily-task-workflow`'s candidate-selection st
    gh api graphql -F owner=<owner> -F name=<repo> -F number=<number> -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){additions deletions files(first:100){nodes{path changeType additions deletions}}}}}' --jq '.data.repository.pullRequest | {additions, deletions, added:[.files.nodes[] | select(.changeType == "ADDED") | .path], modified:[.files.nodes[] | select(.changeType != "ADDED") | {path, lines:(.additions + .deletions)}]}'
    ```
 
-3. 「待ち時間が長いもの」「差分が小さく着手しやすいもの」を優先候補として提示する
+3. 自分がレビュー済みで、レビュー後に動きがあったPRを取得する(レビューを送信すると1の一覧から外れ、作成者が返信・修正しても戻らないため)。1の一覧にあるものは除く
+
+   ```bash
+   gh search prs --reviewed-by @me --state open --json number,repository,title,url,updatedAt -- -author:@me
+   ```
+
+4. 3の各PRに以下を実行し、`newCommits`が`true`(レビュー後にコミットが積まれた)、`repliedThreads`が空でない(自分のスレッドに自分の最終発言より後の返信がある。resolve済みも含む)、`authorComments`が1以上(会話欄に作成者の発言がある)のいずれかに当たるものを再レビュー候補とする。どれにも当たらないもの(作成者がまだ返信していない等)は出さない
+
+   ```bash
+   gh api graphql -F owner=<owner> -F name=<repo> -F number=<number> -f query='query($owner:String!,$name:String!,$number:Int!){viewer{login} repository(owner:$owner,name:$name){pullRequest(number:$number){author{login} headRefOid latestReviews(first:50){nodes{author{login} commit{oid}}} reviews(last:50){nodes{author{login} submittedAt}} reviewThreads(first:100){nodes{path first:comments(first:1){nodes{author{login}}} last:comments(last:1){nodes{author{login} createdAt}}}} comments(last:50){nodes{author{login} createdAt}}}}}' --jq '.data.viewer.login as $me | .data.repository.pullRequest | .author.login as $author | ([.reviews.nodes[] | select(.author.login == $me) | .submittedAt] + [.comments.nodes[] | select(.author.login == $me) | .createdAt] | max) as $myLast | {newCommits:(([.latestReviews.nodes[] | select(.author.login == $me) | .commit.oid] | first) != .headRefOid), repliedThreads:[.reviewThreads.nodes[] | select(.first.nodes[0].author.login == $me and .last.nodes[0].author.login != $me and .last.nodes[0].createdAt > $myLast) | .path], authorComments:([.comments.nodes[] | select(.author.login == $author and .createdAt > $myLast)] | length)}'
+   ```
+
+5. 「待ち時間が長いもの」「差分が小さく着手しやすいもの」を優先候補として提示し、再レビュー候補は該当理由(コミット追加/スレッド返信/会話欄の返信)を添えて別枠で並べる
