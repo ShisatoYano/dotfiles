@@ -76,6 +76,9 @@ return {
     }
 
     local function setup()
+      -- setup()がbufferline自身のColorScheme autocmd(アイコンhlのキャッシュ破棄)を実行前に消してしまい、
+      -- テーマ切り替え後にアイコンだけhlが空(透過)のまま残るため、ここで明示的に破棄する
+      require("bufferline.highlights").reset_icon_hl_cache()
       require("bufferline").setup({
         options = options,
         highlights = vim.o.background == "dark" and dark_highlights() or {},
