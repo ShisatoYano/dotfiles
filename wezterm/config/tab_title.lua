@@ -11,12 +11,12 @@ local ICONS = {
 
 -- Tab colors for dark theme 
 M.TAB_COLORS_DARK = {
-  foreground_inactive = "#f8f8f2",
-  background_inactive = "#6272a4", -- Comment(控えめだが視認できる背景)
-  foreground_active = "#282a36", -- Background(明るい背景の上の文字色に流用)
-  background_active = "#ffd700", -- 目立つ黄色
-  background_ssh_active = "#ff5555", -- Red
-  foreground_ssh_active = "#f8f8f2", -- Foreground
+  foreground_inactive = "#839395", -- base0
+  background_inactive = "#002c38", -- base02(控えめだが視認できる背景)
+  foreground_active = "#001419", -- base03(明るい背景の上の文字色に流用)
+  background_active = "#b28500", -- yellow(目立つ背景)
+  background_ssh_active = "#db302d", -- red
+  foreground_ssh_active = "#fdf6e3", -- base3
 }
 
 -- Tab colors for light theme

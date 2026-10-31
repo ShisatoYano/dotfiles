@@ -60,12 +60,6 @@ function M.setup(config)
     saturation = 1.0,
     brightness = 1.0,
   }
-  -- コピーモードの選択範囲が背景色とほぼ同化して見づらいため上書きする
-  -- (Dracula標準のselection色は背景に近すぎるため)
-  config.colors = {
-    selection_bg = "#6272a4",
-    selection_fg = "#f8f8f2",
-  }
 end
 
 return M
