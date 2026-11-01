@@ -1,6 +1,6 @@
 ---
 name: pr-workflow
-description: Use when the user wants to check on their own open pull requests (status, CI, review feedback, merge readiness) or to handle pull requests assigned to them for review (triage, code review, re-review follow-up). Trigger on phrases like "PRの状況教えて", "自分のPRどうなってる", "レビュー待ちのPRある?", "アサインされてるレビュー確認して", "PRレビューして", "マージしていいか確認して". Code review runs in one subagent per PR, keeps only must-fix findings (with reason and fix) and premise questions, and submits the result automatically as a GitHub review (request-changes / comment / approve). Replies to review comments on the user's own PRs are posted automatically once the user picks the response policy. This skill never merges; the user always merges themselves. For a repository that has its own `pr-review` Skill (`.claude/skills/pr-review`), the code review is delegated to that Skill.
+description: Use when the user wants to check on their own open pull requests (status, CI, review feedback, merge readiness) or to handle pull requests assigned to them for review (triage, code review, re-review follow-up). Unattended polling in a dedicated session is handled by `pr-watch`, which reuses this skill's steps. Trigger on phrases like "PRの状況教えて", "自分のPRどうなってる", "レビュー待ちのPRある?", "アサインされてるレビュー確認して", "PRレビューして", "マージしていいか確認して". Code review runs in one subagent per PR, keeps only must-fix findings (with reason and fix) and premise questions, and submits the result automatically as a GitHub review (request-changes / comment / approve). Replies to review comments on the user's own PRs are posted automatically once the user picks the response policy. Merges the user's own PR only when the merge check passes and the user approves the permission prompt that a hook forces on every merge. For a repository that has its own `pr-review` Skill (`.claude/skills/pr-review`), the code review is delegated to that Skill.
 ---
 
 # PR Workflow
@@ -9,7 +9,7 @@ description: Use when the user wants to check on their own open pull requests (s
 
 ## 前提
 
-- PRへの書き込みは`gh api -X POST`の`repos/<owner>/<repo>/pulls/<number>/reviews`(レビュー送信)・`pulls/<number>/comments/<id>/replies`(スレッドへの返信)・`issues/<number>/comments`(会話欄への返信)だけがhook(`claude/hooks/block-pr-write-actions.py`)で許可されている。マージ・`gh pr review`/`comment`・その他の書き込みはブロックされ、マージは必ずユーザー自身が行う
+- PRへの書き込みは`gh api -X POST`の`repos/<owner>/<repo>/pulls/<number>/reviews`(レビュー送信)・`pulls/<number>/comments/<id>/replies`(スレッドへの返信)・`issues/<number>/comments`(会話欄への返信)だけがhook(`claude/hooks/block-pr-write-actions.py`)で許可されている。マージは`gh pr merge`に`--match-head-commit <sha>`を付けた形だけが、hookの出す承認ダイアログを通して許可される(チェック後のpushが紛れ込まないよう、head固定なしやAPI経由はブロック)。`gh pr review`/`comment`・その他の書き込みはブロックされる
 - 投稿する本文はスクラッチパッドのファイルに書いてから`--input <file>`/`-F body=@<file>`で渡す(本文中の文字列がhookに誤検知されず、クォートも崩れないため)。末尾には空行を挟んで`🤖 Generated with [Claude Code](https://claude.com/claude-code)`を付ける(本文を送らない`APPROVE`を除く)
 - `gh`の取得方法(`gh search prs`と`gh pr view`の使い分け、`for`ループ禁止、`--jq`での圧縮)は`pr-task-planning`の「前提」に従う
 - 未解決のレビュースレッドと自分の最新レビュー時点のコミットは`gh pr view`では取れないため、以下のGraphQLで取得する(以降「レビュー状態クエリ」と呼ぶ)
@@ -25,6 +25,7 @@ description: Use when the user wants to check on their own open pull requests (s
 1. 一覧・優先度整理: `pr-task-planning`の「自分が出したPRの一覧・優先度整理」を実行する
 2. レビューコメント対応支援: 対象PRにレビュー状態クエリを実行し、`openThreads`と`gh pr view --json reviews,comments`の指摘をファイル/観点ごとにまとめ、それぞれ「何を指摘されているか」と対応方針案を提示し、`AskUserQuestion`で方針を選んでもらう。選ばれた方針で返信を書き、確認を挟まずに投稿する(スレッドは`openThreads`の`id`を使い`comments/<id>/replies`へ、会話欄の指摘は`issues/<number>/comments`へ)。修正のpushはユーザーが行うため、返信は「〜で対応します」の形にし、pushされていない修正を「対応しました」と書かない
 3. マージ可否チェック: `gh pr view --json reviewDecision,statusCheckRollup,mergeStateStatus,latestReviews,comments`とレビュー状態クエリの結果を`references/merge-checklist.md`の観点に照らし、結論(マージ可能 / 要対応: 理由)を提示する
+4. マージ: マージ可能なら、`gh repo view <owner/repo> --json mergeCommitAllowed,squashMergeAllowed,rebaseMergeAllowed`で許可されている方式を`--merge`→`--squash`→`--rebase`の順に選び、`gh pr merge <number> --repo <owner/repo> <方式> --match-head-commit <レビュー状態クエリのhead>`を実行する。承認はhookが出すダイアログで行うため`AskUserQuestion`は挟まない。ブランチは削除しない(`--delete-branch`を付けない)
 
 ## 自分にアサインされたレビュー
 
@@ -56,3 +57,4 @@ description: Use when the user wants to check on their own open pull requests (s
 ### 4. 確認漏れの再チェック
 
 最後に「一覧・深さ判定」と同じ検索をもう一度実行し、対応済みのPRが消えていること、作業中に新しいレビュー依頼が増えていないかを確認する。新規があればユーザーに知らせ、続けて確認するか尋ねる。
+

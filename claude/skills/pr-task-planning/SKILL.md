@@ -1,11 +1,11 @@
 ---
 name: pr-task-planning
-description: Use as a sub-step of `daily-task-workflow`'s candidate-selection step, or of `pr-workflow`'s own PR/review listing steps, to get the user's open PRs and assigned reviews needing attention today, listed and roughly prioritized. Not typically invoked directly by the user.
+description: Use as a sub-step of `pr-workflow`'s or `pr-watch`'s PR/review listing steps to get the user's open PRs and assigned reviews needing attention today, listed and roughly prioritized. Not typically invoked directly by the user.
 ---
 
 # PR Task Planning
 
-`daily-task-workflow`のサブワークフロー1、および`pr-workflow`(「自分が出したPRの一覧・優先度整理」「自分にアサインされたレビューの一覧・優先度整理」)から呼ばれる、PR対応・レビューの一覧・優先度整理のみを行うSkill。個別PRのレビュー実施・下書き作成・マージ可否チェックなどは`pr-workflow` Skillが扱う(ここでは行わない)。
+`pr-workflow`(「自分が出したPR」「自分にアサインされたレビュー」の一覧)と`pr-watch`から呼ばれる、PR対応・レビューの一覧・優先度整理のみを行うSkill。個別PRのレビュー実施・下書き作成・マージ可否チェックなどは`pr-workflow` Skillが扱う(ここでは行わない)。
 
 ## 前提
 

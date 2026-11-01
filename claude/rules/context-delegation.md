@@ -10,4 +10,4 @@
 
 ## 適用例
 
-- `daily-task-workflow`から呼ばれる`pr-task-planning`(PR状態を`reviewDecision`等の明示的な状態で分類)、`notion-task-planning`(期限/優先度による並び替え)は、いずれもSkill手順に書かれたルールの機械適用のみで完結するため、haikuへ委譲する
+- `pr-watch`から呼ばれる`pr-task-planning`(PR状態を`reviewDecision`等の明示的な状態で分類)、`daily-task-workflow`から呼ばれる`notion-task-planning`(期限/優先度による並び替え)は、いずれもSkill手順に書かれたルールの機械適用のみで完結するため、haikuへ委譲する
