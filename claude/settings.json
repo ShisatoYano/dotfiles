@@ -113,5 +113,37 @@
   },
   "feedbackDrafts": "off",
   "autoMemoryEnabled": false,
-  "theme": "auto"
+  "theme": "auto",
+  "autoMode": {
+    "environment": [
+      "### Org-wide",
+      "**Organization**: EightKnot-SW (GitHub org; this repo's remote is github.com:EightKnot-SW/ek_ws2.git)",
+      "**Cloud provider(s)**: AWS (S3 bucket contacted: prod-files-secure.s3.us-west-2.amazonaws.com)",
+      "**Repository visibility**: private (confirmed via gh for EightKnot-SW/ek_ws2)",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: CI secret references present (names only): DEB_CI_SLACK_WEBHOOK_URL, EK_APT_DEVELOP_TOKEN, GH_APP_PRIVATE_KEY — treat as credential handles, not values",
+      "**Default / protected branches**: default branch `develop`; protected branch `develop`; ruleset `approve_check` active (rulesets can protect even when classic branch-protection list is sparse)",
+      "**CI/CD deploy targets**: None configured",
+      "**Network posture**: None configured",
+      "**Host containment**: None configured — assume Claude Code runs on an ordinary developer machine with open internet",
+      "**Source control**: The trusted repo (EightKnot-SW/ek_ws2) and its origin remote only — no additional orgs configured",
+      "**Trusted internal domains**: None configured",
+      "**Trusted cloud buckets**: None configured (prod-files-secure.s3.us-west-2.amazonaws.com was contacted but carries `prod` in its name — treat as a Sensitive remote target, not a trusted bucket)",
+      "**Key internal services**: 192.168.11.2 (local/internal host contacted repeatedly from this project; likely a robot/dev board on the local network) — unverified identity beyond IP, treat as internal-network only",
+      "**Internal package registry**: None configured",
+      "**Sensitive data locations & audiences**: any file or store holding personal data, confidential business data, credentials, regulated data, or similarly sensitive material; preserve exact handles when known and share only with audiences cleared at the [named+specifics] bar",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: any namespace, host, or container whose name carries `prod` or `production` as a whole word or name segment — includes prod-files-secure.s3.us-west-2.amazonaws.com (contacted from this project)",
+      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic (k8s namespaces seen in this project — calibration, draft, hooks, idle, import, launch2, mec1, pytest — do not carry prod/production markers and are not elevated)",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment",
+      "### User-specific",
+      "**Primary use of Claude Code**: software development (ROS 2 / embedded Linux vehicle-control software, per repo README and CLAUDE.md)",
+      "**Trusted repo**: /home/yano/ek_ws2 (private, remote github.com:EightKnot-SW/ek_ws2.git) — confidential material is fine here; content ported from elsewhere is not this repo's own work",
+      "**Org-specific CLIs**: None configured (project-specific tools observed: nb, colcon, gz — ROS 2 / Gazebo ecosystem tools, not confirmed as org-proprietary)"
+    ],
+    "soft_deny": [
+      "$defaults",
+      "Bash(aws s3 rm:*) — scoped to prod-files-secure.s3.us-west-2.amazonaws.com (prod-named bucket contacted from this project)"
+    ]
+  }
 }
