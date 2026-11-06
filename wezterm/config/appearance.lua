@@ -46,10 +46,6 @@ function M.setup(config)
   -- fancy tab bar(ネイティブの×ボタン/タブ境界線)を無効化し、
   -- tab_title.luaの丸cap形状だけでタブを表現する(retro描画)
   config.use_fancy_tab_bar = false
-  config.window_frame = {
-    inactive_titlebar_bg = "none",
-    active_titlebar_bg = "none",
-  }
   config.tab_bar_at_bottom = true -- タブバーを画面下部に表示
   config.tab_max_width = 40 -- タブタイトルが途中で切れないよう広めに確保
   -- "Hold"だと、wezterm-sessionsが復元処理で不要になった初期タブを閉じるために
