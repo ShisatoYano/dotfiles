@@ -10,7 +10,7 @@ description: Use when the user wants to check on their own open pull requests (s
 ## 前提
 
 - PRへの書き込みは`gh api -X POST`の`repos/<owner>/<repo>/pulls/<number>/reviews`(レビュー送信)・`pulls/<number>/comments/<id>/replies`(スレッドへの返信)・`issues/<number>/comments`(会話欄への返信)だけがhook(`claude/hooks/block-pr-write-actions.py`)で許可されている。マージは`gh pr merge`に`--match-head-commit <sha>`を付けた形だけが、hookの出す承認ダイアログを通して許可される(チェック後のpushが紛れ込まないよう、head固定なしやAPI経由はブロック)。`gh pr review`/`comment`・その他の書き込みはブロックされる
-- 投稿する本文はスクラッチパッドのファイルに書いてから`--input <file>`/`-F body=@<file>`で渡す(本文中の文字列がhookに誤検知されず、クォートも崩れないため)。末尾には空行を挟んで`🤖 Generated with [Claude Code](https://claude.com/claude-code)`を付ける(本文を送らない`APPROVE`を除く)
+- 投稿する本文はスクラッチパッドのファイルに書いてから`--input <file>`/`-F body=@<file>`で渡す(本文中の文字列がhookに誤検知されず、クォートも崩れないため)。末尾には空行を挟んで`🤖 Generated with [Claude Code](https://claude.com/claude-code)`を付ける(本文を送らない`APPROVE`を除く)。ファイルはWriteツールで作り、書き込みの`gh api -X POST ...`は`cd`・`&&`・`;`・`|`とつながず単独で実行する(settings.jsonの許可ルールはコマンド全体で照合されるため、つなぐと一致せずauto modeで拒否される。hookもこの形を止める)
 - `gh`の取得方法(`gh search prs`と`gh pr view`の使い分け、`for`ループ禁止、`--jq`での圧縮)は`pr-task-planning`の「前提」に従う
 - 未解決のレビュースレッドと自分の最新レビュー時点のコミットは`gh pr view`では取れないため、以下のGraphQLで取得する(以降「レビュー状態クエリ」と呼ぶ)
 

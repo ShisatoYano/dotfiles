@@ -28,7 +28,13 @@ GUIDANCE = (
     "それ以外の操作は、判断材料を提示してユーザー自身に行ってもらってください。"
 )
 
-MERGE_ASK = "PRのマージにはユーザーの承認が必要です。マージ可否チェックの結果を確認してから承認してください。 (matched: {reason})"
+CHAINED_GUIDANCE = (
+    "許可されたPR書き込み(gh api -X POST の reviews / replies / issues comments)が他のコマンドとつながっています。 "
+    "settings.jsonの許可ルールはコマンド全体の形で照合されるため、つないだ形は一致せずauto modeの分類器に拒否されます。"
+    "本文ファイルはWriteツールで作成し、gh api -X POST ... の1コマンドだけを単独で実行し直してください。"
+)
+
+MERGE_ASK ="PRのマージにはユーザーの承認が必要です。マージ可否チェックの結果を確認してから承認してください。 (matched: {reason})"
 
 GH_PR_MERGE = re.compile(r"\bgh\s+pr\s+merge\b")
 MATCH_HEAD = re.compile(r"\s--match-head-commit[\s=]+['\"]?[0-9a-f]{7,40}\b")
@@ -50,6 +56,21 @@ ALLOWED_POST = re.compile(
     r"(?:pulls/\d+/reviews|pulls/\d+/comments/\d+/replies|issues/\d+/comments)"
     r"(?=[\s'\"]|$)"
 )
+QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"")
+CHAIN = re.compile(r"&&|\|\||[;|\n]")
+
+
+def api_method(segment: str) -> str:
+    m = METHOD.search(segment)
+    return m.group(1).upper() if m else ("POST" if FIELD.search(segment) else "GET")
+
+
+def is_allowed_post(segment: str) -> bool:
+    return bool(
+        GH_API.search(segment)
+        and ALLOWED_POST.search(segment)
+        and api_method(segment) == "POST"
+    )
 
 
 def is_gh_api_write(segment: str) -> bool:
@@ -59,11 +80,16 @@ def is_gh_api_write(segment: str) -> bool:
         return bool(MUTATION.search(segment))
     if not PR_PATH.search(segment):
         return False
-    m = METHOD.search(segment)
-    method = m.group(1).upper() if m else ("POST" if FIELD.search(segment) else "GET")
-    if method == "POST" and ALLOWED_POST.search(segment):
+    if is_allowed_post(segment):
         return False
-    return method != "GET"
+    return api_method(segment) != "GET"
+
+
+def is_chained_allowed_post(command: str) -> bool:
+    # Strip quoted text first so `--jq '.a | .b'` isn't mistaken for a pipe.
+    if not CHAIN.search(QUOTED.sub("''", command.strip())):
+        return False
+    return any(is_allowed_post(s) for s in CHAIN.split(command))
 
 
 def find_pr_write_action(command: str) -> str | None:
@@ -90,10 +116,14 @@ def main() -> int:
         if not command:
             return 0
         reason = find_pr_write_action(command)
+        chained = is_chained_allowed_post(command)
         merge = GH_PR_MERGE.search(command)
     except Exception:
         return 0
 
+    if chained and not reason:
+        print(CHAINED_GUIDANCE, file=sys.stderr)
+        return 2
     if reason:
         print(GUIDANCE.format(reason=reason), file=sys.stderr)
         return 2
