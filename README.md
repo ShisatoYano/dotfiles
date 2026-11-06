@@ -72,6 +72,7 @@ git clone git@github.com:あなたのユーザー名/dotfiles.git ~/dotfiles
 Git操作は `docs/git-cheatsheet.md`、Neovimの標準操作は `docs/nvim-cheatsheet.md` にまとめている
 (Neovim内から `<leader>wh` / `<leader>gh` / `<leader>nh` でそれぞれ開ける)。
 発表資料(Slidev)の記法とコマンドは `docs/slidev-cheatsheet.md`(`<leader>sh`)にまとめている。
+WezTerm・Neovim・Claude Codeのライト/ダーク連動の仕組みは `docs/theme-sync-design.md` にまとめている。
 
 ## 補足
 
