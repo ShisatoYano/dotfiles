@@ -21,7 +21,11 @@ local function register_transparent_tab_bar(config, scheme_name)
 end
 
 function M.setup(config)
-  config.font = wezterm.font("JetBrainsMono Nerd Font Mono")
+  -- WezTermのフォールバック選択はlang=jaを考慮せず、未指定だと和文がNoto Serif CJK SC(中国語字形の明朝)になる
+  config.font = wezterm.font_with_fallback({
+    "JetBrainsMono Nerd Font Mono",
+    "Noto Sans Mono CJK JP",
+  })
   config.font_size = 10.0
 
   register_transparent_tab_bar(config, theme.dark_scheme)
