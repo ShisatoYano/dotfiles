@@ -1,7 +1,8 @@
 -- craftzdog/solarized-osaka.nvim (dark)の配色を、同梱のWezTermジェネレーターで書き出したものをそのまま移植
 -- 生成元: solarized-osaka.nvim の lua/solarized-osaka/extra/wezterm.lua
 return {
-  foreground = "#839395",
+  -- 生成元の#839395は透過背景だと入力文字が読みにくいため、色味を保ったまま明度だけ上げている
+  foreground = "#c0c9ca",
   background = "#001419",
   cursor_bg = "#839395",
   cursor_border = "#839395",
