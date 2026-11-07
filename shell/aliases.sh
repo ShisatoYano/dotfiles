@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # nb(メモ管理CLI)やgit commit等で使うエディタをnvimに固定する
 export EDITOR=nvim
 

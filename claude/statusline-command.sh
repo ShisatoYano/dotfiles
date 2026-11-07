@@ -12,6 +12,8 @@ C_WARN=$'\033[38;5;209m'  # orange
 C_CRIT=$'\033[38;5;204m'  # pink
 C_DIM=$'\033[38;5;245m'   # dim gray
 
+# evalで代入される変数をshellcheckに知らせるための宣言(消すとSC2154が出る)
+declare model session_id used five week five_reset week_reset cwd
 eval "$(echo "$input" | jq -r '@sh "
 model=\(.model.display_name // "?")
 session_id=\(.session_id // "")
@@ -57,8 +59,8 @@ fmt_remaining() {
 fmt_limit() {
   local label="$1" pct="$2" reset="$3"
   [ -z "$pct" ] && return
-  local s="${C_DIM}${label} $(pct_color "$pct")$(printf '%.0f' "$pct")%${C_DIM}"
-  local r
+  local s r
+  s="${C_DIM}${label} $(pct_color "$pct")$(printf '%.0f' "$pct")%${C_DIM}"
   r=$(fmt_remaining "$reset")
   [ -n "$r" ] && s="${s}→${r}"
   printf '%s' "${s}${RESET}"
