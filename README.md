@@ -18,7 +18,7 @@ git clone git@github.com:あなたのユーザー名/dotfiles.git ~/dotfiles
 - Go(ccsession等のビルド用)、ccsession
 - Docker(公式apt repo経由)、`docker`グループへの追加、lazydocker
 - starship(プロンプト)
-- jq、Claude Codeのstatusline(モデル名/コンテキスト使用率/利用制限%を表示)
+- jq、Claude Codeのstatusline(モデル名/コンテキスト使用率/利用制限%とリセットまでの残り時間/ディレクトリ名/gitブランチを表示)
 - Claude Codeのskills(`claude/skills/` を `~/.claude/skills` にリンク。日々の定型作業をSkill化して蓄積していく)
 - Claude CodeのCLAUDE.md(`claude/CLAUDE.md` を `~/.claude/CLAUDE.md` にリンク。全プロジェクト共通の指示)
 - pipx, buku(CLIブックマーク管理)、tabctl(ブラウザタブ操作)

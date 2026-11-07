@@ -1,27 +1,38 @@
 #!/bin/bash
-# Claude Code statusline: モデル名 + コンテキスト使用率 + サブスクリプション利用率(5h/7d、リセットまでの残り時間付き) + ディレクトリ名
-# コストの内訳(ccusage)は情報過多かつ幅の問題も出たため廃止し、本当に見たい情報だけに絞っている。
-# 見た目は絵文字区切りでおしゃれに。
+# Claude Code statusline: モデル名 / コンテキスト使用率 / 利用制限(5h・7d、リセットまでの残り時間) / ディレクトリ名 / gitブランチ
 
 input=$(cat)
 
 CONTEXT_WARN_DIR="${HOME}/.local/state/claude-code/context-warnings"
 
-RESET="\033[0m"
-C_MODEL="\033[38;5;141m" # purple
-C_OK="\033[38;5;150m"    # green
-C_WARN="\033[38;5;209m"  # orange
-C_CRIT="\033[38;5;204m"  # pink
-C_DIM="\033[38;5;245m"   # dim gray
+RESET=$'\033[0m'
+C_MODEL=$'\033[38;5;141m' # purple
+C_OK=$'\033[38;5;150m'    # green
+C_WARN=$'\033[38;5;209m'  # orange
+C_CRIT=$'\033[38;5;204m'  # pink
+C_DIM=$'\033[38;5;245m'   # dim gray
 
-model=$(echo "$input" | jq -r '.model.display_name // "?"')
-session_id=$(echo "$input" | jq -r '.session_id // empty')
-used=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
-five=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
-week=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
-five_reset=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
-week_reset=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // empty')
-cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // empty')
+eval "$(echo "$input" | jq -r '@sh "
+model=\(.model.display_name // "?")
+session_id=\(.session_id // "")
+used=\(.context_window.used_percentage // "")
+five=\(.rate_limits.five_hour.used_percentage // "")
+week=\(.rate_limits.seven_day.used_percentage // "")
+five_reset=\(.rate_limits.five_hour.resets_at // "")
+week_reset=\(.rate_limits.seven_day.resets_at // "")
+cwd=\(.workspace.current_dir // .cwd // "")
+"')"
+
+pct_color() {
+  local p=${1%.*}
+  if [ "$p" -ge 80 ]; then
+    printf '%s' "$C_CRIT"
+  elif [ "$p" -ge 50 ]; then
+    printf '%s' "$C_WARN"
+  else
+    printf '%s' "$C_OK"
+  fi
+}
 
 # resets_at はUNIX epoch秒。現在時刻との差分を人間可読な残り時間に変換する。
 now=$(date +%s)
@@ -41,51 +52,49 @@ fmt_remaining() {
     printf '%dm' "$m"
   fi
 }
-dirname=""
-[ -n "$cwd" ] && dirname=$(basename "$cwd")
+
+# 利用制限1枠分("5h 31%→2h3m")を、%部分だけ使用率に応じて色付けして返す
+fmt_limit() {
+  local label="$1" pct="$2" reset="$3"
+  [ -z "$pct" ] && return
+  local s="${C_DIM}${label} $(pct_color "$pct")$(printf '%.0f' "$pct")%${C_DIM}"
+  local r
+  r=$(fmt_remaining "$reset")
+  [ -n "$r" ] && s="${s}→${r}"
+  printf '%s' "${s}${RESET}"
+}
 
 parts=()
 parts+=("🤖 ${C_MODEL}${model}${RESET}")
 
 if [ -n "$used" ]; then
-  used_int=${used%.*}
-  color="$C_OK"
-  [ "$used_int" -ge 50 ] && color="$C_WARN"
-  [ "$used_int" -ge 80 ] && color="$C_CRIT"
-  parts+=("🧠 ${color}$(printf '%.0f' "$used")%${RESET}")
+  parts+=("🧠 $(pct_color "$used")$(printf '%.0f' "$used")%${RESET}")
 
   # 50%到達を warn-context-threshold.py hook(UserPromptSubmit)に伝えるためのマーカー。
   # statusLineはcontext_window.used_percentageを受け取れる唯一のhook種別なので、ここで検知して
   # ファイル経由でUserPromptSubmit hookに引き継ぐ(hookイベント自体はこの値を受け取れない)。
-  if [ "$used_int" -ge 50 ] && [ -n "$session_id" ]; then
+  if [ "${used%.*}" -ge 50 ] && [ -n "$session_id" ]; then
     mkdir -p "$CONTEXT_WARN_DIR"
     touch "${CONTEXT_WARN_DIR}/${session_id}"
   fi
 fi
 
-rl=""
-if [ -n "$five" ]; then
-  rl="5h $(printf '%.0f' "$five")%"
-  fr=$(fmt_remaining "$five_reset")
-  [ -n "$fr" ] && rl="${rl}→${fr}"
-fi
-if [ -n "$week" ]; then
-  wr="7d $(printf '%.0f' "$week")%"
-  fr=$(fmt_remaining "$week_reset")
-  [ -n "$fr" ] && wr="${wr}→${fr}"
-  rl="${rl:+$rl }${wr}"
-fi
-[ -n "$rl" ] && parts+=("⏳ ${C_DIM}${rl}${RESET}")
+five_s=$(fmt_limit 5h "$five" "$five_reset")
+week_s=$(fmt_limit 7d "$week" "$week_reset")
+rl="${five_s}${five_s:+${week_s:+ }}${week_s}"
+[ -n "$rl" ] && parts+=("⏳ ${rl}")
 
-[ -n "$dirname" ] && parts+=("📁 ${C_DIM}${dirname}${RESET}")
+if [ -n "$cwd" ]; then
+  loc="📁 ${C_DIM}$(basename "$cwd")${RESET}"
+  branch=$(git -C "$cwd" symbolic-ref --short -q HEAD 2>/dev/null \
+    || git -C "$cwd" rev-parse --short HEAD 2>/dev/null)
+  [ -n "$branch" ] && loc="${loc} 🌿 ${C_DIM}${branch}${RESET}"
+  parts+=("$loc")
+fi
 
 output=""
 for p in "${parts[@]}"; do
-  if [ -z "$output" ]; then
-    output="$p"
-  else
-    output="${output} ${C_DIM}│${RESET} ${p}"
-  fi
+  output="${output:+${output} ${C_DIM}│${RESET} }${p}"
 done
 
-printf "%b" "$output"
+printf '%s' "$output"
