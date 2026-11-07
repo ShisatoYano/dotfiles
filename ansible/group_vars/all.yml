@@ -31,6 +31,7 @@ apt_packages:
   - golang-go # Go製CLI(ccsession)のビルド用
   - git-delta # git diffを見やすくするページャー
   - jq # Claude Codeのstatuslineで使用
+  - shellcheck # dotfiles内シェルスクリプトのlint
   - fontconfig # Nerd Font導入後のfc-cacheで使う
 
 # ---------------------------------------------
