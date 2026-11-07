@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # WezTermシェル統合(/etc/profile.d/wezterm.sh)をstarshipと共存させる。starship initより後にsourceすること
 declare -F __wezterm_semantic_precmd >/dev/null || return 0
 
