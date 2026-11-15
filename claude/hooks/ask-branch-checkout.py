@@ -14,8 +14,10 @@ error here fails open (exit 0) so a bug in this script can't break every Bash
 call.
 """
 import json
+import os
 import re
 import shlex
+import subprocess
 import sys
 
 GUIDANCE = (
@@ -36,6 +38,9 @@ OPTS_WITH_ARG = {
     "--super-prefix",
     "--config-env",
 }
+
+# `git checkout` options that create a branch and consume the next token as its name
+CHECKOUT_CREATE_OPTS = {"-b", "-B", "--orphan"}
 
 # Matches quoted spans (to protect them) or shell operators (to split on).
 # Only the operator alternative is captured in group 1.
@@ -58,14 +63,17 @@ def split_segments(command: str) -> list[str]:
     return segments
 
 
-def git_subcommand(tokens: list[str]) -> tuple[str, list[str]] | None:
+def git_subcommand(tokens: list[str], cwd: str) -> tuple[str, list[str], str] | None:
+    """Return (subcommand, its args, directory git runs in)."""
     if not tokens or tokens[0] != "git":
         return None
     i = 1
     while i < len(tokens):
         tok = tokens[i]
         if not tok.startswith("-"):
-            return tok, tokens[i + 1 :]
+            return tok, tokens[i + 1 :], cwd
+        if tok == "-C" and i + 1 < len(tokens):
+            cwd = os.path.join(cwd, os.path.expanduser(tokens[i + 1]))
         if "=" not in tok and tok in OPTS_WITH_ARG:
             i += 2
         else:
@@ -73,31 +81,51 @@ def git_subcommand(tokens: list[str]) -> tuple[str, list[str]] | None:
     return None
 
 
-def switch_reason(tokens: list[str]) -> str | None:
+def is_commit(rev: str, cwd: str) -> bool:
+    try:
+        return (
+            subprocess.run(
+                ["git", "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}"],
+                cwd=cwd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+            ).returncode
+            == 0
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def switch_reason(tokens: list[str], cwd: str) -> str | None:
     if tokens[:3] == ["gh", "pr", "checkout"]:
         return "gh pr checkout"
 
-    parsed = git_subcommand(tokens)
+    parsed = git_subcommand(tokens, cwd)
     if not parsed:
         return None
-    sub, args = parsed
+    sub, args, cwd = parsed
     if sub == "switch":
         return "git switch"
-    if sub != "checkout" or "--" in args:
-        return None  # file-restore form: blocked separately by block-discard-changes.py
+    if sub != "checkout":
+        return None
 
-    flags = [t for t in args if t.startswith("-")]
+    # Classified the same way as block-discard-changes.py (and git itself).
+    if any(a in CHECKOUT_CREATE_OPTS for a in args):
+        return "git checkout -b/-B/--orphan (creates+switches branch)"
+    if "-" in args:
+        return "git checkout - (previous branch)"
+    if "--" in args or any(a.startswith("--pathspec-from-file") for a in args):
+        return None  # file-restore form: blocked separately by block-discard-changes.py
     nonflags = [t for t in args if not t.startswith("-")]
-    if "-b" in flags or "-B" in flags:
-        return "git checkout -b/-B (creates+switches branch)"
-    if not nonflags:
-        return None  # bare `git checkout`, no-op
-    if "/" in nonflags[0] or "." in nonflags[0]:
-        return None  # looks like a pathspec, not a ref
+    if len(nonflags) != 1:
+        return None  # bare `git checkout` (no-op) or <tree-ish> <pathspec>
+    if not is_commit(nonflags[0], cwd):
+        return None  # pathspec, not a ref
     return "git checkout <ref>"
 
 
-def find_branch_switch(command: str) -> str | None:
+def find_branch_switch(command: str, cwd: str) -> str | None:
     for segment in split_segments(command):
         segment = segment.strip()
         if not segment:
@@ -106,7 +134,7 @@ def find_branch_switch(command: str) -> str | None:
             tokens = shlex.split(segment)
         except ValueError:
             tokens = segment.split()
-        reason = switch_reason(tokens)
+        reason = switch_reason(tokens, cwd)
         if reason:
             return f"{reason}: {segment}"
 
@@ -121,7 +149,7 @@ def main() -> int:
         command = data.get("tool_input", {}).get("command", "")
         if not command:
             return 0
-        reason = find_branch_switch(command)
+        reason = find_branch_switch(command, data.get("cwd") or os.getcwd())
     except Exception:
         return 0
 
