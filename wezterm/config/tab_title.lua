@@ -153,15 +153,22 @@ local function ssh_label(pane_id)
   return info and info.argv and ssh_destination(info.argv)
 end
 
-local function is_claude_process(process_name, pane_title)
-  -- native版の実行ファイル名はclaude.exe
-  return process_name:find("^claude") or (pane_title and (pane_title:find("^✳") or pane_title:lower():find("claude")))
+-- Claude Codeはタイトル先頭に状態記号を付ける(入力待ち: ✳ / 処理中: ◑等のスピナー)
+local function is_status_mark(mark)
+  return mark ~= nil and utf8.len(mark) == 1 and mark:byte(1) >= 0x80
 end
 
--- Claude Codeはタイトル先頭に状態記号を付ける(入力待ち: ✳ / 処理中: ◑等のスピナー)
+local function is_claude_process(process_name, pane_title)
+  -- native版の実行ファイル名はclaude.exe
+  return process_name:find("^claude")
+    or (pane_title and (pane_title:find("^✳") or pane_title:lower():find("claude")))
+    -- ccsession経由だと前面プロセスはccsessionのままなので、状態記号で判別する(名前だけだと選択画面でも誤検出する)
+    or (process_name == "ccsession" and pane_title and is_status_mark(pane_title:match("^(%S+)%s")))
+end
+
 local function parse_claude_title(title)
   local mark, heading = title:match("^(%S+)%s+(.+)$")
-  if not mark or utf8.len(mark) ~= 1 or mark:byte(1) < 0x80 then
+  if not is_status_mark(mark) then
     return false, nil
   end
   if heading == "Claude Code" then
