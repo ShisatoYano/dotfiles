@@ -114,6 +114,11 @@ function M.setup(config)
     { key = "0", mods = "CTRL", action = wezterm.action.ResetFontSize },
   }
 
+  -- Activate tab by index: LEADER+1..9 (10番目以降は<leader>gのピッカーで選ぶ)
+  for i = 1, 9 do
+    table.insert(config.keys, { key = tostring(i), mods = "LEADER", action = wezterm.action.ActivateTab(i - 1) })
+  end
+
   -- Key tables 
   config.key_tables = {
     resize_pane = {
