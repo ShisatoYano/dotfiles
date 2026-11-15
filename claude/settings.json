@@ -90,6 +90,14 @@
             "command": "python3 ~/dotfiles/claude/hooks/load-context-handoff.py"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/dotfiles/claude/hooks/wezterm-tab-state.sh clear"
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -99,6 +107,30 @@
           {
             "type": "command",
             "command": "python3 ~/dotfiles/claude/hooks/warn-context-threshold.py"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/dotfiles/claude/hooks/wezterm-tab-state.sh clear"
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/dotfiles/claude/hooks/wezterm-tab-state.sh error"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/dotfiles/claude/hooks/wezterm-tab-state.sh clear"
           }
         ]
       }
