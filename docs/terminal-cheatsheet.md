@@ -2,7 +2,7 @@
 
 WezTermのキーバインド、シェル関数、Claude Code操作など、nvimの外側(ターミナル環境)で使うものをまとめたもの。
 
-## WezTerm(leaderキー: `Ctrl+a`、1秒以内に次のキー)
+## WezTerm(leaderキー: `Ctrl+a`、2秒以内に次のキー)
 | キー | 動作 |
 |---|---|
 | `v` | ペインを左右に分割 |
