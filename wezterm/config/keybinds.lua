@@ -119,6 +119,18 @@ function M.setup(config)
     table.insert(config.keys, { key = tostring(i), mods = "LEADER", action = wezterm.action.ActivateTab(i - 1) })
   end
 
+  -- Copy mode: 既定のyは「コピーして抜ける」のまま、Yを「コピーしてモードに残る」にする
+  -- (既定のY=行単位コピーはV→yで代替できる)。後から追加した割り当てが優先される
+  local copy_mode = wezterm.gui.default_key_tables().copy_mode
+  table.insert(copy_mode, {
+    key = "Y",
+    mods = "SHIFT",
+    action = wezterm.action.Multiple({
+      { CopyTo = "ClipboardAndPrimarySelection" },
+      { CopyMode = "ClearSelectionMode" },
+    }),
+  })
+
   -- Key tables 
   config.key_tables = {
     resize_pane = {
@@ -128,6 +140,7 @@ function M.setup(config)
       { key = "l", action = wezterm.action.AdjustPaneSize({ "Right", 1 }) },
       { key = "Enter", action = "PopKeyTable" },
     }, 
+    copy_mode = copy_mode,
   }
 end
 
