@@ -7,8 +7,13 @@ M.custom_title = {}
 
 local ICONS = {
   zoom = wezterm.nerdfonts.md_magnify,
-  -- ●(U+25CF)は東アジアの曖昧幅で、日本語フォントだと2桁に描かれ隣と重なる
-  claude_status = wezterm.nerdfonts.md_checkbox_blank_circle,
+  -- ●○(U+25CF/25CB)は東アジアの曖昧幅で、日本語フォントだと2桁に描かれ隣と重なる
+  -- 黄背景では深い色同士の色相が見分けにくいため、状態は形でも区別する
+  claude_status = {
+    busy = wezterm.nerdfonts.md_checkbox_blank_circle,
+    idle = wezterm.nerdfonts.md_checkbox_blank_circle_outline,
+    error = wezterm.nerdfonts.md_alert_circle,
+  },
 }
 
 -- Claude Codeの状態ごとの丸の色。黄は黄背景のアクティブタブに埋もれるため使わない
@@ -390,7 +395,7 @@ function M.setup(config)
 
     local claude = find_claude(tab.panes)
     local index = tostring(tab.tab_index + 1) .. " "
-    local status_icon = claude and (ICONS.claude_status .. " ") or ""
+    local status_icon = claude and (ICONS.claude_status[claude.state] .. " ") or ""
     local status_palette = tab.is_active and colors.claude_status_active or colors.claude_status_inactive
     local status_color = claude and status_palette[claude.state] or foreground
     local head = index .. status_icon .. zoom_indicator
