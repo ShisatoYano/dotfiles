@@ -39,22 +39,27 @@ wezterm.on("update-right-status", function(window, _)
   window:set_right_status(wezterm.format(formatted))
 end)
 
--- 直前のコマンド行とその出力をまとめてコピーする(シェル統合のOSC 133が前提)
+-- 直前のコマンドの出力をコピーする(シェル統合のOSC 133が前提)
 local function copy_last_command_output(window, pane)
-  local outputs = pane:get_semantic_zones("Output")
-  local output = outputs[#outputs]
-  if not output then
-    return
-  end
-  -- 末尾のInputは入力待ちの現在のプロンプトなので、出力より前にある最後のInputを起点にする
-  local start = output
-  for _, zone in ipairs(pane:get_semantic_zones("Input")) do
-    if zone.start_y <= output.start_y then
-      start = zone
+  -- 最後のOutputゾーンは使わない: TUI(Claude Code等)が消去した画面下部の空セルが、現在のプロンプトより下にOutputとして残るため。
+  -- 直前のコマンドは「最後から2番目のPrompt」と「最後のPrompt(入力待ち)」の間として求める
+  local prompts = pane:get_semantic_zones("Prompt")
+  local last, prev = prompts[#prompts], prompts[#prompts - 1]
+  local text = ""
+  if prev then
+    for _, zone in ipairs(pane:get_semantic_zones("Output")) do
+      if zone.start_y >= prev.end_y and zone.start_y < last.start_y then
+        -- このWezTerm(20240203)のget_text_from_regionはend_yの行を含まないため、次のPromptの行で止めれば直前の行まで入る
+        text = pane:get_text_from_region(zone.start_x, zone.start_y, 0, last.start_y):gsub("%s+$", "")
+        break
+      end
     end
   end
-  -- このWezTerm(20240203)のget_text_from_regionはend_yの行を含まないため+1する
-  window:copy_to_clipboard(pane:get_text_from_region(start.start_x, start.start_y, output.end_x, output.end_y + 1))
+  if text == "" then
+    window:toast_notification("WezTerm", "直前のコマンドに出力がありません", nil, 2000)
+    return
+  end
+  window:copy_to_clipboard(text)
 end
 
 function M.setup(config)
