@@ -16,8 +16,10 @@ PreToolUse hook contract). Any unexpected error here fails open (exit 0) so a
 bug in this script can't break every Bash call.
 """
 import json
+import os
 import re
 import shlex
+import subprocess
 import sys
 
 GUIDANCE = (
@@ -28,6 +30,9 @@ GUIDANCE = (
 )
 
 STASH_READONLY = {"list", "show"}
+
+# `git checkout` options that create a branch and consume the next token as its name
+CHECKOUT_CREATE_OPTS = {"-b", "-B", "--orphan"}
 
 # git global options that consume the following token as their argument
 OPTS_WITH_ARG = {
@@ -62,14 +67,17 @@ def split_segments(command: str) -> list[str]:
     return segments
 
 
-def git_subcommand(tokens: list[str]) -> tuple[str, list[str]] | None:
+def git_subcommand(tokens: list[str], cwd: str) -> tuple[str, list[str], str] | None:
+    """Return (subcommand, its args, directory git runs in)."""
     if not tokens or tokens[0] != "git":
         return None
     i = 1
     while i < len(tokens):
         tok = tokens[i]
         if not tok.startswith("-"):
-            return tok, tokens[i + 1 :]
+            return tok, tokens[i + 1 :], cwd
+        if tok == "-C" and i + 1 < len(tokens):
+            cwd = os.path.join(cwd, os.path.expanduser(tokens[i + 1]))
         if "=" not in tok and tok in OPTS_WITH_ARG:
             i += 2
         else:
@@ -77,14 +85,42 @@ def git_subcommand(tokens: list[str]) -> tuple[str, list[str]] | None:
     return None
 
 
-def discard_reason(sub: str, args: list[str]) -> str | None:
+def is_commit(rev: str, cwd: str) -> bool:
+    try:
+        return (
+            subprocess.run(
+                ["git", "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}"],
+                cwd=cwd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+            ).returncode
+            == 0
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False  # unresolvable (e.g. wrong cwd after `cd`): treat as pathspec
+
+
+def checkout_restores_files(args: list[str], cwd: str) -> bool:
+    # Branch switching is handled by ask-branch-checkout.py; here only the
+    # file-restore forms, classified the same way git itself does.
+    if any(a in CHECKOUT_CREATE_OPTS for a in args):
+        return False  # git rejects -b/-B/--orphan combined with paths
+    if "--" in args or any(a.startswith("--pathspec-from-file") for a in args):
+        return True
+    nonflags = [a for a in args if not a.startswith("-")]
+    if len(nonflags) >= 2:
+        return True  # git checkout <tree-ish> <pathspec>
+    # A lone argument is a ref if git can resolve it, otherwise a pathspec.
+    return len(nonflags) == 1 and not is_commit(nonflags[0], cwd)
+
+
+def discard_reason(sub: str, args: list[str], cwd: str) -> str | None:
     flags = [a for a in args if a.startswith("-")]
     nonflags = [a for a in args if not a.startswith("-")]
 
     if sub == "checkout":
-        # Branch switching is handled by block-branch-checkout.py; here only
-        # the file-restore forms, using the same pathspec heuristic.
-        if "--" in args or any("/" in a or "." in a for a in nonflags):
+        if checkout_restores_files(args, cwd):
             return "git checkout <pathspec>"
     elif sub == "restore":
         staged_only = any(f in ("--staged", "-S") for f in flags) and not any(
@@ -107,7 +143,7 @@ def discard_reason(sub: str, args: list[str]) -> str | None:
     return None
 
 
-def find_discard(command: str) -> str | None:
+def find_discard(command: str, cwd: str) -> str | None:
     for segment in split_segments(command):
         segment = segment.strip()
         if not segment:
@@ -116,7 +152,7 @@ def find_discard(command: str) -> str | None:
             tokens = shlex.split(segment)
         except ValueError:
             tokens = segment.split()
-        parsed = git_subcommand(tokens)
+        parsed = git_subcommand(tokens, cwd)
         if not parsed:
             continue
         reason = discard_reason(*parsed)
@@ -133,7 +169,7 @@ def main() -> int:
         command = data.get("tool_input", {}).get("command", "")
         if not command:
             return 0
-        reason = find_discard(command)
+        reason = find_discard(command, data.get("cwd") or os.getcwd())
     except Exception:
         return 0
 
