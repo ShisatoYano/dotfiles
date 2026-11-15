@@ -43,7 +43,7 @@
           },
           {
             "type": "command",
-            "command": "python3 ~/dotfiles/claude/hooks/block-worktree-creation.py"
+            "command": "python3 ~/dotfiles/claude/hooks/ask-worktree-creation.py"
           },
           {
             "type": "command",
@@ -56,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/dotfiles/claude/hooks/block-worktree-creation.py"
+            "command": "python3 ~/dotfiles/claude/hooks/ask-worktree-creation.py"
           }
         ]
       }
@@ -111,6 +111,16 @@
           {
             "type": "command",
             "command": "bash ~/dotfiles/claude/hooks/wezterm-tab-state.sh clear"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/dotfiles/claude/hooks/remind-worktree-cleanup.py"
           }
         ]
       }
