@@ -51,7 +51,7 @@ function M.setup(config)
   -- tab_title.luaの丸cap形状だけでタブを表現する(retro描画)
   config.use_fancy_tab_bar = false
   config.tab_bar_at_bottom = true -- タブバーを画面下部に表示
-  config.tab_max_width = 40 -- タブタイトルが途中で切れないよう広めに確保
+  config.tab_max_width = 60 -- Claude Codeの見出しも併記するため広めに確保
   -- "Hold"だと、wezterm-sessionsが復元処理で不要になった初期タブを閉じるために
   -- 送る"exit"コマンドの後もペインが残ってしまうため、正常終了時は自動で閉じる設定にする
   config.exit_behavior = "CloseOnCleanExit"

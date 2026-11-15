@@ -7,7 +7,25 @@ M.custom_title = {}
 
 local ICONS = {
   zoom = wezterm.nerdfonts.md_magnify,
+  -- ●(U+25CF)は東アジアの曖昧幅で、日本語フォントだと2桁に描かれ隣と重なる
+  claude_status = wezterm.nerdfonts.md_checkbox_blank_circle,
 }
+
+-- Claude Codeの状態ごとの丸の色。黄は黄背景のアクティブタブに埋もれるため使わない
+-- 明るいアクセント色は黄背景・明るい背景だとコントラスト比が約1:1で見えないため、そこでは濃い色を使う
+local CLAUDE_STATUS_BRIGHT = {
+  busy = "#859900", -- green
+  idle = "#268bd2", -- blue
+  error = "#dc322f", -- red
+}
+local CLAUDE_STATUS_DEEP = {
+  busy = "#185200", -- deep green
+  idle = "#08348c", -- deep blue
+  error = "#8c0d0a", -- deep red
+}
+
+-- claude/hooks/wezterm-tab-state.shがStopFailureで書き、次の入力で消す
+local CLAUDE_STATE_DIR = (os.getenv("XDG_RUNTIME_DIR") or "/tmp") .. "/claude-tab-state/"
 
 -- Tab colors for dark theme 
 M.TAB_COLORS_DARK = {
@@ -17,6 +35,8 @@ M.TAB_COLORS_DARK = {
   background_active = "#b28500", -- yellow(目立つ背景)
   background_ssh_active = "#db302d", -- red
   foreground_ssh_active = "#fdf6e3", -- base3
+  claude_status_active = CLAUDE_STATUS_DEEP,
+  claude_status_inactive = CLAUDE_STATUS_BRIGHT, -- 濃い背景なので明るい色
 }
 
 -- Tab colors for light theme
@@ -27,6 +47,8 @@ M.TAB_COLORS_LIGHT = {
   background_active = "#b58900", -- yellow(目立つ背景)
   background_ssh_active = "#dc322f", -- red
   foreground_ssh_active = "#fdf6e3", -- base3
+  claude_status_active = CLAUDE_STATUS_DEEP,
+  claude_status_inactive = CLAUDE_STATUS_DEEP,
 }
 
 -- Starshipプロンプトの左右の丸caps([](fg:accent5)[...]の形)と同じグリフに揃える
@@ -70,19 +92,130 @@ local function sanitize_title(s)
   return s
 end
 
-local function is_ssh_process(process_name, cmdline, user_vars)
+local function is_ssh_process(process_name, user_vars)
   if user_vars.ssh_host and user_vars.ssh_host ~= "" then
     return true, user_vars.ssh_host
   end
-  if process_name:find("ssh") or (cmdline and cmdline:find("ssh")) then
-    local host = cmdline and cmdline:match("ssh%s+([%w_%-%.]+)")
-    return true, host
+  return process_name == "ssh", nil
+end
+
+-- 値を取るsshオプション(man ssh)。これを飛ばさないと`-p 22`の22を接続先と誤認する
+local SSH_OPTS_WITH_ARG = "BbcDEeFIiJLlmOoPpQRSWw"
+
+-- ssh起動時のargvから接続先を`user@host`の形で取り出す
+local function ssh_destination(argv)
+  local user, dest
+  local i = 2
+  while i <= #argv and not dest do
+    local arg = argv[i]
+    if arg == "--" then
+      dest = argv[i + 1]
+    elseif arg:sub(1, 1) == "-" and #arg > 1 then
+      -- `-vp22`のように複数オプションや値が連結される場合がある
+      for j = 2, #arg do
+        local opt = arg:sub(j, j)
+        if SSH_OPTS_WITH_ARG:find(opt, 1, true) then
+          local value = arg:sub(j + 1)
+          if value == "" then
+            i = i + 1
+            value = argv[i]
+          end
+          if opt == "l" then
+            user = value
+          end
+          break
+        end
+      end
+    else
+      dest = arg
+    end
+    i = i + 1
   end
-  return false, nil
+
+  if not dest then
+    return nil
+  end
+  dest = dest:gsub("^ssh://", ""):gsub(":%d+$", "")
+  if user and not dest:find("@") then
+    dest = user .. "@" .. dest
+  end
+  return dest
+end
+
+local function ssh_label(pane_id)
+  local mux_pane = wezterm.mux.get_pane(pane_id)
+  local info = mux_pane and mux_pane:get_foreground_process_info()
+  return info and info.argv and ssh_destination(info.argv)
 end
 
 local function is_claude_process(process_name, pane_title)
-  return process_name == "claude" or (pane_title and (pane_title:find("^✳") or pane_title:lower():find("claude")))
+  -- native版の実行ファイル名はclaude.exe
+  return process_name:find("^claude") or (pane_title and (pane_title:find("^✳") or pane_title:lower():find("claude")))
+end
+
+-- Claude Codeはタイトル先頭に状態記号を付ける(入力待ち: ✳ / 処理中: ◑等のスピナー)
+local function parse_claude_title(title)
+  local mark, heading = title:match("^(%S+)%s+(.+)$")
+  if not mark or utf8.len(mark) ~= 1 or mark:byte(1) < 0x80 then
+    return false, nil
+  end
+  if heading == "Claude Code" then
+    heading = nil
+  end
+  return mark ~= "✳", heading
+end
+
+local function has_claude_error(pane_id)
+  local f = io.open(CLAUDE_STATE_DIR .. pane_id, "r")
+  if not f then
+    return false
+  end
+  f:close()
+  return true
+end
+
+-- タブ内のいずれかのペインでClaude Codeが動いていれば、その状態(busy/idle/error)と見出しを返す
+local function find_claude(panes)
+  for _, p in ipairs(panes) do
+    local title = sanitize_title(p.title or "")
+    if is_claude_process(basename(p.foreground_process_name), title) then
+      local busy, heading = parse_claude_title(title)
+      local state = busy and "busy" or (has_claude_error(p.pane_id) and "error" or "idle")
+      return { state = state, heading = heading }
+    end
+  end
+  return nil
+end
+
+local function truncate_with_ellipsis(s, width)
+  if wezterm.column_width(s) <= width then
+    return s
+  end
+  return wezterm.truncate_right(s, width - 1) .. "…"
+end
+
+-- 本体の取り分(割合)。見出しが短ければ、余った幅は本体に回す
+local MAIN_SHARE = 0.4
+
+-- 本体(プロジェクト名等)と見出しの両方が読めるよう、幅を按分して切り詰める
+local function fit_body(main, heading, width)
+  local sep = ": "
+  local room = width - wezterm.column_width(sep)
+  -- 両方を数文字ずつ出す余地もなければ本体だけにする
+  if not heading or room < 8 then
+    return truncate_with_ellipsis(main, width)
+  end
+
+  local main_width = wezterm.column_width(main)
+  local heading_width = wezterm.column_width(heading)
+  if main_width + heading_width <= room then
+    return main .. sep .. heading
+  end
+
+  local main_cap = math.max(math.floor(room * MAIN_SHARE), room - heading_width)
+  local main_text = truncate_with_ellipsis(main, main_cap)
+  local heading_text = truncate_with_ellipsis(heading, room - wezterm.column_width(main_text))
+  return main_text .. sep .. heading_text
 end
 
 local function extract_project_name(cwd)
@@ -211,13 +344,13 @@ function M.setup(config)
     local pane = tab.active_pane
     local pane_id = pane.pane_id
     local process_name = basename(pane.foreground_process_name)
-    local cmdline = pane.foreground_process_name or ""
     local user_vars = pane.user_vars or {}
     local cached_cwd = title_cache[pane_id] or ""
 
-    local is_ssh, ssh_host = is_ssh_process(process_name, cmdline, user_vars)
-    if is_ssh and ssh_host then
-      ssh_host_cache[pane_id] = ssh_host
+    local is_ssh, ssh_host = is_ssh_process(process_name, user_vars)
+    if is_ssh and not ssh_host_cache[pane_id] then
+      -- argv取得は/procを読むため、接続ごとに1回だけ行う
+      ssh_host_cache[pane_id] = ssh_host or ssh_label(pane_id)
     elseif not is_ssh then
       ssh_host_cache[pane_id] = nil
     end
@@ -255,11 +388,18 @@ function M.setup(config)
     local left_circle = DECORATIONS.left_circle
     local right_circle = DECORATIONS.right_circle
 
-    -- max_widthはタブ全体の予算なので、caps/アイコン/余白の分を差し引いてから
+    local claude = find_claude(tab.panes)
+    local index = tostring(tab.tab_index + 1) .. " "
+    local status_icon = claude and (ICONS.claude_status .. " ") or ""
+    local status_palette = tab.is_active and colors.claude_status_active or colors.claude_status_inactive
+    local status_color = claude and status_palette[claude.state] or foreground
+    local head = index .. status_icon .. zoom_indicator
+
+    -- max_widthはタブ全体の予算なので、caps/番号/アイコン/余白の分を差し引いてから
     -- タイトル本文を切り詰める(そうしないと右端の丸capごと切り詰められてしまう)
-    local decoration = " " .. left_circle .. zoom_indicator .. right_circle .. "  "
+    local decoration = " " .. left_circle .. head .. right_circle .. "  "
     local available_width = math.max(max_width - wezterm.column_width(decoration), 1)
-    local title = " " .. wezterm.truncate_right(title_text, available_width) .. " "
+    local body = fit_body(title_text, claude and claude.heading, available_width)
 
     return {
       { Background = { Color = edge_background } },
@@ -268,9 +408,13 @@ function M.setup(config)
       { Text = left_circle },
       { Background = { Color = background } },
       { Foreground = { Color = foreground } },
+      { Text = " " .. index },
+      { Foreground = { Color = status_color } },
+      { Text = status_icon },
+      { Foreground = { Color = foreground } },
       { Text = zoom_indicator },
       { Attribute = { Intensity = "Bold" } },
-      { Text = title },
+      { Text = body .. " " },
       { Attribute = { Intensity = "Normal" } },
       { Background = { Color = edge_background } },
       { Foreground = { Color = edge_foreground } },
