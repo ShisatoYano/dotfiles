@@ -199,6 +199,16 @@ local function find_claude(panes)
   return nil
 end
 
+-- ペインでClaude Codeが処理中か(workspaces.luaの後片付け確認で使う)
+function M.is_claude_busy(process_name, title)
+  title = sanitize_title(title or "")
+  if not is_claude_process(basename(process_name), title) then
+    return false
+  end
+  local busy = parse_claude_title(title)
+  return busy
+end
+
 local function truncate_with_ellipsis(s, width)
   if wezterm.column_width(s) <= width then
     return s
