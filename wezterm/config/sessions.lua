@@ -6,8 +6,9 @@ M.AUTO_SAVE_INTERVAL_S = 10
 
 M.STATE_DIR = wezterm.home_dir .. "/.local/share/wezterm-sessions/state/"
 
+-- プラグイン(fs.escape_file_name)の命名と一致させること。ずれると保存ファイルを見つけられない
 function M.escape_file_name(name)
-  return (name:gsub("[^%w_%-]", "_"))
+  return (name:gsub("/", "+"))
 end
 
 local function has_saved_state(workspace_name)
