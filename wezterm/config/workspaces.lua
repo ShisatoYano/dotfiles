@@ -20,7 +20,8 @@ local function summarize(count_busy)
       s.tabs = s.tabs + 1
       if count_busy then
         for _, p in ipairs(tab:panes()) do
-          if tab_title.is_claude_busy(p:get_foreground_process_name(), p:get_title()) then
+          local claude = tab_title.claude_state(p:get_foreground_process_name(), p:get_title(), p:pane_id())
+          if claude and claude.state == "busy" then
             s.busy = s.busy + 1
           end
         end
@@ -45,14 +46,124 @@ local function workspace_choices(window, exclude_current)
   return choices
 end
 
+local function version_key(path)
+  local major, minor, patch = path:match("/v(%d+)%.(%d+)%.(%d+)/")
+  return (tonumber(major) or 0) * 1e8 + (tonumber(minor) or 0) * 1e4 + (tonumber(patch) or 0)
+end
+
+-- GUIから起動したWezTermのPATHにはnvmのbinが無いため、nvm配下の最新nodeのものを探してからPATHに頼る。
+-- globは文字列順(v9がv24より後)なので、バージョン番号で比べる
+local function claude_executable()
+  local best
+  for _, path in ipairs(wezterm.glob(wezterm.home_dir .. "/.nvm/versions/node/*/bin/claude")) do
+    if not best or version_key(path) > version_key(best) then
+      best = path
+    end
+  end
+  return best or "claude"
+end
+
+-- 起動中のClaude Codeセッション名を端末(tty)ごとに引く表を返す。
+-- ccsession経由だと前面プロセスとClaude本体のpidが一致しないため、ttyで突き合わせる
+local function claude_names_by_tty()
+  local names = {}
+  local ok, stdout, stderr = wezterm.run_child_process({ claude_executable(), "agents", "--json" })
+  if not ok then
+    wezterm.log_error("workspaces: claude agents failed: " .. tostring(stderr))
+    return names
+  end
+  local parsed_ok, agents = pcall(wezterm.json_parse, stdout)
+  if not parsed_ok or type(agents) ~= "table" then
+    return names
+  end
+  local name_by_pid, pids = {}, {}
+  for _, a in ipairs(agents) do
+    if a.pid and a.name then
+      name_by_pid[tostring(a.pid)] = a.name
+      table.insert(pids, tostring(a.pid))
+    end
+  end
+  if #pids == 0 then
+    return names
+  end
+  local ps_ok, ps_out = wezterm.run_child_process({ "ps", "-o", "pid=,tty=", "-p", table.concat(pids, ",") })
+  if ps_ok then
+    for pid, tty in ps_out:gmatch("(%d+)%s+(%S+)") do
+      if name_by_pid[pid] and tty ~= "?" then
+        names["/dev/" .. tty] = name_by_pid[pid]
+      end
+    end
+  end
+  return names
+end
+
+local function pad_right(s, width)
+  return s .. string.rep(" ", math.max(0, width - wezterm.column_width(s)))
+end
+
+-- ワークスペース行の下に、そのワークスペースのClaudeセッション行(状態・名前・見出し)を並べる
+local function switch_choices(window)
+  local names = claude_names_by_tty()
+  local sessions_by_ws = {}
+  local name_width = 0
+  for _, mux_win in ipairs(wezterm.mux.all_windows()) do
+    local ws = mux_win:get_workspace()
+    sessions_by_ws[ws] = sessions_by_ws[ws] or {}
+    for _, tab in ipairs(mux_win:tabs()) do
+      for _, p in ipairs(tab:panes()) do
+        local claude = tab_title.claude_state(p:get_foreground_process_name(), p:get_title(), p:pane_id())
+        if claude then
+          local name = names[p:get_tty_name() or ""] or ""
+          name_width = math.max(name_width, wezterm.column_width(name))
+          table.insert(sessions_by_ws[ws], { pane_id = p:pane_id(), claude = claude, name = name })
+        end
+      end
+    end
+  end
+
+  local choices = {}
+  for _, ws_choice in ipairs(workspace_choices(window, false)) do
+    table.insert(choices, ws_choice)
+    for _, s in ipairs(sessions_by_ws[ws_choice.id] or {}) do
+      table.insert(choices, {
+        id = "pane:" .. s.pane_id,
+        label = string.format(
+          "    %s %s  %s",
+          tab_title.CLAUDE_STATUS_ICONS[s.claude.state],
+          pad_right(s.name, name_width),
+          s.claude.heading or ""
+        ),
+      })
+    end
+  end
+  return choices
+end
+
+local function activate_pane(window, pane, pane_id)
+  local target = wezterm.mux.get_pane(pane_id)
+  if not target then
+    return
+  end
+  local tab = target:tab()
+  window:perform_action(act.SwitchToWorkspace({ name = tab:window():get_workspace() }), pane)
+  tab:activate()
+  target:activate()
+end
+
 local function switch_picker(window, pane)
   window:perform_action(
     act.InputSelector({
-      title = "ワークスペースを切り替え",
+      title = "ワークスペース・セッションを切り替え",
       fuzzy = true,
-      choices = workspace_choices(window, false),
+      choices = switch_choices(window),
       action = wezterm.action_callback(function(win, p, id)
-        if id then
+        if not id then
+          return
+        end
+        local pane_id = id:match("^pane:(%d+)$")
+        if pane_id then
+          activate_pane(win, p, tonumber(pane_id))
+        else
           win:perform_action(act.SwitchToWorkspace({ name = id }), p)
         end
       end),
