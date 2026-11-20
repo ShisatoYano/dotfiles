@@ -186,27 +186,28 @@ local function has_claude_error(pane_id)
   return true
 end
 
--- タブ内のいずれかのペインでClaude Codeが動いていれば、その状態(busy/idle/error)と見出しを返す
+-- ペインでClaude Codeが動いていれば、その状態(busy/idle/error)と見出しを返す(workspaces.luaでも使う)
+function M.claude_state(process_name, title, pane_id)
+  title = sanitize_title(title or "")
+  if not is_claude_process(basename(process_name or ""), title) then
+    return nil
+  end
+  local busy, heading = parse_claude_title(title)
+  local state = busy and "busy" or (has_claude_error(pane_id) and "error" or "idle")
+  return { state = state, heading = heading }
+end
+
+M.CLAUDE_STATUS_ICONS = ICONS.claude_status
+
+-- タブ内のいずれかのペインでClaude Codeが動いていれば、その状態と見出しを返す
 local function find_claude(panes)
   for _, p in ipairs(panes) do
-    local title = sanitize_title(p.title or "")
-    if is_claude_process(basename(p.foreground_process_name), title) then
-      local busy, heading = parse_claude_title(title)
-      local state = busy and "busy" or (has_claude_error(p.pane_id) and "error" or "idle")
-      return { state = state, heading = heading }
+    local claude = M.claude_state(p.foreground_process_name, p.title, p.pane_id)
+    if claude then
+      return claude
     end
   end
   return nil
-end
-
--- ペインでClaude Codeが処理中か(workspaces.luaの後片付け確認で使う)
-function M.is_claude_busy(process_name, title)
-  title = sanitize_title(title or "")
-  if not is_claude_process(basename(process_name), title) then
-    return false
-  end
-  local busy = parse_claude_title(title)
-  return busy
 end
 
 local function truncate_with_ellipsis(s, width)
