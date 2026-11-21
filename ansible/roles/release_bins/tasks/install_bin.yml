@@ -8,6 +8,8 @@
 - name: "{{ bin.name }}: 最新リリースのバージョンを調べる"
   ansible.builtin.uri:
     url: "https://api.github.com/repos/{{ bin.version_repo }}/releases/latest"
+    # 未認証の上限はIP単位60回/時で、IPを共有するCIランナーでは他ジョブに使い切られうる
+    headers: "{{ {'Authorization': 'Bearer ' ~ lookup('env', 'GH_TOKEN')} if lookup('env', 'GH_TOKEN') else {} }}"
     return_content: true
   register: latest_release
   check_mode: false # 問い合わせるだけなので --check でも実行する
