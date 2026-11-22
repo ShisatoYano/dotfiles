@@ -1,6 +1,6 @@
 ---
 name: pr-workflow
-description: Use when the user wants to check on their own open pull requests (status, CI, review feedback, merge readiness) or to handle pull requests assigned to them for review (triage, code review, re-review follow-up). Unattended polling in a dedicated session is handled by `pr-watch`, which reuses this skill's steps. Trigger on phrases like "PRの状況教えて", "自分のPRどうなってる", "レビュー待ちのPRある?", "アサインされてるレビュー確認して", "PRレビューして", "マージしていいか確認して". Code review runs in one subagent per PR, keeps only must-fix findings (with reason and fix) and premise questions, and submits the result automatically as a GitHub review (request-changes / comment / approve). Replies to review comments on the user's own PRs are posted automatically once the user picks the response policy. Merges the user's own PR only when the merge check passes and the user approves the permission prompt that a hook forces on every merge. For a repository that has its own `pr-review` Skill (`.claude/skills/pr-review`), the code review is delegated to that Skill.
+description: Use when the user asks about their own open pull requests (status, CI, review feedback, merge readiness) or about pull requests assigned to them for review (triage, code review, re-review). Trigger on phrases like "PRの状況教えて", "レビュー待ちのPRある?", "PRレビューして", "マージしていいか確認して". Every review and reply is shown as a draft and posted only after the user approves it; merges go through a hook-enforced approval prompt. Listing is delegated to `pr-task-planning`, a repository's own `pr-review` Skill takes over the code review, and unattended polling is `pr-watch`.
 ---
 
 # PR Workflow
@@ -9,7 +9,9 @@ description: Use when the user wants to check on their own open pull requests (s
 
 ## 前提
 
+- **MUST**: レビュー送信(本文なしの`APPROVE`を含む)・返信は、必ず「下書きと送信」を通し、ユーザーの承認後に送る(相手に届く文面をユーザーが確かめてから出すため。`~/dotfiles/claude/rules/write-approval.md`)
 - PRへの書き込みは`gh api -X POST`の`repos/<owner>/<repo>/pulls/<number>/reviews`(レビュー送信)・`pulls/<number>/comments/<id>/replies`(スレッドへの返信)・`issues/<number>/comments`(会話欄への返信)だけがhook(`claude/hooks/block-pr-write-actions.py`)で許可されている。マージは`gh pr merge`に`--match-head-commit <sha>`を付けた形だけが、hookの出す承認ダイアログを通して許可される(チェック後のpushが紛れ込まないよう、head固定なしやAPI経由はブロック)。`gh pr review`/`comment`・その他の書き込みはブロックされる
+- スクラッチパッドが無い環境(`claude -p`等)では、`mktemp -d`で作ったディレクトリをスクラッチパッドとして使い、そのパスを示す
 - 投稿する本文はスクラッチパッドのファイルに書いてから`--input <file>`/`-F body=@<file>`で渡す(本文中の文字列がhookに誤検知されず、クォートも崩れないため)。末尾には空行を挟んで`🤖 Generated with [Claude Code](https://claude.com/claude-code)`を付ける(本文を送らない`APPROVE`を除く)。ファイルはWriteツールで作り、書き込みの`gh api -X POST ...`は`cd`・`&&`・`;`・`|`とつながず単独で実行する(settings.jsonの許可ルールはコマンド全体で照合されるため、つなぐと一致せずauto modeで拒否される。hookもこの形を止める)
 - `gh`の取得方法(`gh search prs`と`gh pr view`の使い分け、`for`ループ禁止、`--jq`での圧縮)は`pr-task-planning`の「前提」に従う
 - 未解決のレビュースレッドと自分の最新レビュー時点のコミットは`gh pr view`では取れないため、以下のGraphQLで取得する(以降「レビュー状態クエリ」と呼ぶ)
@@ -20,10 +22,18 @@ description: Use when the user wants to check on their own open pull requests (s
 
 - 対象の決め方: 特に指定が無ければ「自分が出したPR」→「自分にアサインされたレビュー」の順に両方実行する。一方だけ・特定PR1件の指定ならその部分だけ実行する
 
+## 下書きと送信
+
+レビュー送信・返信はすべてこの手順で送る(`pr-watch`からも使う)。
+
+1. 下書きの提示: レビューなら、先に「レビュー実施」手順5の1・2を出す。そのうえで送る内容をWriteツールでスクラッチパッドのファイルに書き(レビューはevent・本文・各コメントの`path:line`を持つ送信用JSON、返信は宛先を添えた本文ファイル。書くだけなら送信ではないので、承認の前に必ず行う)、そのパスと中身をコードブロックで示す。中身は要約・言い換え・体裁の整え直しをしない。複数あればまとめて並べる
+2. 承認: 対話では`AskUserQuestion`で「送信する / 直す / 送らない」を選んでもらう(複数あれば`multiSelect`で送るものを選ぶ)。`pr-watch`の巡回中は`AskUserQuestion`を使わず、ユーザーの返事を待つ。直す指示なら反映して1からやり直す
+3. 送信: 承認されたものだけを「前提」の形で送り、レスポンスの`html_url`を返す。行の指定が原因で422が返ったら、全項目を`body`に移して1回だけ再送する
+
 ## 自分が出したPR
 
 1. 一覧・優先度整理: `pr-task-planning`の「自分が出したPRの一覧・優先度整理」を実行する
-2. レビューコメント対応支援: 対象PRにレビュー状態クエリを実行し、`openThreads`と`gh pr view --json reviews,comments`の指摘をファイル/観点ごとにまとめ、それぞれ「何を指摘されているか」と対応方針案を提示し、`AskUserQuestion`で方針を選んでもらう。選ばれた方針で返信を書き、確認を挟まずに投稿する(スレッドは`openThreads`の`id`を使い`comments/<id>/replies`へ、会話欄の指摘は`issues/<number>/comments`へ)。修正のpushはユーザーが行うため、返信は「〜で対応します」の形にし、pushされていない修正を「対応しました」と書かない
+2. レビューコメント対応支援: 対象PRにレビュー状態クエリを実行し、`openThreads`と`gh pr view --json reviews,comments`の指摘をファイル/観点ごとにまとめ、それぞれ「何を指摘されているか」と対応方針案を提示し、`AskUserQuestion`で方針を選んでもらう。選ばれた方針で返信を書き、「下書きと送信」で投稿する(スレッドは`openThreads`の`id`を使い`comments/<id>/replies`へ、会話欄の指摘は`issues/<number>/comments`へ)。修正のpushはユーザーが行うため、返信は「〜で対応します」の形にし、pushされていない修正を「対応しました」と書かない
 3. マージ可否チェック: `gh pr view --json reviewDecision,statusCheckRollup,mergeStateStatus,latestReviews,comments`とレビュー状態クエリの結果を`references/merge-checklist.md`の観点に照らし、結論(マージ可能 / 要対応: 理由)を提示する
 4. マージ: マージ可能なら、`gh repo view <owner/repo> --json mergeCommitAllowed,squashMergeAllowed,rebaseMergeAllowed`で許可されている方式を`--merge`→`--squash`→`--rebase`の順に選び、`gh pr merge <number> --repo <owner/repo> <方式> --match-head-commit <レビュー状態クエリのhead>`を実行する。承認はhookが出すダイアログで行うため`AskUserQuestion`は挟まない。ブランチは削除しない(`--delete-branch`を付けない)
 
@@ -46,8 +56,13 @@ description: Use when the user wants to check on their own open pull requests (s
    - ローカルクローンは現在のチェックアウトのまま読むだけ(grep・ファイル閲覧)にし、ブランチの切り替えや変更をしないこと(呼び出し元はベース側にあるので現状のチェックアウトで足りる)
    - 見出しのタイトルはPRのタイトルを翻訳・要約せずそのまま書くこと(一覧でPRを見分けられなくなるため)
    - 返答は出力形式のブロックのみとし、調査過程やdiffの引用を含めないこと
-4. レビュー送信: 確認を挟まずにPRごとに1回送信する。`references/review-criteria.md`の「送信イベント」でeventを決める。`APPROVE`は指摘なしのときだけなので、`body`(フッターを含む)を付けずに送る。【投稿用】の各項目は、`<path>:<line>`を`comments`の`path`・`line`・`side`(`L<line>`なら`LEFT`、それ以外は`RIGHT`)にし、項目の残りの全文を本文にする。このJSONを`gh api -X POST repos/<owner>/<repo>/pulls/<number>/reviews --input <file>`で送る。`(diff外)`の項目はレビューの`body`に`path:line`付きで入れる。行の指定が原因で422が返ったら、全項目を`body`に移して1回だけ再送する
-5. 結果の提示: PRごとに、返ってきたブロック(概要・【投稿用】・【レビュアー向けメモ】)に、送信したeventとレビューのURL(レスポンスの`html_url`)を添えて並べる。REQUEST_CHANGES・COMMENTのものを先に出す。概要はユーザーが自分でもPRを把握するためのものなので省略しない
+
+   上記以外の推測・観点・PR本文の言い換えはブリーフに書かない(レビューを誘導し、言い換えの誤りが投稿に入るため)。メインのセッションはdiffを取得しない
+4. 送信内容の作成: PRごとに1回分の送信内容を作る。メインはここでもdiffを取得せず、`path`・`line`はブロックの`path:line`をそのまま写す(ハンク内かどうかはサブエージェントが`references/review-criteria.md`に従って保証している)。`references/review-criteria.md`の「送信イベント」でeventを決める。`APPROVE`は指摘なしのときだけなので、`body`(フッターを含む)を付けずに送る。【投稿用】の各項目は、`<path>:<line>`を`comments`の`path`・`line`・`side`(`L<line>`なら`LEFT`、それ以外は`RIGHT`)にし、項目の残りの全文を本文にする。`(diff外)`の項目はレビューの`body`に`path:line`付きで入れる。`REQUEST_CHANGES`の`body`は空にしない(GitHub APIの必須項目で、空だと422になる)。`(diff外)`の項目が無ければフッターだけを入れる。このJSON(送り先は`repos/<owner>/<repo>/pulls/<number>/reviews`)をWriteツールでスクラッチパッドの`review-<repo>-<number>.json`に書く(書くだけなら送信ではないので、承認の前に必ず行う)
+5. 結果の提示と送信: PRごとに次の順で出し、「下書きと送信」で承認を得て送る。REQUEST_CHANGESのPRを先に出す
+   1. 返ってきたブロック全体(概要・【投稿用】・【レビュアー向けメモ】)を、1つのコードブロックにそのまま入れる。見出し・空白・改行・箇条書きも変えず、概要やメモを別の見出しや箇条書きに書き直さない(ユーザーが送るかどうかを決める材料なので省略もしない)
+   2. コードブロックの外にevent。メインの所見を足すなら、ここに「補足」として分けて書く
+   3. 「下書きと送信」手順1の送信用JSONのパスと、ファイルの中身そのもの(```jsonのコードブロック)。承認するのは実際に送る中身なので、1と重複しても要約で置き換えない。1を3で置き換えもしない
 
 ### 3. レビュー後のフォロー
 
