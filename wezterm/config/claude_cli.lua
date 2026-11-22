@@ -11,7 +11,7 @@ end
 function M.executable()
   local best
   for _, path in ipairs(wezterm.glob(wezterm.home_dir .. "/.nvm/versions/node/*/bin/claude")) do
-    if not best or version_key(path) > version_key(best) then
+    if not best or version_key(path) < version_key(best) then
       best = path
     end
   end
