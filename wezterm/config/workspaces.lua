@@ -2,6 +2,7 @@ local wezterm = require("wezterm")
 local act = wezterm.action
 local sessions = require("config.sessions")
 local tab_title = require("config.tab_title")
+local claude_cli = require("config.claude_cli")
 local M = {}
 
 local INPUT_ID = "__input__"
@@ -46,38 +47,12 @@ local function workspace_choices(window, exclude_current)
   return choices
 end
 
-local function version_key(path)
-  local major, minor, patch = path:match("/v(%d+)%.(%d+)%.(%d+)/")
-  return (tonumber(major) or 0) * 1e8 + (tonumber(minor) or 0) * 1e4 + (tonumber(patch) or 0)
-end
-
--- GUIから起動したWezTermのPATHにはnvmのbinが無いため、nvm配下の最新nodeのものを探してからPATHに頼る。
--- globは文字列順(v9がv24より後)なので、バージョン番号で比べる
-local function claude_executable()
-  local best
-  for _, path in ipairs(wezterm.glob(wezterm.home_dir .. "/.nvm/versions/node/*/bin/claude")) do
-    if not best or version_key(path) > version_key(best) then
-      best = path
-    end
-  end
-  return best or "claude"
-end
-
 -- 起動中のClaude Codeセッション名を端末(tty)ごとに引く表を返す。
 -- ccsession経由だと前面プロセスとClaude本体のpidが一致しないため、ttyで突き合わせる
 local function claude_names_by_tty()
   local names = {}
-  local ok, stdout, stderr = wezterm.run_child_process({ claude_executable(), "agents", "--json" })
-  if not ok then
-    wezterm.log_error("workspaces: claude agents failed: " .. tostring(stderr))
-    return names
-  end
-  local parsed_ok, agents = pcall(wezterm.json_parse, stdout)
-  if not parsed_ok or type(agents) ~= "table" then
-    return names
-  end
   local name_by_pid, pids = {}, {}
-  for _, a in ipairs(agents) do
+  for _, a in ipairs(claude_cli.agents()) do
     if a.pid and a.name then
       name_by_pid[tostring(a.pid)] = a.name
       table.insert(pids, tostring(a.pid))
