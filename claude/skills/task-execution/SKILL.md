@@ -1,0 +1,61 @@
+---
+name: task-execution
+description: Use when carrying out an approved plan — in a worker session after receiving a work order from the lead, or from `task-workflow` when working alone — for any task kind (implementation, bug fix, documentation, data analysis, research, environment setup, slides). Covers confirming understanding of the work order, working within its scope, self-review, checking the completion criteria (local testing via `testing-workflow` for code), committing repository changes, and reporting results with the criteria's actual output. Also runs investigation checks the lead requests before approval (no commit). Planning, approvals, Notion and GitHub belong to `task-workflow`. Not for starting a new task — use `task-workflow` for that.
+---
+
+# Task Execution
+
+承認済みの方針(分業時は司令塔からの作業指示書)に沿って、作業・自己レビュー・完了条件の確認・コミット・報告までを行う。分業時は実装役(worker)が使い、単独のセッションでは`task-workflow`の「委譲」から呼ばれる。種類ごとの完了条件の確かめ方と観点は`~/.claude/skills/task-workflow/references/task-kinds.md`に従い、コードのテストは`testing-workflow`の「ローカルテストフロー」を使う。
+
+## 前提
+
+- コードを書く作業は`~/.claude/CLAUDE.md`の「コーディング」節、テストは同「テスト」節に従う
+- 分業時、計画の承認者と相談先は司令塔で、確認したいことは司令塔へのメッセージ(SendMessage)で送る。役割の決まりは`~/dotfiles/claude/roles/worker.md`
+- push・GitHub操作・Notionなど外部への書き込みはしない(`task-workflow`の担当)
+- 長い処理(ビルド・テスト一式・解析など)はバックグラウンドで実行して出力をファイルに書く。タイムアウトが効かないので、自分で上限時間を決めて見張り、超えたら止めて報告する
+- 対象リポジトリの外(サブモジュール等)へ`git`を向けるときは`cd <path> && git ...`ではなく`git -C <path> ...`を使う(`cd`を挟むとリポジトリのhookが実行されうるとしてツール側の確認が挟まるため)
+
+## 調査用の指示書
+
+`task-workflow`の「調査」から、方針の承認前の確認(ログ追加・テスト追加・再現用の改造など)を頼まれた場合(指示書の「目的」が「調査用」で始まる)は、以降の「作業」〜「報告」の代わりにこれを行う。
+
+1. 理解確認(次節)だけ行い、合格したら確認を実行して結果を報告する
+2. コミットはしない。加えた変更は、報告後に指示書の「制約」の指定どおり戻すか残す(指定が無ければ戻す)
+
+## 理解確認
+
+分業時のみ行う(単独時は方針を自分で立てているので省く)。
+
+1. 作業指示書を受け取ったら、着手前に理解を司令塔へ返す(目的・種類・触るファイル・成果物・完了条件の確かめ方・不明点)
+2. 合格の返事を待ってから着手する
+
+## 作業
+
+1. 方針(指示書)に沿って作業する。既存のスタイル・命名に合わせ、流用できる既存の実装・文書・スクリプトがあれば新しく作らずそれを使う
+2. 範囲外のファイルや作業に手を広げない。必要になったら手を止めて相談する(分業時は司令塔、単独時はユーザー)
+3. 承認済みの中断条件に当たったら、または同じ失敗が2回続いたら、3回目を試す前に手を止める。分業時は司令塔へ`状態: 相談`で報告し、単独時は`task-workflow`の「委譲」の5に従う
+
+## 自己レビュー
+
+1. 成果物を見直す。コードと設定の差分は`references/self-review-checklist.md`の観点、それ以外は`~/.claude/skills/task-workflow/references/task-kinds.md`の種類の「受け入れ検証の観点」に照らして直す
+
+## 完了条件の確認
+
+1. 指示書(単独時は承認した方針)の完了条件と確認の方針を確かめる。コードや設定の変更は`testing-workflow`の「ローカルテストフロー」で行う
+2. 満たせなかったら思いつきで別のやり方を試さず、「なぜ満たせなかったか」を整理する。分業時は司令塔へ`状態: 相談`で報告し、単独時は`task-workflow`の「委譲」の5に従って「調査」に戻る
+3. 満たせたときだけ、成果物がリポジトリの変更ならリポジトリの規約に合わせたコミットメッセージでコミットする。それ以外の成果物は、指示書の「成果物」の場所に置く(非公開と指定されたものは、公開リポジトリにコミットしない)
+
+## 報告
+
+分業時は、長い作業なら節目ごとに途中報告し、完了したら次の書式で司令塔へ送る。単独時は、完了条件を満たしたら`task-workflow`の「受け入れ検証」に進む。
+
+```
+状態: 完了 / 途中 / 相談
+やったこと:
+成果物: (コミット、またはファイルのパス)
+完了条件の結果: (コマンド・結果・ログのパス)
+次にやること(予告):
+気になる点: (範囲外の課題もここに書く)
+```
+
+ログ本文はメッセージに貼らず、ファイルのパスと要約だけを送る。

@@ -1,6 +1,6 @@
 ---
 name: daily-task-workflow
-description: Use when the user wants to decide what to work on today from their assigned Notion tasks, picking today's tasks by checking them off, draft a Slack work-thread post linking the selected tasks, then work through the selected implementation/bugfix tasks directly in the caller session. Trigger on phrases like "今日のタスク決めて". PR/review work is NOT handled here; it runs independently in a dedicated session via `pr-watch`. Candidate listing, selection, and Slack draft creation (サブワークフロー1) are normally triggered via the `daily-planning` agent (model: haiku) instead of this Skill directly — see that agent's description — but this Skill still contains and can directly run サブワークフロー1 when explicitly invoked. Direct implementation (サブワークフロー2) always runs at the caller session's own model, after the agent returns the confirmed list.
+description: Use when the user wants to decide what to work on today from their assigned Notion tasks, picking today's tasks by checking them off, draft a Slack work-thread post linking the selected tasks, then work through the selected tasks directly in the caller session. Trigger on phrases like "今日のタスク決めて". PR/review work is NOT handled here; it runs independently in a dedicated session via `pr-watch`. Candidate listing, selection, and Slack draft creation (サブワークフロー1) are normally triggered via the `daily-planning` agent (model: haiku) instead of this Skill directly — see that agent's description — but this Skill still contains and can directly run サブワークフロー1 when explicitly invoked. Direct implementation (サブワークフロー2) always runs at the caller session's own model, after the agent returns the confirmed list.
 ---
 
 # Daily Task Workflow
@@ -28,7 +28,7 @@ Notionの担当タスクを一覧にし、その日やるものをユーザー�
 `サブワークフロー1`で確定したリストを受け取って実行する。呼び出し元セッションのモデルでそのまま実行する。
 
 1. 着手前に、Slack下書きを「📋 Slack投稿用下書き」という見出しとコードブロックのみの単独の返答で提示し、「投稿できたら『進めて』と言ってください」と添えてその返答を終える(同じ返答内で作業を続けると後続の出力に埋もれて見落とされるため)。ユーザーの応答を受けてから次に進む
-2. リスト上から順に1件ずつ、このセッション内で直接着手する。`種類`が`Issue (Fix)`なら`bug-investigation-workflow`、それ以外なら`implementation-workflow`を呼び出す
+2. リスト上から順に1件ずつ、このセッション内で直接着手する。`task-workflow`を呼び出す(分業か単独かは同Skillの「前提」の判定に従う)
 3. 1件が完了する、またはその日の作業として区切りがついたら、次のタスクに進む
 4. 確定リストを全件処理し終えたら、`AskUserQuestion`ツールで「終業まとめを作る」か「追加で他のタスクに着手する」かを選択式で確認する
    - 終業まとめを選んだ場合: `daily-summary` agent(`~/dotfiles/claude/agents/daily-summary.md`)を実行して終了する
