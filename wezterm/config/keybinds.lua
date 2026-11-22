@@ -1,6 +1,7 @@
 local wezterm = require("wezterm")
 local tab_title = require("config.tab_title")
 local theme = require("config.theme")
+local pr_status = require("config.pr_status")
 local M = {}
 
 -- Key table of mode label
@@ -12,7 +13,7 @@ local KEY_TABLE_LABELS = {
 -- config reloadのたびにLuaインタプリタ状態は作り直され、古いreloadで登録した
 -- wezterm.onは自然に破棄されるため、多重登録を気にして登録をガードする必要はない
 -- (むしろガードすると、reload後もこのハンドラの中身が最初の版のまま固定されてしまう)
-wezterm.on("update-right-status", function(window, _)
+wezterm.on("update-right-status", function(window, pane)
   local colors = window:effective_config().color_scheme == theme.light_scheme
     and tab_title.TAB_COLORS_LIGHT
     or tab_title.TAB_COLORS_DARK
@@ -28,6 +29,10 @@ wezterm.on("update-right-status", function(window, _)
       { Attribute = { Intensity = "Bold" } },
       { Text = "  " .. label .. "  " },
     })
+  end
+
+  for _, segment in ipairs(pr_status.segments(pane, colors)) do
+    table.insert(segments, segment)
   end
 
   local formatted = {}
