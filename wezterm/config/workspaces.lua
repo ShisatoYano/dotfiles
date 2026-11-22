@@ -11,7 +11,7 @@ local function basename(path)
   return (path:gsub("/+$", ""):match("([^/]+)$")) or path
 end
 
--- ワークスペースごとのタブ数(count_busyなら処理中のClaudeの数も)を集計する
+-- ワークスペースごとのタブ数(count_busyなら処理中・権限確認待ちのClaudeの数も)を集計する
 local function summarize(count_busy)
   local summary = {}
   for _, mux_win in ipairs(wezterm.mux.all_windows()) do
@@ -22,7 +22,7 @@ local function summarize(count_busy)
       if count_busy then
         for _, p in ipairs(tab:panes()) do
           local claude = tab_title.claude_state(p:get_foreground_process_name(), p:get_title(), p:pane_id())
-          if claude and claude.state == "busy" then
+          if claude and (claude.state == "busy" or claude.state == "waiting") then
             s.busy = s.busy + 1
           end
         end
@@ -219,7 +219,7 @@ local function confirm_close(window, pane, name)
   local s = summarize(true)[name] or { tabs = 0, busy = 0 }
   local detail = string.format("タブ%d", s.tabs)
   if s.busy > 0 then
-    detail = detail .. string.format("、処理中のClaude %d", s.busy)
+    detail = detail .. string.format("、処理中・待ちのClaude %d", s.busy)
   end
   window:perform_action(
     act.InputSelector({

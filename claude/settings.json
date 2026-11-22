@@ -121,6 +121,52 @@
           {
             "type": "command",
             "command": "python3 ~/dotfiles/claude/hooks/remind-worktree-cleanup.py"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/dotfiles/claude/hooks/wezterm-tab-state.sh resume"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "permission_prompt|elicitation_dialog|agent_needs_input",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/dotfiles/claude/hooks/wezterm-tab-state.sh waiting"
+          }
+        ]
+      },
+      {
+        "matcher": "idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/dotfiles/claude/hooks/wezterm-tab-state.sh idle"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/dotfiles/claude/hooks/wezterm-tab-state.sh resume"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/dotfiles/claude/hooks/wezterm-tab-state.sh resume"
           }
         ]
       }
