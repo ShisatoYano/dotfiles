@@ -4,6 +4,7 @@
       "Bash(command -v *)",
       "Bash(gh api -H 'Accept: application/vnd.github.diff' repos/*/compare/*)",
       "Bash(gh api graphql *)",
+      "Bash(bash ~/.claude/skills/pr-task-planning/scripts/pr-scope.sh *)",
       "Bash(gh api repos/*/pulls/*/comments)",
       "Bash(gh api -X POST repos/*/pulls/*/reviews --input *)",
       "Bash(gh api -X POST repos/*/pulls/*/comments/*/replies -F body=@*)",
