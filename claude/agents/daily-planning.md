@@ -1,6 +1,6 @@
 ---
 name: daily-planning
-description: Use when the user wants to decide what to work on today from their assigned Notion tasks, picking today's tasks by checking them off, and draft a Slack work-thread post linking the selected tasks. Trigger on phrases like "今日のタスク決めて". Delegates to `daily-task-workflow`'s サブワークフロー1(候補選定) via the Skill tool, verbatim — candidate listing, selection, and Slack draft creation only. PR/review work is not included (it runs in a dedicated session via `pr-watch`). サブワークフロー2(直接実装) is NOT handled here: it must run at the caller session's own model after this agent returns the confirmed list.
+description: Use when the user wants to decide what to work on today from their assigned Notion tasks and GitHub issues, picking today's tasks by checking them off, and draft a Slack work-thread post linking the selected Notion tasks. Trigger on phrases like "今日のタスク決めて". Delegates to `daily-task-workflow`'s サブワークフロー1(候補選定) via the Skill tool, verbatim — candidate listing, selection, and Slack draft creation only. PR/review work is not included (it runs in a dedicated session via `pr-watch`). サブワークフロー2(直接実装) is NOT handled here: it must run at the caller session's own model after this agent returns the confirmed list.
 model: haiku
 ---
 
@@ -8,4 +8,4 @@ model: haiku
 
 サブワークフロー1の手順4で選択リストとSlack下書きを報告する時点で終了する。サブワークフロー2(直接実装)はここでは実行しない。
 
-完了したら、選択されたNotionタスクのリストと、手順3で作成したSlack投稿用の下書きを、そのまま呼び出し元セッションに返す。呼び出し元は、その結果を使って`daily-task-workflow`のサブワークフロー2(直接実装)を自身のモデルで直接実行すること。
+完了したら、選択されたタスク(NotionのタスクとGitHubのIssue)のリストと、手順3で作成したSlack投稿用の下書きを、そのまま呼び出し元セッションに返す。呼び出し元は、その結果を使って`daily-task-workflow`のサブワークフロー2(直接実装)を自身のモデルで直接実行すること。
