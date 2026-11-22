@@ -63,13 +63,11 @@ local function spawn_role(window, pane, role)
   for _, a in ipairs(argv) do
     table.insert(quoted, shell_quote(a))
   end
-  local shell = os.getenv("SHELL") or "/bin/bash"
-  -- Claudeを終了してもタブを閉じず、そのままシェルとして使えるようにする
-  local script = table.concat(quoted, " ") .. "; exec " .. shell_quote(shell) .. " -l"
-  window:perform_action(
-    act.SpawnCommandInNewTab({ cwd = launch_dir(pane), args = { shell, "-lc", script } }),
-    pane
-  )
+  -- `bash -lc`で包まず、対話シェルに打ち込む。包むとclaudeが前面プロセスにならず(処理中の状態が出ない)、
+  -- .bashrcも非対話として途中で抜けるため、Bashツールの環境(PATH・ROS 2のsource等)が普段と変わる
+  local tab, new_pane = window:mux_window():spawn_tab({ cwd = launch_dir(pane) })
+  tab:activate()
+  new_pane:send_text(table.concat(quoted, " ") .. "\n")
   window:toast_notification("WezTerm", "「" .. name .. "」を起動しました", nil, 3000)
 end
 
