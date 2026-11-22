@@ -8,7 +8,7 @@
 
 1. 渡された入力: NotionのURLなら`notion`、GitHubのIssueの番号やURLなら`github`
 2. 対象リポジトリの`CLAUDE.md`に、タスク管理の場所が書かれていればそれ
-3. `~/.claude/task-sources.json`(`{"<owner>/<repo>を小文字にしたもの>": "notion" | "github" | "none"}`)。dotfilesに入らない手元のファイルなので、非公開リポジトリの名前を書いてよい
+3. `~/.claude/task-sources.json`(`{"<owner>/<repo>を小文字にしたもの>": "notion" | "github" | "none"}`。作業の順番をGitHub Projectで決めているリポジトリは`{"source": "github", "plan": {"project": "<owner>/<Projectの番号>", "field": "<順番のフィールド名>", "exclude": ["<候補にしない値>"]}}`と書き、`source`を出どころとして読む)。dotfilesに入らない手元のファイルなので、非公開リポジトリの名前を書いてよい。朝のタスク選び(`task-planning`)も、`github`のリポジトリをこの対応表から読む
 4. どれでも決まらなければ、`AskUserQuestion`で「Notion / GitHub Issues / 管理なし」を選んでもらい、3に書くかを確認して、承認されたら書く
 
 `none`(管理なし)は口頭の依頼と同じに扱い、下表の記録・完了・起票は行わない(範囲外の課題は報告だけする)。不具合の登録日時が無いので、現象に最初に気付いた時期をユーザーに聞く。
