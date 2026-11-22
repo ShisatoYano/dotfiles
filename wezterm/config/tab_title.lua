@@ -13,6 +13,7 @@ local ICONS = {
     busy = wezterm.nerdfonts.md_checkbox_blank_circle,
     idle = wezterm.nerdfonts.md_checkbox_blank_circle_outline,
     error = wezterm.nerdfonts.md_alert_circle,
+    waiting = wezterm.nerdfonts.md_help_circle,
   },
 }
 
@@ -22,14 +23,16 @@ local CLAUDE_STATUS_BRIGHT = {
   busy = "#859900", -- green
   idle = "#268bd2", -- blue
   error = "#dc322f", -- red
+  waiting = "#d33682", -- magenta
 }
 local CLAUDE_STATUS_DEEP = {
   busy = "#185200", -- deep green
   idle = "#08348c", -- deep blue
   error = "#8c0d0a", -- deep red
+  waiting = "#7a1048", -- deep magenta
 }
 
--- claude/hooks/wezterm-tab-state.shがStopFailureで書き、次の入力で消す
+-- claude/hooks/wezterm-tab-state.shが<pane_id>.<error|waiting|idle>を書き、次の入力などで消す
 local CLAUDE_STATE_DIR = (os.getenv("XDG_RUNTIME_DIR") or "/tmp") .. "/claude-tab-state/"
 
 -- Tab colors for dark theme 
@@ -177,8 +180,8 @@ local function parse_claude_title(title)
   return mark ~= "✳", heading
 end
 
-local function has_claude_error(pane_id)
-  local f = io.open(CLAUDE_STATE_DIR .. pane_id, "r")
+local function has_state_file(pane_id, name)
+  local f = io.open(CLAUDE_STATE_DIR .. pane_id .. "." .. name, "r")
   if not f then
     return false
   end
@@ -186,18 +189,76 @@ local function has_claude_error(pane_id)
   return true
 end
 
--- ペインでClaude Codeが動いていれば、その状態(busy/idle/error)と見出しを返す(workspaces.luaでも使う)
+-- ペインでClaude Codeが動いていれば、その状態(error/waiting/busy/idle)と見出しを返す(workspaces.luaでも使う)
 function M.claude_state(process_name, title, pane_id)
   title = sanitize_title(title or "")
   if not is_claude_process(basename(process_name or ""), title) then
     return nil
   end
   local busy, heading = parse_claude_title(title)
-  local state = busy and "busy" or (has_claude_error(pane_id) and "error" or "idle")
+  -- 権限確認の最中もタイトルは処理中のままなので、ファイルの状態をタイトルより優先する
+  local state = "idle"
+  if has_state_file(pane_id, "error") then
+    state = "error"
+  elseif has_state_file(pane_id, "waiting") then
+    state = "waiting"
+  elseif busy then
+    state = "busy"
+  end
   return { state = state, heading = heading }
 end
 
 M.CLAUDE_STATUS_ICONS = ICONS.claude_status
+
+local NOTICES = {
+  error = "エラーで停止しました",
+  waiting = "権限確認・質問の回答を待っています",
+  idle = "応答を終えて待機しています",
+}
+local NOTIFY_INTERVAL_S = 2
+local last_notify_scan = 0
+
+local function focused_pane_id()
+  for _, gui_win in ipairs(wezterm.gui.gui_windows()) do
+    if gui_win:is_focused() then
+      return gui_win:active_pane():pane_id()
+    end
+  end
+  return nil
+end
+
+-- 全ワークスペースのClaudeの止まり(エラー・待ち・待機)が変わったときだけ、見ていないペインについて通知する。
+-- 前回の状態は設定リロードで消えないようGLOBALに持つ(消えると今ある状態を全部通知し直してしまう)
+local function notify_claude_transitions(window)
+  local now = os.time()
+  if now - last_notify_scan < NOTIFY_INTERVAL_S then
+    return
+  end
+  last_notify_scan = now
+
+  local last = wezterm.GLOBAL.claude_notified or {}
+  local current = {}
+  local focused = focused_pane_id()
+  for _, mux_win in ipairs(wezterm.mux.all_windows()) do
+    for _, tab in ipairs(mux_win:tabs()) do
+      for _, p in ipairs(tab:panes()) do
+        local pane_id = p:pane_id()
+        local claude = M.claude_state(p:get_foreground_process_name(), p:get_title(), pane_id)
+        if claude then
+          local key = tostring(pane_id)
+          local notice = (claude.state == "error" or claude.state == "waiting") and claude.state
+            or (has_state_file(pane_id, "idle") and "idle" or "")
+          current[key] = notice
+          if notice ~= "" and last[key] ~= notice and pane_id ~= focused then
+            local where = mux_win:get_workspace() .. " / " .. (claude.heading or "Claude Code")
+            window:toast_notification("Claude Code: " .. where, NOTICES[notice], nil, 5000)
+          end
+        end
+      end
+    end
+  end
+  wezterm.GLOBAL.claude_notified = current
+end
 
 -- タブ内のいずれかのペインでClaude Codeが動いていれば、その状態と見出しを返す
 local function find_claude(panes)
@@ -349,7 +410,9 @@ function M.setup(config)
   local ssh_host_cache = {}
 
   -- cwdキャッシュ更新(重い処理を毎描画走らせないため)
-  wezterm.on("update-status", function(_, pane)
+  wezterm.on("update-status", function(window, pane)
+    notify_claude_transitions(window)
+
     local pane_id = pane:pane_id()
     local user_vars = pane.user_vars or {}
 
