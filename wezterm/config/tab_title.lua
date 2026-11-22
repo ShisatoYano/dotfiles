@@ -189,6 +189,37 @@ local function has_state_file(pane_id, name)
   return true
 end
 
+-- Bashツールのシェルは必ずshell-snapshotsを読み込むので、LSPなどほかの子プロセスと区別できる
+local function has_tool_shell(info)
+  local script = info.argv and info.argv[3]
+  if info.name == "bash" and script and script:find("/.claude/shell-snapshots/", 1, true) then
+    return true
+  end
+  for _, child in pairs(info.children or {}) do
+    if has_tool_shell(child) then
+      return true
+    end
+  end
+  return false
+end
+
+local BG_SHELL_CACHE_S = 2
+local bg_shell_cache = {}
+
+-- 応答を終えてもバックグラウンドのシェルが動いていれば処理中とみなすため。タブ描画のたびに/procを辿らないよう間引く
+local function has_background_shell(pane_id)
+  local now = os.time()
+  local cached = bg_shell_cache[pane_id]
+  if cached and now - cached.at < BG_SHELL_CACHE_S then
+    return cached.value
+  end
+  local mux_pane = wezterm.mux.get_pane(pane_id)
+  local info = mux_pane and mux_pane:get_foreground_process_info()
+  local value = info ~= nil and has_tool_shell(info)
+  bg_shell_cache[pane_id] = { at = now, value = value }
+  return value
+end
+
 -- ペインでClaude Codeが動いていれば、その状態(error/waiting/busy/idle)と見出しを返す(workspaces.luaでも使う)
 function M.claude_state(process_name, title, pane_id)
   title = sanitize_title(title or "")
@@ -202,7 +233,7 @@ function M.claude_state(process_name, title, pane_id)
     state = "error"
   elseif has_state_file(pane_id, "waiting") then
     state = "waiting"
-  elseif busy then
+  elseif busy or has_background_shell(pane_id) then
     state = "busy"
   end
   return { state = state, heading = heading }
@@ -247,7 +278,7 @@ local function notify_claude_transitions(window)
         if claude then
           local key = tostring(pane_id)
           local notice = (claude.state == "error" or claude.state == "waiting") and claude.state
-            or (has_state_file(pane_id, "idle") and "idle" or "")
+            or (claude.state ~= "busy" and has_state_file(pane_id, "idle") and "idle" or "")
           current[key] = notice
           if notice ~= "" and last[key] ~= notice and pane_id ~= focused then
             local where = mux_win:get_workspace() .. " / " .. (claude.heading or "Claude Code")
