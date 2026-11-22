@@ -1,6 +1,6 @@
 ---
 name: pr-task-planning
-description: Use as a sub-step of `pr-workflow`'s or `pr-watch`'s PR/review listing steps to get the user's open PRs and assigned reviews needing attention today, listed and roughly prioritized. Not typically invoked directly by the user.
+description: Use as a sub-step of `pr-workflow`'s or `pr-watch`'s PR/review listing steps to get the user's open PRs and assigned reviews in the current repository and its submodules (or every repository on request), listed and roughly prioritized. Not typically invoked directly by the user.
 ---
 
 # PR Task Planning
@@ -9,17 +9,15 @@ description: Use as a sub-step of `pr-workflow`'s or `pr-watch`'s PR/review list
 
 ## 前提
 
-- `gh search prs`は複数リポジトリを横断して検索できる。`--json`で取れるのは`number, repository, title, url, isDraft, updatedAt`等の概要まで。CI・レビュー・diffサイズなどの詳細は対象を絞った後に`gh pr view <number> --repo <owner/repo> --json ...`で個別取得する
+- 一覧は`bash ~/.claude/skills/pr-task-planning/scripts/pr-scope.sh` `list`で取得する(LLMを使わずに絞り込むため)。対象は作業ディレクトリのgitリポジトリと、`.gitmodules`のサブモジュールのリポジトリ。gitリポジトリの外か、ユーザーが全プロジェクトを求めたときは`list --all`で全リポジトリを対象にする。出力のJSONは`mine`(自分のPR)・`review_requested`(レビュー依頼)・`reviewed_by`(レビュー済みで、レビュー依頼に無いもの)・`others`(対象外の件数)を持つ。`truncated`に名前が入った一覧は検索の上限に達して欠けている可能性があり、`note`があれば全体を対象にした理由なので、どちらもユーザーに伝える
+- 一覧の最後に、対象外の件数を「対象外: 自分のPR N件・レビュー依頼 M件」の1行で添える(中身は出さない)
+- 一覧で取れるのは`number, repo, title, url, isDraft, updatedAt`の概要まで。CI・レビュー・diffサイズなどの詳細は対象を絞った後に`gh pr view <number> --repo <owner/repo> --json ...`で個別取得する
 - 複数PRについて`gh pr view`を取得する場合、`for`ループでシェル側にまとめて実行しない。ループ構文自体が承認対象になり、中身が全てread-onlyでも毎回確認を求められるため。PRごとに個別のBashコマンドとして(可能なら1メッセージ内で並列に)実行する
 - `gh pr view`の生JSON(特に`statusCheckRollup`・`reviews`)は大きいので、下記のように`--jq`で必要な形に圧縮して取得する
 
 ## 自分が出したPRの一覧・優先度整理
 
-1. 一覧を1回で取得する(状態別に複数回検索すると、条件に当てはまらないPRの漏れや複数カテゴリへの重複が出るため)
-
-   ```bash
-   gh search prs --author @me --state open --json number,repository,title,url,isDraft,updatedAt
-   ```
+1. 一覧は`list`の`mine`を使う(状態別に検索し直すと、条件に当てはまらないPRの漏れや複数カテゴリへの重複が出るため)
 
 2. 各PRの状態を圧縮して取得する(`latestReviews`でレビュアーごとの最新状態を直接得る)
 
@@ -32,11 +30,7 @@ description: Use as a sub-step of `pr-workflow`'s or `pr-watch`'s PR/review list
 
 ## 自分にアサインされたレビューの一覧・優先度整理
 
-1. 一覧を取得する。更新が古い順 = 待たせている順に並ぶ
-
-   ```bash
-   gh search prs --review-requested @me --state open --sort updated --order asc --json number,repository,title,url,isDraft,updatedAt
-   ```
+1. 一覧は`list`の`review_requested`を使う。更新が古い順 = 待たせている順に並んでいる
 
 2. 各PRのサイズと変更ファイルを、新規追加と既存ファイルの変更に分けて取得する(`pr-workflow`のレビュー深さの判定にもそのまま使う。`gh pr view`の`files`には追加/変更の区別が無いためGraphQLを使う)
 
@@ -44,11 +38,7 @@ description: Use as a sub-step of `pr-workflow`'s or `pr-watch`'s PR/review list
    gh api graphql -F owner=<owner> -F name=<repo> -F number=<number> -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){additions deletions files(first:100){nodes{path changeType additions deletions}}}}}' --jq '.data.repository.pullRequest | {additions, deletions, added:[.files.nodes[] | select(.changeType == "ADDED") | .path], modified:[.files.nodes[] | select(.changeType != "ADDED") | {path, lines:(.additions + .deletions)}]}'
    ```
 
-3. 自分がレビュー済みで、レビュー後に動きがあったPRを取得する(レビューを送信すると1の一覧から外れ、作成者が返信・修正しても戻らないため)。1の一覧にあるものは除く
-
-   ```bash
-   gh search prs --reviewed-by @me --state open --json number,repository,title,url,updatedAt -- -author:@me
-   ```
+3. 自分がレビュー済みのPRは`list`の`reviewed_by`を使う(レビューを送信すると1の一覧から外れ、作成者が返信・修正しても戻らないため。1の一覧にあるものは除いてある)
 
 4. 3の各PRに以下を実行し、`newCommits`が`true`(レビュー後にコミットが積まれた)、`repliedThreads`が空でない(自分のスレッドに自分の最終発言より後の返信がある。resolve済みも含む)、`authorComments`が1以上(会話欄に作成者の発言がある)のいずれかに当たるものを再レビュー候補とする。どれにも当たらないもの(作成者がまだ返信していない等)は出さない
 

@@ -1,6 +1,6 @@
 ---
 name: pr-workflow
-description: Use when the user asks about their own open pull requests (status, CI, review feedback, merge readiness) or about pull requests assigned to them for review (triage, code review, re-review). Trigger on phrases like "PRの状況教えて", "レビュー待ちのPRある?", "PRレビューして", "マージしていいか確認して". Every review and reply is shown as a draft and posted only after the user approves it; merges go through a hook-enforced approval prompt. Listing is delegated to `pr-task-planning`, a repository's own `pr-review` Skill takes over the code review, and unattended polling is `pr-watch`.
+description: Use when the user asks about their own open pull requests (status, CI, review feedback, merge readiness) or about pull requests assigned to them for review (triage, code review, re-review), in the current repository and its submodules unless the user asks for every project. Trigger on phrases like "PRの状況教えて", "レビュー待ちのPRある?", "PRレビューして", "マージしていいか確認して". Every review and reply is shown as a draft and posted only after the user approves it; merges go through a hook-enforced approval prompt. Listing is delegated to `pr-task-planning`, a repository's own `pr-review` Skill takes over the code review, and unattended polling is `pr-watch`.
 ---
 
 # PR Workflow
@@ -20,7 +20,7 @@ description: Use when the user asks about their own open pull requests (status, 
   gh api graphql -F owner=<owner> -F name=<repo> -F number=<number> -f query='query($owner:String!,$name:String!,$number:Int!){viewer{login} repository(owner:$owner,name:$name){pullRequest(number:$number){headRefOid latestReviews(first:50){nodes{author{login} state commit{oid}}} reviewThreads(first:100){nodes{isResolved isOutdated path line comments(first:1){nodes{databaseId author{login} body}}}}}}}' --jq '.data.viewer.login as $me | .data.repository.pullRequest | {head:.headRefOid, myReview:([.latestReviews.nodes[] | select(.author.login == $me) | {state, commit:.commit.oid}] | first), openThreads:[.reviewThreads.nodes[] | select(.isResolved | not) | {id:.comments.nodes[0].databaseId, by:.comments.nodes[0].author.login, path, line, isOutdated, body:.comments.nodes[0].body[:120]}]}'
   ```
 
-- 対象の決め方: 特に指定が無ければ「自分が出したPR」→「自分にアサインされたレビュー」の順に両方実行する。一方だけ・特定PR1件の指定ならその部分だけ実行する
+- 対象の決め方: 特に指定が無ければ「自分が出したPR」→「自分にアサインされたレビュー」の順に両方実行する。一方だけ・特定PR1件の指定ならその部分だけ実行する。対象のリポジトリは`pr-task-planning`の「前提」に従い、作業ディレクトリのリポジトリとそのサブモジュールに絞る(全プロジェクトを求められたときだけ全体)
 
 ## 下書きと送信
 

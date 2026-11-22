@@ -1,6 +1,6 @@
 ---
 name: pr-watch
-description: Use only when the user explicitly runs `/pr-watch` (or a `/loop` tick fires `/pr-watch`) to monitor PRs unattended in a dedicated session. Each pass drafts reviews and replies for the user's approval, push-notifies drafts, items needing a decision and merge-ready PRs, then registers a 30-minute `/loop` of itself if none exists. Reuses `pr-workflow`'s steps; for interactive PR checks use `pr-workflow` instead.
+description: Use only when the user explicitly runs `/pr-watch` (or a `/loop` tick fires `/pr-watch`) to monitor PRs of the current repository and its submodules unattended in a dedicated session. Each pass drafts reviews and replies for the user's approval, push-notifies drafts, items needing a decision and merge-ready PRs, then registers a 30-minute `/loop` of itself if none exists. Reuses `pr-workflow`'s steps; for interactive PR checks use `pr-workflow` instead.
 ---
 
 # PR Watch
@@ -16,6 +16,7 @@ description: Use only when the user explicitly runs `/pr-watch` (or a `/loop` ti
 
 ## 1巡の処理(watch-pass)
 
+0. 変化の確認: `bash ~/.claude/skills/pr-task-planning/scripts/pr-scope.sh` `check`を実行する。`unchanged`なら「新着なし」とだけ出し、7(ループ登録)だけ行って終える(前回の巡回から対象のPRに動きが無く、一覧取得のサブエージェントもPRごとのGraphQLも要らないため)。`changed`か、スクリプトが失敗したら1へ進む
 1. 一覧取得: `pr-task-planning`の「自分が出したPRの一覧・優先度整理」と「自分にアサインされたレビューの一覧・優先度整理」を、1つの`Explore`サブエージェント(`model: haiku`)に委譲して実行する(`~/dotfiles/claude/rules/context-delegation.md`参照。長時間回すセッションのコンテキストを節約するため)
 2. アサインされたレビュー: 新規依頼は全件、ユーザーの選択を挟まずに`pr-workflow`の「レビュー実施」を行い、再レビュー候補は全件「レビュー後のフォロー」を行う。同「送信内容の作成」で作ったものを下書きにする。下書き済みでheadが変わっていないPRは再レビューしない(承認待ちのまま一覧に残り続けるため)。添付画像・動画はブラウザを開かず、未確認として通知に含める
 3. 自分のPRへの新着コメント: 各PRに以下を実行し、`threads`(未解決で最後の発言が自分以外)・`comments`(自分の最後の発言より後の会話欄コメント)・`reviews`(自分の最後の発言より後の、本文のあるレビュー。COMMENTED/CHANGES_REQUESTEDの本文はスレッドにも会話欄にも出ないため)を新着とする
@@ -28,7 +29,8 @@ description: Use only when the user explicitly runs `/pr-watch` (or a `/loop` ti
    - 修正方針の判断が要る指摘・根拠を示せない質問: 返信せず、指摘の要約と方針案を要対応として通知する
 4. マージ可否: 「全員承認済み」に分類されたPRに`pr-workflow`の「マージ可否チェック」を行い、マージ可能なら通知する
 5. 通知: 2〜4で処理・検出したものがあれば`PushNotification`で件数を知らせ、画面にPRごとの結果(承認待ちの下書きとその根拠・未確認・要対応・マージ可能)を並べる。レビューの下書きは`pr-workflow`の「レビュー実施」手順5の形で出す。何も無ければ通知せず「新着なし」とだけ出す。下書き・要対応・マージ可能の通知は、スクラッチパッドの`pr-watch-notified.txt`に`<owner/repo>#<number>`と`draft:<head>`/`last`/`id`(`reviews`なら`review:<id>`、マージ可能なら`merge:<head>`)を記録し、記録済みのものは再通知しない(GitHub側の状態が変わらず毎回検出されるため)
-6. ループ登録: `CronList`でこのセッションに`/pr-watch`を実行するジョブがあるか確認し、無ければ`loop` SkillをSkillツールで`30m /pr-watch`を引数に呼び出して登録する(`/loop`は初回が30分後になるため、1巡を先に済ませてから登録する。ループからの起動時は登録済みなので何もしない)
+6. 巡回の完了記録: 1〜5を最後まで処理でき、取得やレビューに失敗したPRが無かったときだけ`bash ~/.claude/skills/pr-task-planning/scripts/pr-scope.sh` `done`を実行する(途中で止まった巡回を、次の回が「変化なし」で飛ばさないため)
+7. ループ登録: `CronList`でこのセッションに`/pr-watch`を実行するジョブがあるか確認し、無ければ`loop` SkillをSkillツールで`30m /pr-watch`を引数に呼び出して登録する(`/loop`は初回が30分後になるため、1巡を先に済ませてから登録する。ループからの起動時は登録済みなので何もしない)
 
 ## 承認後の送信(follow-up)
 
