@@ -80,7 +80,7 @@ list_json() {
   mine=$(gh search prs --author @me --state open --limit "$LIMIT" --json "$fields")
   review=$(gh search prs --review-requested @me --state open --sort updated --order asc --limit "$LIMIT" --json "$fields")
   reviewed=$(gh search prs --reviewed-by @me --state open --limit "$LIMIT" --json "$fields" -- -author:@me)
-  jq -n --argjson scope "$scope_json" --arg root "$root" --arg note "$note" --argjson limit "$LIMIT" \
+  jq -n --argjson scope "$scope_json" --arg root "$root" --arg key "$key" --arg note "$note" --argjson limit "$LIMIT" \
     --argjson mine "$mine" --argjson review "$review" --argjson reviewed "$reviewed" '
     def slim: map({repo: .repository.nameWithOwner, number, title, url, isDraft, updatedAt});
     def hit: (.repo | ascii_downcase) as $r | $scope | index($r);
@@ -88,7 +88,7 @@ list_json() {
     def outscope: if ($scope | length) == 0 then [] else map(select(hit | not)) end;
     ($mine | slim) as $m | ($review | slim) as $rq
     | ($reviewed | slim | map(select(. as $p | $rq | any(.repo == $p.repo and .number == $p.number) | not))) as $rv
-    | {repo_root: $root, scope: $scope, all: (($scope | length) == 0),
+    | {repo_root: $root, key: $key, generated_at: (now | floor), scope: $scope, all: (($scope | length) == 0),
        mine: ($m | inscope), review_requested: ($rq | inscope), reviewed_by: ($rv | inscope),
        others: {mine: ($m | outscope | length), review_requested: ($rq | outscope | length)},
        # 件数が上限に達した検索は、絞り込む前に対象のPRが欠けている可能性がある
