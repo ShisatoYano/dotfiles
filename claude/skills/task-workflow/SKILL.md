@@ -1,6 +1,6 @@
 ---
 name: task-workflow
-description: Use when starting work on a task — a Notion task or GitHub issue, or an ad-hoc request from the user — whose kind is implementation, bug fix, documentation, data analysis, research or technical evaluation, environment setup or configuration, or presentation slides. Covers deciding where the task is tracked and what kind it is, repo-freshness and previous-progress checks, investigation (with a careful root-cause procedure for bugs), plan and completion-criteria approval, delegating the work (to a worker session via a work order, or doing `task-execution` itself when working alone), acceptance verification with an independent subagent review, recording progress on the task, and delivering the result (PR draft or report). Verification-only tasks use `testing-workflow`.
+description: Use when starting work on a task — a Notion task, a GitHub issue or an ad-hoc request — of any kind (implementation, bug fix, docs, data analysis, research, environment setup, slides). Runs investigation, plan and completion-criteria approval, hands the work to a worker session or to `task-execution`, verifies the result, records progress and delivers it (PR or report). Verification-only tasks use `testing-workflow`.
 ---
 
 # Task Workflow

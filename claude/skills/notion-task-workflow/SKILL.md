@@ -1,6 +1,6 @@
 ---
 name: notion-task-workflow
-description: Use when the user wants to record progress on a Notion task page during work, or mark a Notion task complete. Trigger on phrases like "進捗記録して", "タスク完了". End-of-day wrap-up (サブワークフロー3) is normally triggered via the `daily-summary` agent (model: haiku) instead of this Skill directly — see that agent's description — but this Skill still contains and can directly run サブワークフロー3 when explicitly invoked. Also apply the progress-recording step proactively when a long work session on a Notion-tracked task is approaching context compaction, per the user's global CLAUDE.md instruction to hand off progress at a good breakpoint — write that handoff to the task's Notion page, not just the conversation. Deciding what to work on today is handled by the separate `daily-task-workflow` Skill (via its `task-planning` sub-step, which reads this Skill's Notion property conventions read-only); this Skill is what actually writes to those tasks' Notion pages once work is underway.
+description: Use to write to a Notion task page — record progress ("進捗記録して", or proactively before context compaction on a Notion-tracked task), mark a task complete ("タスク完了"), or write the end-of-day summary to daily-task-logs (サブワークフロー3, usually run by the `daily-summary` agent). Choosing today's tasks is `daily-task-workflow`.
 ---
 
 # Notion Task Workflow

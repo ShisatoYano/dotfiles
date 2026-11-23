@@ -1,6 +1,6 @@
 ---
 name: task-execution
-description: Use when carrying out an approved plan — in a worker session after receiving a work order from the lead, or from `task-workflow` when working alone — for any task kind (implementation, bug fix, documentation, data analysis, research, environment setup, slides). Covers confirming understanding of the work order, working within its scope, self-review, checking the completion criteria (local testing via `testing-workflow` for code), committing repository changes, and reporting results with the criteria's actual output. Also runs investigation checks the lead requests before approval (no commit). Planning, approvals, Notion and GitHub belong to `task-workflow`. Not for starting a new task — use `task-workflow` for that.
+description: Use when carrying out an approved plan — in a worker session after a work order from the lead, or from `task-workflow` when working alone. Covers the understanding check, the work, self-review, the completion criteria (local tests via `testing-workflow`), commit and the report; also investigation checks the lead asks for before approval. Not for starting a task — that is `task-workflow`.
 ---
 
 # Task Execution
