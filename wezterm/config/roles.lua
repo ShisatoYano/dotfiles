@@ -7,7 +7,7 @@ local M = {}
 local ROLES_DIR = wezterm.home_dir .. "/dotfiles/claude/roles/"
 
 local ROLES = {
-  { id = "lead", label = "司令塔(lead): 調査・計画・指示・受け入れ検証" },
+  { id = "lead", label = "司令塔(lead): 調査・計画・指示・受け入れ検証", settings = true },
   { id = "worker", label = "実装(worker): 指示書どおりに実装・テスト・コミット", settings = true },
 }
 
