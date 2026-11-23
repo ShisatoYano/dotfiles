@@ -10,6 +10,7 @@
       "Bash(gh api -X POST repos/*/pulls/*/comments/*/replies -F body=@*)",
       "Bash(gh api -X POST repos/*/issues/*/comments -F body=@*)",
       "Bash(gh api repos/*/pulls/*/commits)",
+      "Bash(gh pr checks *)",
       "Bash(gh pr diff *)",
       "Bash(gh pr view *)",
       "Bash(gh search prs *)",

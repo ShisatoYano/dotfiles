@@ -54,6 +54,7 @@ description: Use when carrying out an approved plan — in a worker session afte
 やったこと:
 成果物: (コミット、またはファイルのパス)
 完了条件の結果: (コマンド・結果・ログのパス)
+既存テストの変更: (削除・skip・期待値の変更の箇所と理由。無ければ「なし」)
 次にやること(予告):
 気になる点: (範囲外の課題もここに書く)
 ```
