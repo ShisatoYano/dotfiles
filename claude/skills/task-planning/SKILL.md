@@ -16,7 +16,7 @@ description: Use as a sub-step of `daily-task-workflow` to list the user's curre
 
 ## 手順
 
-1. `nb daily-task-logs:ls daily/`で`daily-task-logs` notebook(`notion-task-workflow` Skillが書き出す)の日次ファイルを一覧にし、直近のものを`nb show daily-task-logs:daily/<番号>`で読んで、前日までの持ち越し・未完了タスクがあれば把握する
+1. `nb daily-task-logs:ls daily/`で`daily-task-logs` notebook(`notion-task-workflow` Skillが書き出す)の日次ファイルを一覧にし、直近のものを`nb show daily-task-logs:daily/<番号> --print --no-color`で読んで(`--print`が無いと、端末につながっていないときに日本語が化けて途中で改行される)、前日までの持ち越し・未完了タスクがあれば把握する
 2. 自分の未完了タスク(`ステータス`が`Doing`または`Backlog`)の一覧を取得する。取得方法は以下に固定する(担当者で絞れない方法を選ぶと他人のタスクが混ざるため)
    - タスクDBを`fetch`してスキーマ(`担当者`・`ステータス`の実際のプロパティ名とステータスの選択肢名)と`collection://`URLを確認する
    - `query-data-sources`の`rows`モードで、`担当者`に`person_contains` + `{"type": "relative", "value": "me"}`、`ステータス`に`status_is` + `is_option`の配列`["Doing", "Backlog"]`の条件を`and`で付け、`limit: 100`で取得する(除外条件やステータスグループで絞ると、どの値が残るかの解釈がぶれて片方が漏れるため、拾う値を明示する)
