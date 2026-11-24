@@ -5,11 +5,12 @@ title: __TITLE__
 # publish: true
 # 日本語がGoogle Fonts側の欧文フォントにフォールバックして崩れないよう、和文フォントを明示する
 # (初回のみGoogle Fontsから取得。オフラインで作るときは local: を使うか、この項目ごと消す)
+# 2つ目の Zen Kaku Gothic New は見出し用。アドオンの --yano-font-heading が使う
 fonts:
-  sans: Noto Sans JP
+  sans: IBM Plex Sans JP,Zen Kaku Gothic New
   serif: Noto Serif JP
   mono: JetBrains Mono
-  weights: '400,700,900'
+  weights: '400,500,700,900'
 # ~/slides/addons の自作部品。Slidevはデッキのフォルダの「親」を起点に解決するため、../ は2つで ~/slides に届く
 addons:
   - ../../addons/slidev-addon-yano
