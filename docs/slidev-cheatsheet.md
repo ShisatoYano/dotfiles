@@ -49,9 +49,9 @@ npx slidev export decks/private/2026-09-21-ekf/slides.md \
 ```md
 ---
 theme: default      # テーマ
-fonts:              # 和文が欧文フォントにフォールバックしないよう明示する
-  sans: Noto Sans JP
-mdc: true           # Markdown内でクラス指定を使えるようにする
+fonts:              # 本文用と見出し用(2つ目、アドオンが見出しに使う)の和文フォントを明示する
+  sans: IBM Plex Sans JP,Zen Kaku Gothic New
+mdc: true           # Markdown内でクラス指定を使えるようにする([40枚]{.num} で数値を強調)
 ---
 
 # タイトル
@@ -102,7 +102,7 @@ layout: two-cols    # このスライドだけのレイアウト
 レイアウト微調整にはUnoCSSのユーティリティクラスがそのまま使える(`class="text-sm opacity-70"`、`<div class="grid grid-cols-2 gap-4">`など)。
 
 ## 注意
-- フォント(Noto Sans JP等)は初回ビルド時にGoogle Fontsから取得する。オフラインで作業するならheadmatterの`fonts:`を消すか`local:`指定にする
+- フォント(IBM Plex Sans JP等)は初回ビルド時にGoogle Fontsから取得する。オフラインで作業するならheadmatterの`fonts:`を消すか`local:`指定にする
 - **依存を足すときは`~/dotfiles/slidev`で`npm install <パッケージ>`する**。`~/slides`側で実行すると、リンクしてある`package.json`が実ファイルに置き換わってdotfilesの管理から外れる
 - Slidev 53はNode 22.12以上が必要。`node -v`が古い場合はターミナルを開き直す(nvmのdefaultはLTS)
 - 業務資料の混入は二重に止めている。`.gitignore`が`decks/*`を除外して`!decks/public/`だけを戻し、

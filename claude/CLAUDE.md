@@ -57,6 +57,10 @@
 
 - SKILL.mdを新規作成・編集する際は`~/dotfiles/claude/rules/skill-authoring.md`の型に従う
 
+## 資料・ドキュメントを書くとき
+
+- スライド・Artifact・Markdownのドキュメントやレポート・PR本文など、人が読む成果物を書く際は`~/dotfiles/claude/rules/writing-style.md`に従う
+
 ## テスト
 
 - ユニットテストやスタブ・モック(フェイクノード等)を活用し、まずローカルで検証できる範囲を最大化する
