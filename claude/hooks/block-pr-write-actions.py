@@ -18,24 +18,34 @@ The regex check matches the raw command text (it also blocks text that only
 mentions these commands). The argument-level check splits the command the
 way bash does (quotes, $'...', escapes, comments, line continuations,
 heredocs, {var}> redirections, &, newlines) and reads gh's flags the way
-pflag does (-iXPUT, -fX=GET, last value wins). A path ending in /gh is gh
-where a command runs (after assignments and wrappers such as env, nice or
-timeout, or as what xargs runs) and a possible gh elsewhere. A word built
-from an expansion or glob ($X, $(...), {gh,}, g[h]) where a command runs or
-followed (flags skipped) by a gh subcommand is a possible gh too; when a
-possible gh's subcommand is an expansion as well, a literal merge/review/
-comment/alias after it, or the name spelling gh, still blocks. On top of the above it blocks
-`gh alias set/import`, a GraphQL query (including one sent to an absolute
-.../graphql URL) read from a file or an expansion, a decisive word built
-from an expansion, word splitting or braces before gh's subcommand or
-action (--repo $X), a merge whose last --match-head-commit is not a literal
-hex sha, gh run by xargs without its subcommand, and, for writes only (gh
-api to a PR path or graphql, gh pr merge), an argument that word splitting
-or a brace starting with "-" could turn into extra flags; reads such as
-`gh pr view $N` are left alone. Quoted text, substitutions and heredoc bodies are checked again
-as commands (trap, -c, rebase -x, env -S, git ! aliases), up to MAX_DEPTH
-levels; deeper nesting blocks. Running past TIME_LIMIT blocks; any other
-exception leaves the regex verdict alone.
+pflag does (-iXPUT, -fX=GET, last value wins). gh is gh wherever it
+appears. A path ending in /gh is gh where a command runs (after assignments
+and wrappers such as env, nice or timeout, or as what xargs runs) and a
+possible gh elsewhere. A word built from an expansion or glob ($X, $(...),
+{gh,}, g[h]) where a command runs or followed (flags skipped) by a gh
+subcommand is a possible gh too; when a possible gh's subcommand is an
+expansion as well, a literal merge/review/comment/alias after it, or the
+name spelling gh, still blocks. The one exception: in a simple command
+named grep, egrep, fgrep, rg (without --pre) or git grep/log/show/diff
+(without -c/--config-env/--exec-path, or grep -O), gh among the arguments
+is a search word. Not when the name is quoted or a path, follows a PATH=
+or quoted prefix word, or the command anywhere redefines a name (function,
+alias, hash, eval, source, ., enable, BASH_FUNC_ in the environment).
+
+On top of the above it blocks `gh alias set/import`, a GraphQL query
+(including one sent to an absolute .../graphql URL) read from a file or an
+expansion, a decisive word built from an expansion, word splitting or
+braces before gh's subcommand or action (--repo $X), a merge whose last
+--match-head-commit is not a literal hex sha, gh run by xargs without its
+subcommand, gh api with two or more positional words of which one starts
+with an expansion (even quoted, "$M" may be -XPUT), gh api with an
+expansion among a flag's letters (-"$M"), and, for writes only (gh api to a
+PR path or graphql, gh pr merge), an argument that word splitting or a
+brace starting with "-" could turn into extra flags; reads such as
+`gh pr view $N` are left alone. Quoted text, substitutions, heredoc bodies
+and env -S values are checked again as commands (trap, -c, rebase -x,
+git ! aliases), up to MAX_DEPTH levels; deeper nesting blocks. Running past
+TIME_LIMIT blocks; any other exception leaves the regex verdict alone.
 
 Exit 2 blocks the tool call and feeds stderr back to the model (Claude Code
 PreToolUse hook contract). Any unexpected error here fails open (exit 0) so a
@@ -53,6 +63,7 @@ GUIDANCE = (
     "マージは gh pr merge <n> --repo <owner/repo> <方式> --match-head-commit <マージ可否チェック時のhead> の形でのみ、ユーザー承認つきで許可されています。"
     "それ以外の操作は、判断材料を提示してユーザー自身に行ってもらってください。"
     "コマンドの文字列として含むだけ(コミットメッセージ・本文など)でもブロックされるので、本文はWriteツールでファイルに書き、`git commit -F <file>` などファイルで渡してください。"
+    "gh を検索語にして止まった場合は、grep・rg・git grep/log をコマンドの先頭に置く(ラッパーを挟まない)か `git ls-files | xargs grep -lw gh` の形にし、gh api のエンドポイントの変数は \"repos/$R/...\" のように引用符で囲んでください。"
 )
 
 CHAINED_GUIDANCE = (
@@ -164,12 +175,23 @@ URL_PREFIX = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://[^/]*")
 NEEDS_PARSE = re.compile(r"[\s;&|()<>$`'\"\\{}#]")
 SHELL_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*|[0-9@*#?$!-]")
 FD_VARIABLE = re.compile(r"\{[A-Za-z_][A-Za-z0-9_]*\}")
-ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\+?=")
+ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]*\])?\+?=")
 RESERVED = {"!", "if", "then", "else", "elif", "while", "until", "do", "coproc"}
 # Commands that run the command after them, with their options that take a value.
 WRAPPERS = {"env": "uCS", "command": "", "exec": "a", "nohup": "", "nice": "n",
             "timeout": "sk", "stdbuf": "ioe", "time": "fo", "sudo": "ugCDhprtUT",
             "setsid": "", "ionice": "cnp"}
+# Commands that only search text, so a gh among their arguments is a search
+# word (grep -lw gh $(git ls-files)). Not when they can run a command.
+GIT_SEARCHES = {"grep", "log", "show", "diff"}
+GIT_VALUE_OPTIONS = {"-C", "--git-dir", "--work-tree", "--namespace", "--super-prefix"}
+# Commands that can make a search tool's name run something else (alias grep=eval,
+# hash -p, eval "grep() {...}", sourcing either); one anywhere voids the exception.
+SHADOWERS = {"alias", "hash", "eval", "source", ".", "enable"}
+PATH_ASSIGNMENT = re.compile(r"PATH\+?=")
+REDEFINED_SEARCHER = re.compile(
+    r"\bfunction\s+(?:grep|egrep|fgrep|rg|git)\b|(?<![\w-])(?:grep|egrep|fgrep|rg|git)\s*\(\s*\)"
+)
 # gh as a word of its own: ${x:-gh}, $(which gh), not ghq or highlight.
 GH_TOKEN = re.compile(r"(?<![A-Za-z0-9_])gh(?![A-Za-z0-9_-])")
 GH_SUBCOMMANDS = {"pr", "api", "alias"}
@@ -190,6 +212,8 @@ class OutOfTime(Exception):
 
 class Run:
     deadline = float("inf")
+    searchers_trusted = True  # false when the command may make a search tool's name run something else
+    searched = False  # the search exception was applied somewhere
 
     @classmethod
     def check_time(cls) -> None:
@@ -206,6 +230,8 @@ class Word:
         self.brace = False  # brace expansion: {a,b} or {1..3}
         self.brace_flag = False  # ...with an alternative starting with "-", which can inject a flag
         self.glob = False  # unquoted * ? [
+        self.starts_expanded = False  # begins with an expansion, quoted or not: "$M" may be -XPUT
+        self.flag_expanded = False  # an expansion among a "-" word's flag letters: -"$M"
         self.braces: list[list[bool]] = []  # open unquoted "{": [has "," or "..", has "-" alternative]
         self._lead = ""
 
@@ -220,19 +246,16 @@ class Word:
         """Whether the first "{" of a "-" word sits among flag letters, where its
         expansion can make a flag (-{p,X}PUT -> -XPUT), rather than in a flag's
         value (-H{a,b} is the value of -H)."""
-        if self.lead != "-":
-            return False
+        return self.lead == "-" and among_flag_letters(self.head().split("{", 1)[0])
+
+    def head(self) -> str:
         prefix, size = [], 0
         for chunk in self.chars:  # bounded so a long word stays linear
             prefix.append(chunk)
             size += len(chunk)
             if size > 64:
                 break
-        text = "".join(prefix)[:64]
-        head = text.split("{", 1)[0]
-        if head.startswith("--"):
-            return "=" not in head
-        return not any(c in ANY_SHORT for c in head[1:])
+        return "".join(prefix)[:64]
 
     @property
     def value(self) -> str:
@@ -249,8 +272,21 @@ class Word:
         return self.splits or self.brace_flag
 
     def mark_expansion(self, in_quotes: bool) -> None:
+        # Called before the expansion's text is added, so no text yet means it leads.
+        self.starts_expanded = self.starts_expanded or not self.lead
+        # -"$M" with M=XPUT is -XPUT: an expansion among flag letters builds a flag.
+        if not self.flag_expanded and self.lead == "-":
+            self.flag_expanded = among_flag_letters(self.head())
         self.expands = True
         self.splits = self.splits or not in_quotes
+
+
+def among_flag_letters(head: str) -> bool:
+    """Whether the end of head, the start of a "-" word, is still among flag
+    letters rather than in the value of a flag that takes one."""
+    if head.startswith("--"):
+        return "=" not in head
+    return not any(c in ANY_SHORT for c in head[1:])
 
 
 def ansi_c(text: str) -> str:
@@ -573,6 +609,13 @@ def judge_api(args: list[Word], start: int, injects: bool, alone: bool) -> tuple
         return (BLOCK, "gh api endpoint may come from an expansion") if injects else (PASS, "")
     endpoint = positional[1]
     path = endpoint_path(endpoint.value)
+    # A word starting with an expansion can be a whole flag even when quoted
+    # ("$M" with M=-XPUT). A lone such word only loses gh its endpoint, and as an
+    # endpoint it is blocked below for anything but GET, so it needs a second one.
+    if len(positional) > 2 and any(w.starts_expanded for w in positional[1:]):
+        return BLOCK, "gh api argument may be a flag taken from an expansion"
+    if any(args[k].flag_expanded for k in range(start, len(args))):
+        return BLOCK, "gh api flag built from an expansion"
     if injects:
         # Injected words (e.g. -X PUT) only matter if they can reach the
         # endpoint or the endpoint is one a write could change a PR through.
@@ -704,8 +747,8 @@ def after_wrapper(argv: list[Word], k: int) -> int:
         arg = argv[j].value
         if arg == "--":
             return j + 1
-        if wrapper == "env" and ASSIGNMENT.match(arg):
-            j += 1
+        if (wrapper == "env" and ASSIGNMENT.match(arg)) or arg == "!":
+            j += 1  # time ! gh ...
         elif arg.startswith("-") and arg != "-":
             j += 2 if len(arg) == 2 and arg[1] in takes_value else 1
         elif wrapper == "timeout":
@@ -728,6 +771,47 @@ def command_positions(argv: list[Word], k: int) -> list[int]:
     return positions
 
 
+def only_searches(argv: list[Word], name: int) -> bool:
+    """Whether the command named at argv[name] is a search that runs nothing:
+    grep/egrep/fgrep, rg without --pre, git grep/log/show/diff without global
+    -c/--config-env/--exec-path (which can set a pager) or grep -O (pager)."""
+    if not Run.searchers_trusted or name >= len(argv):
+        return False
+    word = argv[name]
+    # The name must be the plain word: ./grep may be anything, and "X=1" grep is
+    # not an assignment but a command named X=1. PATH=... picks another grep.
+    if word.unsafe or word.quoted or "/" in word.value:
+        return False
+    if any(w.quoted or PATH_ASSIGNMENT.match(w.value) for w in argv[:name]):
+        return False
+    tool = word.value
+    rest = argv[name + 1 :]
+    if tool in ("grep", "egrep", "fgrep"):
+        return True
+    if tool == "rg":
+        return not any(w.value == "--pre" or w.value.startswith("--pre=") for w in rest)
+    if tool != "git":
+        return False
+    j = name + 1
+    while j < len(argv) and argv[j].value.startswith("-"):
+        arg = argv[j].value
+        if argv[j].splits or arg.startswith(("-c", "--config-env", "--exec-path")):
+            return False
+        j += 2 if arg in GIT_VALUE_OPTIONS else 1
+    if j >= len(argv) or argv[j].unsafe or argv[j].value not in GIT_SEARCHES:
+        return False
+    if argv[j].value == "grep":
+        for w in argv[j + 1 :]:
+            arg = w.value
+            if arg == "--":
+                break
+            if arg.startswith("--open-files-in-pager") or (
+                arg.startswith("-") and not arg.startswith("--") and "O" in arg
+            ):
+                return False
+    return True
+
+
 def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
     n = len(argv)
     injects_from = [False] * (n + 1)
@@ -738,6 +822,11 @@ def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
         n,
     )
     runs = set(command_positions(argv, name))
+    if any(not argv[k].unsafe and argv[k].value in SHADOWERS for k in runs):
+        Run.searchers_trusted = False
+    if only_searches(argv, name):
+        Run.searched = True
+        return PASS, ""
     best, xargs_runs = (PASS, ""), set()
     for k, word in enumerate(argv):
         Run.check_time()
@@ -765,6 +854,25 @@ def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
     return best
 
 
+def env_split_strings(argv: list[Word]) -> list[str]:
+    """Values of env -S / --split-string, which env splits and runs as a command."""
+    texts = []
+    for k, word in enumerate(argv):
+        if word.unsafe or word.value.rsplit("/", 1)[-1] != "env":
+            continue
+        for j in range(k + 1, len(argv)):
+            arg = argv[j].value
+            if not arg.startswith("-"):
+                break
+            nxt = argv[j + 1].value if j + 1 < len(argv) else ""
+            if arg.startswith("--split-string"):
+                _, eq, text = arg.partition("=")
+                texts.append(text if eq else nxt)
+            elif not arg.startswith("--") and "S" in arg:
+                texts.append(arg[arg.index("S") + 1 :] or nxt)
+    return texts
+
+
 def first_positional_is_subcommand(argv: list[Word], start: int) -> bool:
     _, positional = parse_flags(argv, start, ANY_SHORT, ANY_LONG, stop_after=1)
     return bool(positional) and positional[0].value in GH_SUBCOMMANDS
@@ -788,6 +896,7 @@ def analyze(src: str, depth: int, seen: set) -> tuple[int, str]:
             best = verdict
         if best[0] == BLOCK:
             return best
+        texts.extend(env_split_strings(argv))
         for word in argv:
             text = word.value[1:] if word.value.startswith("!") else word.value
             if NEEDS_PARSE.search(text):
@@ -803,8 +912,15 @@ def analyze(src: str, depth: int, seen: set) -> tuple[int, str]:
 
 def argv_check(command: str) -> tuple[int, str]:
     Run.deadline = time.monotonic() + TIME_LIMIT
+    Run.searchers_trusted = not (REDEFINED_SEARCHER.search(command) or "BASH_FUNC" in command)
+    Run.searched = False
     try:
-        return analyze(command, 0, set())
+        verdict = analyze(command, 0, set())
+        # An alias/hash/eval... found after a search was exempted voids that
+        # exemption too, so run again with the exception off.
+        if Run.searched and not Run.searchers_trusted:
+            verdict = analyze(command, 0, set())
+        return verdict
     except OutOfTime:
         return BLOCK, "argument check ran out of time"
 
