@@ -181,7 +181,6 @@ WRAPPERS = {"env": "uCS", "command": "", "exec": "a", "nohup": "", "nice": "n",
             "setsid": "", "ionice": "cnp"}
 # Commands that only search text, so a gh among their arguments is a search
 # word (grep -lw gh $(git ls-files)). Not when they can run a command.
-SEARCHERS = {"grep", "egrep", "fgrep", "rg"}
 GIT_SEARCHES = {"grep", "log", "show", "diff"}
 GIT_VALUE_OPTIONS = {"-C", "--git-dir", "--work-tree", "--namespace", "--super-prefix"}
 REDEFINED_SEARCHER = re.compile(
