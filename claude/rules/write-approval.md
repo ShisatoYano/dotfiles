@@ -9,8 +9,10 @@
 ## hookとの役割分担
 
 - PreToolUse hookで機械的に制御される(`~/dotfiles/claude/hooks/`)。これは「承認前にコマンド自体が実行されない」という最終防波堤
-  - ブロック: `gh pr merge/review/comment`、default branchへのpush(dotfilesを除く)・force push・リモートブランチ削除
-  - 実行ごとに承認プロンプト: 上記以外の`git push`、ブランチの作成・切替(`git checkout`/`switch`、`gh pr checkout`)
+  - ブロック(PR操作、`block-pr-write-actions.py`): `gh pr review/comment`、`--match-head-commit <sha>`の無い`gh pr merge`、`gh api`経由の同等の書き込み(後述のレビュー送信・返信のPOSTを除く)、許可されたPOSTを他のコマンドとつないだ形
+  - ブロック(push、`block-git-push.py`): default branchへのpush(dotfilesを除く)・force push・リモートブランチ削除・全ブランチをまとめたpush(`--all`/`--mirror`など)・宛先を決められないpush(refspec無しで、HEADがdetachedか同じコマンド内に`cd`がある)
+  - ブロック(変更の破棄、`block-discard-changes.py`): 作業ツリーの変更を破棄するgitコマンド(`git checkout -- <path>`、`git restore`、`git reset --hard`、`git stash`、`git clean -f`)
+  - 実行ごとに承認プロンプト: 上記以外の`git push`(dotfilesのdefault branchへのpushを含む)、`--match-head-commit <sha>`付きの`gh pr merge`、ブランチの作成・切替(`git checkout`/`switch`、`gh pr checkout`。`ask-branch-checkout.py`)、worktreeの作成(`git worktree add`・EnterWorktree。`ask-worktree-creation.py`)
 - PRへのレビュー送信・返信(reviews / replies / issues commentsへのPOST)は、`pr-workflow`が使うためhookで許可されており承認プロンプトも出ない。承認は`pr-workflow`の「下書きと送信」の手順で守る
 - 承認プロンプトはhookが出すものであり、会話上の承認の代わりにはならない。push等は内容を提示して承認を得たうえで実行する
 - 実装方針の承認やNotion書き込みの承認は、「実際にユーザーに提示したか」をhookでは検証できない性質のため、hook化せずSkillの手順として守る
