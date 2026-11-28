@@ -26,6 +26,7 @@ GUIDANCE = (
     "レビュー送信・返信は gh api -X POST の reviews / comments/<id>/replies / issues/<n>/comments のみ許可されています。"
     "マージは gh pr merge <n> --repo <owner/repo> <方式> --match-head-commit <マージ可否チェック時のhead> の形でのみ、ユーザー承認つきで許可されています。"
     "それ以外の操作は、判断材料を提示してユーザー自身に行ってもらってください。"
+    "コマンドの文字列として含むだけ(コミットメッセージ・本文など)でもブロックされるので、本文はWriteツールでファイルに書き、`git commit -F <file>` などファイルで渡してください。"
 )
 
 CHAINED_GUIDANCE = (
