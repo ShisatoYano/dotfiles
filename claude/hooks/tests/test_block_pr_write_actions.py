@@ -59,19 +59,28 @@ WAYS_AROUND = [
     ("command name from a glob", "/usr/bin/g[h] pr merge 1 --admin"),
     ("subcommand given to gh by xargs", "printf '%s\\n' pr merge 1 --admin | xargs gh"),
     ("GraphQL through an absolute URL", "gh api https://api.github.com/graphql -f query='mutation { x }'"),
+    ("quoted ~ path is not a home directory", "'~/.config/gh' \"pr\" merge 1 --admin"),
+    ("action added by splitting a flag value", "X='o/r merge'; gh pr --repo $X 1 --admin"),
+    ("action added by braces in a flag value", "gh pr --repo {o/r,merge} 1 --admin"),
+    ("-X made by braces inside one word", "gh api repos/o/r/pulls/1/merge -{p,X}PUT"),
+    ("both gh and its subcommand from variables", "G=gh P=pr; $G $P merge 1 --admin"),
+    ("flags between an expanded gh and its subcommand", "G=gh; env $G -R o/r pr merge 1 --admin"),
 ]
 
 # Risk 2: everyday commands that only mention gh with an expansion. (why, command)
 DAILY = [
     ("commit message naming a read with $N", "git commit -m 'docs: use gh pr view $N for the check'"),
     ("braces in a mentioned path", "echo 'run gh api repos/o/r/{a,b}'"),
+    ("gh as a search word under xargs", "git ls-files | xargs grep -lw gh"),
+    ("an editor and a file from variables", "$EDITOR $FILE"),
 ]
 
-# Risk 1: inputs that once made the argument check quadratic; a hook that times
-# out lets the command through. (why, expected verdict, command)
+# Risk 1: a hook that times out lets the command through. These run the
+# argument check (main's regex only asks), so a slow check shows up here.
+# (why, expected verdict, command)
 SLOW_INPUTS = [
-    ("many gh words, then a merge", "block", "gh " * 40000 + M),
     ("many gh words, then a pinned merge", "ask", "gh " * 40000 + PIN),
+    ("work past the time limit blocks", "block", "gh api user " * 40000 + "; " + PIN),
 ]
 
 # Risk 1: forms main already blocks that broke the reverted regex versions in

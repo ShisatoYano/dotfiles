@@ -18,16 +18,19 @@ The regex check matches the raw command text (it also blocks text that only
 mentions these commands). The argument-level check splits the command the
 way bash does (quotes, $'...', escapes, comments, line continuations,
 heredocs, {var}> redirections, &, newlines) and reads gh's flags the way
-pflag does (-iXPUT, -fX=GET, last value wins). A command name built from an
-expansion or glob ($X, $(...), {gh,}, g[h]) is read as gh when a gh
-subcommand follows it. On top of the above it blocks `gh alias set/import`,
-a GraphQL query (including one sent to an absolute .../graphql URL) read
-from a file or an expansion, a decisive word built from an expansion, a
-merge whose last --match-head-commit is not a literal hex sha, gh run by
-xargs without its subcommand, and, for writes only (gh api to a PR path or
-graphql, gh pr merge), an argument that word splitting or a "-" brace
-alternative could turn into extra flags; reads such as `gh pr view $N` are
-left alone. Quoted text, substitutions and heredoc bodies are checked again
+pflag does (-iXPUT, -fX=GET, last value wins). A path ending in /gh, and a
+word built from an expansion or glob ($X, $(...), {gh,}, g[h]) in the
+command-name position or followed (flags skipped) by a gh subcommand, is
+read as gh; if its subcommand is an expansion too, a literal merge/review/
+comment/alias after it still blocks. On top of the above it blocks
+`gh alias set/import`, a GraphQL query (including one sent to an absolute
+.../graphql URL) read from a file or an expansion, a decisive word built
+from an expansion, word splitting or braces before gh's subcommand or
+action (--repo $X), a merge whose last --match-head-commit is not a literal
+hex sha, gh run by xargs without its subcommand, and, for writes only (gh
+api to a PR path or graphql, gh pr merge), an argument that word splitting
+or a brace starting with "-" could turn into extra flags; reads such as
+`gh pr view $N` are left alone. Quoted text, substitutions and heredoc bodies are checked again
 as commands (trap, -c, rebase -x, env -S, git ! aliases), up to MAX_DEPTH
 levels; deeper nesting blocks. Running past TIME_LIMIT blocks; any other
 exception leaves the regex verdict alone.
@@ -37,7 +40,6 @@ PreToolUse hook contract). Any unexpected error here fails open (exit 0) so a
 bug in this script can't break every Bash call.
 """
 import json
-import os
 import re
 import sys
 import time
@@ -163,6 +165,11 @@ FD_VARIABLE = re.compile(r"\{[A-Za-z_][A-Za-z0-9_]*\}")
 ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\+?=")
 RESERVED = {"!", "if", "then", "else", "elif", "while", "until", "do", "time", "coproc"}
 GH_SUBCOMMANDS = {"pr", "api", "alias"}
+GH_ACTIONS = {"merge", "review", "comment", "alias"}
+# xargs/parallel options that take the next word as their value.
+XARGS_SHORT = set("adEILnPsj")
+XARGS_LONG = {"arg-file", "delimiter", "eof", "replace", "max-lines", "max-args",
+              "max-procs", "max-chars", "process-slot-var", "jobs"}
 REDIRECTS = ("<<<", "<<-", "<<", "<>", "<&", "<", ">>", ">&", ">|", ">")
 ANSI_C_ESCAPE = re.compile(r"\\(x[0-9A-Fa-f]{1,2}|u[0-9A-Fa-f]{1,4}|U[0-9A-Fa-f]{1,8}|[0-7]{1,3}|c.|.)", re.S)
 ANSI_C_SIMPLE = {"n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "f": "\f",
@@ -175,7 +182,6 @@ class OutOfTime(Exception):
 
 class Run:
     deadline = float("inf")
-    cwd = "."
 
     @classmethod
     def check_time(cls) -> None:
@@ -193,6 +199,14 @@ class Word:
         self.brace_flag = False  # ...with an alternative starting with "-", which can inject a flag
         self.glob = False  # unquoted * ? [
         self.braces: list[list[bool]] = []  # open unquoted "{": [has "," or "..", has "-" alternative]
+        self._lead = ""
+
+    @property
+    def lead(self) -> str:
+        """First character of the word; cached since it can't change once set."""
+        if not self._lead:
+            self._lead = next((c[0] for c in self.chars if c), "")
+        return self._lead
 
     @property
     def value(self) -> str:
@@ -463,7 +477,8 @@ def split_commands(src: str) -> tuple[list[list[Word]], list[str]]:
                 has_separator, dash = word.braces.pop()
                 if has_separator:
                     word.brace = True
-                    word.brace_flag = word.brace_flag or dash
+                    # -{p,X}PUT expands to -pPUT -XPUT: a brace in a "-" word injects too.
+                    word.brace_flag = word.brace_flag or dash or word.lead == "-"
             elif c in "*?[":
                 word.glob = True
             i += 1
@@ -585,12 +600,27 @@ def judge_gh(args: list[Word], start: int, injects: bool, alone: bool, via_xargs
         return undecided
     sub = positional[0]
     if sub.unsafe:
-        # `$EDITOR $FILE` is not gh: a guessed gh needs a literal subcommand.
-        if inferred:
-            return PASS, ""
-        return BLOCK, "gh subcommand built from an expansion"
+        if not inferred:
+            return BLOCK, "gh subcommand built from an expansion"
+        # A guessed gh with a guessed subcommand: `$EDITOR $FILE` passes, but a
+        # literal action later on (`$G $P merge 1`) or an expansion spelling gh
+        # (`${x:-gh} "$@"`) does not. A path such as ~/.config/gh $HOME passes.
+        name = args[start - 1]
+        if (name.unsafe and "gh" in name.value) or any(
+            args[k].value in GH_ACTIONS for k in range(start, len(args))
+        ):
+            return BLOCK, "gh and its subcommand both built from expansions"
+        return PASS, ""
     if sub.value not in GH_SUBCOMMANDS:
         return PASS, ""
+    # Word splitting or braces before the subcommand or action can add one
+    # (X='o/r merge'; gh pr --repo $X 1).
+    last = positional[1] if sub.value != "api" and len(positional) > 1 else sub
+    for k in range(start, len(args)):
+        if args[k].splits or args[k].brace:
+            return BLOCK, f"gh {sub.value} subcommand may come from an expansion"
+        if args[k] is last:
+            break
     # Expansions only matter where they can turn into a write; a read such as
     # `gh pr view $N` (also mentioned in commit messages) is left alone.
     if sub.value == "api":
@@ -621,15 +651,20 @@ def judge_gh(args: list[Word], start: int, injects: bool, alone: bool, via_xargs
     return PASS, ""
 
 
-def is_directory(word: Word) -> bool:
-    # ~/.config/gh is a directory, not a gh binary; running a directory fails anyway.
-    if word.unsafe:
-        return False
-    try:
-        path = os.path.join(Run.cwd, os.path.expanduser(word.value))
-        return os.path.isdir(path)
-    except (OSError, ValueError):
-        return False
+def xargs_command(argv: list[Word], k: int) -> int:
+    """Index of the command xargs/parallel at argv[k] runs (-1 if none)."""
+    j = k + 1
+    while j < len(argv):
+        arg = argv[j].value
+        if arg == "--":
+            return j + 1
+        if arg == "-" or not arg.startswith("-"):
+            return j
+        if arg.startswith("--"):
+            j += 2 if "=" not in arg and arg[2:] in XARGS_LONG else 1
+        else:
+            j += 2 if len(arg) == 2 and arg[1] in XARGS_SHORT else 1
+    return -1
 
 
 def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
@@ -641,27 +676,34 @@ def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
         (k for k, w in enumerate(argv) if not (ASSIGNMENT.match(w.value) or w.value in RESERVED)),
         n,
     )
-    best, via_xargs = (PASS, ""), False
+    best, xargs_runs = (PASS, ""), set()
     for k, word in enumerate(argv):
         Run.check_time()
         value = word.value
-        # An expanded word in the command-name position, or one followed by a gh
-        # subcommand, may itself be gh (X=gh; $X pr merge, /usr/bin/g[h] ...).
-        literal = value == "gh" or (value.endswith("/gh") and not is_directory(word))
-        inferred = word.unsafe and (
-            k == name or (k + 1 < n and argv[k + 1].value in GH_SUBCOMMANDS)
+        literal = value == "gh"
+        # A path ending in /gh, or an expanded word in the command-name position
+        # or before a gh subcommand (flags skipped), may be gh: /usr/bin/gh,
+        # X=gh; $X pr merge, env $G -R o/r pr merge.
+        inferred = not literal and (
+            value.endswith("/gh")
+            or (word.unsafe and (k == name or first_positional_is_subcommand(argv, k + 1)))
         )
         if literal or inferred:
             verdict = judge_gh(
-                argv, k + 1, injects_from[k + 1], alone, via_xargs, inferred=not literal
+                argv, k + 1, injects_from[k + 1], alone, k in xargs_runs, inferred=inferred
             )
             if verdict[0] > best[0]:
                 best = verdict
             if best[0] == BLOCK:
                 return best
         if value.rsplit("/", 1)[-1] in ("xargs", "parallel"):
-            via_xargs = True
+            xargs_runs.add(xargs_command(argv, k))
     return best
+
+
+def first_positional_is_subcommand(argv: list[Word], start: int) -> bool:
+    _, positional = parse_flags(argv, start, ANY_SHORT, ANY_LONG, stop_after=1)
+    return bool(positional) and positional[0].value in GH_SUBCOMMANDS
 
 
 def analyze(src: str, depth: int, seen: set) -> tuple[int, str]:
@@ -695,9 +737,8 @@ def analyze(src: str, depth: int, seen: set) -> tuple[int, str]:
     return best
 
 
-def argv_check(command: str, cwd: str) -> tuple[int, str]:
+def argv_check(command: str) -> tuple[int, str]:
     Run.deadline = time.monotonic() + TIME_LIMIT
-    Run.cwd = cwd
     try:
         return analyze(command, 0, set())
     except OutOfTime:
@@ -725,7 +766,7 @@ def main() -> int:
         print(GUIDANCE.format(reason=reason), file=sys.stderr)
         return 2
     try:
-        argv_level, argv_reason = argv_check(command, data.get("cwd") or os.getcwd())
+        argv_level, argv_reason = argv_check(command)
     except Exception:
         argv_level, argv_reason = PASS, ""  # fall back to the regex checks alone
     if argv_level == BLOCK:
