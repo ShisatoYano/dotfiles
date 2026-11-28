@@ -83,6 +83,16 @@ WAYS_AROUND = [
     ("git with a config override is not a plain search", "git -c core.pager=cat log gh $S $A 1"),
     ("git grep opening a pager is not a plain search", "git grep -Oless gh $S $A 1"),
     ("a search tool redefined as a function", 'grep() { "$@"; }; grep gh $S $A 1'),
+    ("a search tool aliased", 'alias grep=eval\ngrep gh "pr" merge 1'),
+    ("a search tool rehashed to another binary", 'hash -p /usr/bin/env grep; grep gh "pr" merge 1'),
+    ("a search tool called by path", 'ln -sf /usr/bin/env ./grep; ./grep gh "pr" merge 1'),
+    ("a search tool looked up in another PATH", 'PATH=b:$PATH egrep gh "pr" merge 1'),
+    ("a search tool redefined through eval", 'eval "gr""ep() { \\"\\$@\\"; }"; grep gh "pr" merge 1'),
+    (
+        "a search tool redefined through the environment",
+        "env 'BASH_FUNC_grep%%=() { \"$@\"; }' bash -c 'grep gh \"pr\" merge 1'",
+    ),
+    ("a quoted word that only looks like an assignment", '"X=1" grep gh "pr" merge 1'),
 ]
 
 # Risk 2: everyday commands that only mention gh with an expansion. (why, command)
@@ -96,6 +106,7 @@ DAILY = [
     ("gh as a search word before a substitution", "grep -lw gh $(git ls-files)"),
     ("gh as a search word before a path with a variable", "rg gh $HOME/dotfiles"),
     ("gh as a git log search word", "git log -S gh -- $F"),
+    ("a search in the current directory", "grep -rn gh ."),
     ("read from an endpoint taken whole from a variable", 'gh api "$EP"'),
     (
         "braces in the value of -H on a read",

@@ -28,7 +28,9 @@ expansion as well, a literal merge/review/comment/alias after it, or the
 name spelling gh, still blocks. The one exception: in a simple command
 named grep, egrep, fgrep, rg (without --pre) or git grep/log/show/diff
 (without -c/--config-env/--exec-path, or grep -O), gh among the arguments
-is a search word, unless the command redefines one of these as a function.
+is a search word. Not when the name is quoted or a path, follows a PATH=
+or quoted prefix word, or the command anywhere redefines a name (function,
+alias, hash, eval, source, ., enable, BASH_FUNC_ in the environment).
 
 On top of the above it blocks `gh alias set/import`, a GraphQL query
 (including one sent to an absolute .../graphql URL) read from a file or an
@@ -183,6 +185,10 @@ WRAPPERS = {"env": "uCS", "command": "", "exec": "a", "nohup": "", "nice": "n",
 # word (grep -lw gh $(git ls-files)). Not when they can run a command.
 GIT_SEARCHES = {"grep", "log", "show", "diff"}
 GIT_VALUE_OPTIONS = {"-C", "--git-dir", "--work-tree", "--namespace", "--super-prefix"}
+# Commands that can make a search tool's name run something else (alias grep=eval,
+# hash -p, eval "grep() {...}", sourcing either); one anywhere voids the exception.
+SHADOWERS = {"alias", "hash", "eval", "source", ".", "enable"}
+PATH_ASSIGNMENT = re.compile(r"PATH\+?=")
 REDEFINED_SEARCHER = re.compile(
     r"\bfunction\s+(?:grep|egrep|fgrep|rg|git)\b|(?<![\w-])(?:grep|egrep|fgrep|rg|git)\s*\(\s*\)"
 )
@@ -206,7 +212,8 @@ class OutOfTime(Exception):
 
 class Run:
     deadline = float("inf")
-    searchers_trusted = True  # false when the command redefines one as a function
+    searchers_trusted = True  # false when the command may make a search tool's name run something else
+    searched = False  # the search exception was applied somewhere
 
     @classmethod
     def check_time(cls) -> None:
@@ -768,9 +775,16 @@ def only_searches(argv: list[Word], name: int) -> bool:
     """Whether the command named at argv[name] is a search that runs nothing:
     grep/egrep/fgrep, rg without --pre, git grep/log/show/diff without global
     -c/--config-env/--exec-path (which can set a pager) or grep -O (pager)."""
-    if not Run.searchers_trusted or name >= len(argv) or argv[name].unsafe:
+    if not Run.searchers_trusted or name >= len(argv):
         return False
-    tool = argv[name].value.rsplit("/", 1)[-1]
+    word = argv[name]
+    # The name must be the plain word: ./grep may be anything, and "X=1" grep is
+    # not an assignment but a command named X=1. PATH=... picks another grep.
+    if word.unsafe or word.quoted or "/" in word.value:
+        return False
+    if any(w.quoted or PATH_ASSIGNMENT.match(w.value) for w in argv[:name]):
+        return False
+    tool = word.value
     rest = argv[name + 1 :]
     if tool in ("grep", "egrep", "fgrep"):
         return True
@@ -807,9 +821,12 @@ def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
         (k for k, w in enumerate(argv) if not (ASSIGNMENT.match(w.value) or w.value in RESERVED)),
         n,
     )
-    if only_searches(argv, name):
-        return PASS, ""
     runs = set(command_positions(argv, name))
+    if any(not argv[k].unsafe and argv[k].value in SHADOWERS for k in runs):
+        Run.searchers_trusted = False
+    if only_searches(argv, name):
+        Run.searched = True
+        return PASS, ""
     best, xargs_runs = (PASS, ""), set()
     for k, word in enumerate(argv):
         Run.check_time()
@@ -895,9 +912,15 @@ def analyze(src: str, depth: int, seen: set) -> tuple[int, str]:
 
 def argv_check(command: str) -> tuple[int, str]:
     Run.deadline = time.monotonic() + TIME_LIMIT
-    Run.searchers_trusted = not REDEFINED_SEARCHER.search(command)
+    Run.searchers_trusted = not (REDEFINED_SEARCHER.search(command) or "BASH_FUNC" in command)
+    Run.searched = False
     try:
-        return analyze(command, 0, set())
+        verdict = analyze(command, 0, set())
+        # An alias/hash/eval... found after a search was exempted voids that
+        # exemption too, so run again with the exception off.
+        if Run.searched and not Run.searchers_trusted:
+            verdict = analyze(command, 0, set())
+        return verdict
     except OutOfTime:
         return BLOCK, "argument check ran out of time"
 
