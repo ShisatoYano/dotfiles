@@ -79,6 +79,10 @@ WAYS_AROUND = [
     ("gh run by eval", "eval gh $S $A 1"),
     ("flag letters from a quoted variable", 'M=XPUT; gh api repos/o/r/pulls/1/merge -"$M"'),
     ("command given to env -S in the same word", "env -S'gh pr -R o/r merge 1'"),
+    ("rg running a preprocessor is not a plain search", "rg --pre gh $S $A 1"),
+    ("git with a config override is not a plain search", "git -c core.pager=cat log gh $S $A 1"),
+    ("git grep opening a pager is not a plain search", "git grep -Oless gh $S $A 1"),
+    ("a search tool redefined as a function", 'grep() { "$@"; }; grep gh $S $A 1'),
 ]
 
 # Risk 2: everyday commands that only mention gh with an expansion. (why, command)
@@ -91,6 +95,7 @@ DAILY = [
     ("a /gh directory given to ls", "ls ~/.config/gh $HOME"),
     ("gh as a search word before a substitution", "grep -lw gh $(git ls-files)"),
     ("gh as a search word before a path with a variable", "rg gh $HOME/dotfiles"),
+    ("gh as a git log search word", "git log -S gh -- $F"),
     ("read from an endpoint taken whole from a variable", 'gh api "$EP"'),
     (
         "braces in the value of -H on a read",

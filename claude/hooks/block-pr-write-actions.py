@@ -18,28 +18,32 @@ The regex check matches the raw command text (it also blocks text that only
 mentions these commands). The argument-level check splits the command the
 way bash does (quotes, $'...', escapes, comments, line continuations,
 heredocs, {var}> redirections, &, newlines) and reads gh's flags the way
-pflag does (-iXPUT, -fX=GET, last value wins). gh, or a path ending in /gh,
-is gh where a command runs (after assignments and wrappers such as env, nice
-or timeout, or as what xargs runs) or anywhere after a wrapper, eval,
-builtin, xargs or parallel word, and a possible gh elsewhere, so
-`grep -w gh $F` passes. Values of env -S are checked again as commands. A word built from an expansion or glob ($X, $(...),
+pflag does (-iXPUT, -fX=GET, last value wins). gh is gh wherever it
+appears. A path ending in /gh is gh where a command runs (after assignments
+and wrappers such as env, nice or timeout, or as what xargs runs) and a
+possible gh elsewhere. A word built from an expansion or glob ($X, $(...),
 {gh,}, g[h]) where a command runs or followed (flags skipped) by a gh
 subcommand is a possible gh too; when a possible gh's subcommand is an
 expansion as well, a literal merge/review/comment/alias after it, or the
-name spelling gh, still blocks. On top of the above it blocks
-`gh alias set/import`, a GraphQL query (including one sent to an absolute
-.../graphql URL) read from a file or an expansion, a decisive word built
-from an expansion, word splitting or braces before gh's subcommand or
-action (--repo $X), a merge whose last --match-head-commit is not a literal
-hex sha, gh run by xargs without its subcommand, gh api with two or more
-positional words of which one starts with an expansion (even quoted, "$M"
-may be -XPUT), gh api with an expansion among a flag's letters (-"$M"), and, for writes only (gh api to a PR path or graphql, gh pr
-merge), an argument that word splitting or a brace starting with "-" could
-turn into extra flags; reads such as `gh pr view $N` are left alone. Quoted
-text, substitutions and heredoc bodies are checked again as commands (trap,
--c, rebase -x, env -S, git ! aliases), up to MAX_DEPTH levels; deeper
-nesting blocks. Running past TIME_LIMIT blocks; any other
-exception leaves the regex verdict alone.
+name spelling gh, still blocks. The one exception: in a simple command
+named grep, egrep, fgrep, rg (without --pre) or git grep/log/show/diff
+(without -c/--config-env/--exec-path, or grep -O), gh among the arguments
+is a search word, unless the command redefines one of these as a function.
+
+On top of the above it blocks `gh alias set/import`, a GraphQL query
+(including one sent to an absolute .../graphql URL) read from a file or an
+expansion, a decisive word built from an expansion, word splitting or
+braces before gh's subcommand or action (--repo $X), a merge whose last
+--match-head-commit is not a literal hex sha, gh run by xargs without its
+subcommand, gh api with two or more positional words of which one starts
+with an expansion (even quoted, "$M" may be -XPUT), gh api with an
+expansion among a flag's letters (-"$M"), and, for writes only (gh api to a
+PR path or graphql, gh pr merge), an argument that word splitting or a
+brace starting with "-" could turn into extra flags; reads such as
+`gh pr view $N` are left alone. Quoted text, substitutions, heredoc bodies
+and env -S values are checked again as commands (trap, -c, rebase -x,
+git ! aliases), up to MAX_DEPTH levels; deeper nesting blocks. Running past
+TIME_LIMIT blocks; any other exception leaves the regex verdict alone.
 
 Exit 2 blocks the tool call and feeds stderr back to the model (Claude Code
 PreToolUse hook contract). Any unexpected error here fails open (exit 0) so a
@@ -57,6 +61,7 @@ GUIDANCE = (
     "マージは gh pr merge <n> --repo <owner/repo> <方式> --match-head-commit <マージ可否チェック時のhead> の形でのみ、ユーザー承認つきで許可されています。"
     "それ以外の操作は、判断材料を提示してユーザー自身に行ってもらってください。"
     "コマンドの文字列として含むだけ(コミットメッセージ・本文など)でもブロックされるので、本文はWriteツールでファイルに書き、`git commit -F <file>` などファイルで渡してください。"
+    "gh を検索語にして止まった場合は、grep・rg・git grep/log をコマンドの先頭に置く(ラッパーを挟まない)か `git ls-files | xargs grep -lw gh` の形にし、gh api のエンドポイントの変数は \"repos/$R/...\" のように引用符で囲んでください。"
 )
 
 CHAINED_GUIDANCE = (
@@ -174,8 +179,14 @@ RESERVED = {"!", "if", "then", "else", "elif", "while", "until", "do", "coproc"}
 WRAPPERS = {"env": "uCS", "command": "", "exec": "a", "nohup": "", "nice": "n",
             "timeout": "sk", "stdbuf": "ioe", "time": "fo", "sudo": "ugCDhprtUT",
             "setsid": "", "ionice": "cnp"}
-# Names that run a later word as a command; a gh anywhere after one is taken as gh.
-RUNNERS = set(WRAPPERS) | {"eval", "builtin", "xargs", "parallel"}
+# Commands that only search text, so a gh among their arguments is a search
+# word (grep -lw gh $(git ls-files)). Not when they can run a command.
+SEARCHERS = {"grep", "egrep", "fgrep", "rg"}
+GIT_SEARCHES = {"grep", "log", "show", "diff"}
+GIT_VALUE_OPTIONS = {"-C", "--git-dir", "--work-tree", "--namespace", "--super-prefix"}
+REDEFINED_SEARCHER = re.compile(
+    r"\bfunction\s+(?:grep|egrep|fgrep|rg|git)\b|(?<![\w-])(?:grep|egrep|fgrep|rg|git)\s*\(\s*\)"
+)
 # gh as a word of its own: ${x:-gh}, $(which gh), not ghq or highlight.
 GH_TOKEN = re.compile(r"(?<![A-Za-z0-9_])gh(?![A-Za-z0-9_-])")
 GH_SUBCOMMANDS = {"pr", "api", "alias"}
@@ -196,6 +207,7 @@ class OutOfTime(Exception):
 
 class Run:
     deadline = float("inf")
+    searchers_trusted = True  # false when the command redefines one as a function
 
     @classmethod
     def check_time(cls) -> None:
@@ -753,6 +765,40 @@ def command_positions(argv: list[Word], k: int) -> list[int]:
     return positions
 
 
+def only_searches(argv: list[Word], name: int) -> bool:
+    """Whether the command named at argv[name] is a search that runs nothing:
+    grep/egrep/fgrep, rg without --pre, git grep/log/show/diff without global
+    -c/--config-env/--exec-path (which can set a pager) or grep -O (pager)."""
+    if not Run.searchers_trusted or name >= len(argv) or argv[name].unsafe:
+        return False
+    tool = argv[name].value.rsplit("/", 1)[-1]
+    rest = argv[name + 1 :]
+    if tool in ("grep", "egrep", "fgrep"):
+        return True
+    if tool == "rg":
+        return not any(w.value == "--pre" or w.value.startswith("--pre=") for w in rest)
+    if tool != "git":
+        return False
+    j = name + 1
+    while j < len(argv) and argv[j].value.startswith("-"):
+        arg = argv[j].value
+        if argv[j].splits or arg.startswith(("-c", "--config-env", "--exec-path")):
+            return False
+        j += 2 if arg in GIT_VALUE_OPTIONS else 1
+    if j >= len(argv) or argv[j].unsafe or argv[j].value not in GIT_SEARCHES:
+        return False
+    if argv[j].value == "grep":
+        for w in argv[j + 1 :]:
+            arg = w.value
+            if arg == "--":
+                break
+            if arg.startswith("--open-files-in-pager") or (
+                arg.startswith("-") and not arg.startswith("--") and "O" in arg
+            ):
+                return False
+    return True
+
+
 def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
     n = len(argv)
     injects_from = [False] * (n + 1)
@@ -762,22 +808,21 @@ def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
         (k for k, w in enumerate(argv) if not (ASSIGNMENT.match(w.value) or w.value in RESERVED)),
         n,
     )
+    if only_searches(argv, name):
+        return PASS, ""
     runs = set(command_positions(argv, name))
-    best, xargs_runs, after_runner = (PASS, ""), set(), False
+    best, xargs_runs = (PASS, ""), set()
     for k, word in enumerate(argv):
         Run.check_time()
         value = word.value
         path_gh = value.endswith("/gh") and not word.unsafe
-        # gh or a /gh path is gh where a command runs (/usr/bin/gh $P $A), and
-        # anywhere after a wrapper name: reading each wrapper's options exactly
-        # missed forms such as env --unset X gh or timeout --signal KILL 5 gh.
-        # Elsewhere it, and an expanded word in the command position or before a
-        # gh subcommand (flags skipped), may be gh: grep -w gh $F, ls
-        # ~/.config/gh $HOME, X=gh; $X pr merge, env $G -R o/r pr merge.
-        gh_word = value == "gh" or path_gh
-        literal = gh_word and (k in runs or k in xargs_runs or after_runner)
+        # A /gh path is gh where a command runs (/usr/bin/gh $P $A, xargs env
+        # ./gh). Elsewhere it, and an expanded word in the command position or
+        # before a gh subcommand (flags skipped), may be gh: ls ~/.config/gh
+        # $HOME, X=gh; $X pr merge, env $G -R o/r pr merge.
+        literal = value == "gh" or (path_gh and (k in runs or k in xargs_runs))
         inferred = not literal and (
-            gh_word
+            path_gh
             or (word.unsafe and (k in runs or first_positional_is_subcommand(argv, k + 1)))
         )
         if literal or inferred:
@@ -788,10 +833,8 @@ def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
                 best = verdict
             if best[0] == BLOCK:
                 return best
-        base = value.rsplit("/", 1)[-1]
-        if base in ("xargs", "parallel"):
+        if value.rsplit("/", 1)[-1] in ("xargs", "parallel"):
             xargs_runs.update(command_positions(argv, xargs_command(argv, k)))
-        after_runner = after_runner or (not word.unsafe and base in RUNNERS)
     return best
 
 
@@ -853,6 +896,7 @@ def analyze(src: str, depth: int, seen: set) -> tuple[int, str]:
 
 def argv_check(command: str) -> tuple[int, str]:
     Run.deadline = time.monotonic() + TIME_LIMIT
+    Run.searchers_trusted = not REDEFINED_SEARCHER.search(command)
     try:
         return analyze(command, 0, set())
     except OutOfTime:
