@@ -12,6 +12,21 @@ Every other write (API merge, edit, close, dismiss, resolve thread, ...) stays
 with the user; this hook makes that boundary a hard system-level guarantee
 instead of relying solely on Skill prose.
 
+Two checks run and the stricter verdict wins, so adding the second can't
+weaken the first. The regex check matches the raw command text (it also
+blocks text that only mentions these commands). The argument-level check
+splits the command the way bash does (quotes, $'...', escapes, comments,
+line continuations, heredocs, &, newlines) and reads gh's flags the way
+pflag does (-iXPUT, -fX=GET, last value wins). On top of the above it blocks
+`gh alias set/import`, a GraphQL query read from a file or an expansion, a
+gh argument with an unquoted $-expansion, substitution or brace expansion
+(word splitting could inject flags; e.g. `gh pr view $N` too), a decisive
+word built from an expansion, and a merge whose last --match-head-commit is
+not a literal hex sha. Quoted text, substitutions and heredoc bodies are
+checked again as commands (trap, -c, rebase -x, env -S, git ! aliases), up
+to MAX_DEPTH levels; deeper nesting is blocked. If this check fails with an
+exception, the regex verdict alone is used.
+
 Exit 2 blocks the tool call and feeds stderr back to the model (Claude Code
 PreToolUse hook contract). Any unexpected error here fails open (exit 0) so a
 bug in this script can't break every Bash call.
@@ -108,6 +123,450 @@ def find_pr_write_action(command: str) -> str | None:
     return None
 
 
+# --- Argument-level check -------------------------------------------------
+# Splits the command into words the way bash does and inspects gh's
+# arguments. It only ever adds blocks/asks to the regex checks above.
+
+PASS, ASK, BLOCK = 0, 1, 2
+MAX_DEPTH = 8
+
+# pflag value-taking flags. -i is gh api's --include (a boolean), so it is not here.
+API_SHORT = {"X": "method", "f": "raw-field", "F": "field", "H": "header",
+             "p": "preview", "q": "jq", "t": "template", "R": "repo"}
+API_LONG = {"method", "raw-field", "field", "header", "input", "preview", "jq",
+            "template", "cache", "hostname", "repo"}
+MERGE_SHORT = {"t": "subject", "b": "body", "F": "body-file", "A": "author-email", "R": "repo"}
+MERGE_LONG = {"subject", "body", "body-file", "author-email", "match-head-commit", "repo"}
+ANY_SHORT = {c: c for c in "XfFHpqtbAR"}
+ANY_LONG = API_LONG | MERGE_LONG | {"json", "color", "interval"}
+
+HEX_SHA = re.compile(r"[0-9a-f]{7,40}")
+PR_SEGMENT = re.compile(r"(?:^|/)(?:pulls|issues)(?:[/?#]|$)")
+ALLOWED_ENDPOINT = re.compile(
+    r"repos/[^/]+/[^/]+/"
+    r"(?:pulls/\d+/reviews|pulls/\d+/comments/\d+/replies|issues/\d+/comments)"
+)
+NEEDS_PARSE = re.compile(r"[\s;&|()<>$`'\"\\{}#]")
+SHELL_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*|[0-9@*#?$!-]")
+REDIRECTS = ("<<<", "<<-", "<<", "<>", "<&", "<", ">>", ">&", ">|", ">")
+ANSI_C_ESCAPE = re.compile(r"\\(x[0-9A-Fa-f]{1,2}|u[0-9A-Fa-f]{1,4}|U[0-9A-Fa-f]{1,8}|[0-7]{1,3}|c.|.)", re.S)
+ANSI_C_SIMPLE = {"n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "f": "\f",
+                 "v": "\v", "e": "\x1b", "E": "\x1b"}
+
+
+class Word:
+    def __init__(self) -> None:
+        self.chars: list[str] = []
+        self.quoted = False
+        self.expands = False  # parameter expansion or substitution, quoted or not
+        self.splits = False  # an expansion outside quotes: bash may turn it into several words
+        self.braces: list[bool] = []  # open unquoted "{", and whether a "," or ".." follows it
+
+    @property
+    def value(self) -> str:
+        return "".join(self.chars)
+
+    def mark_expansion(self, in_quotes: bool) -> None:
+        self.expands = True
+        self.splits = self.splits or not in_quotes
+
+
+def ansi_c(text: str) -> str:
+    def decode(m: re.Match) -> str:
+        e = m.group(1)
+        if e[0] in "xuU":
+            return chr(min(int(e[1:], 16), 0x10FFFF))
+        if e[0] in "01234567":
+            return chr(int(e, 8))
+        if e[0] == "c":
+            return chr(ord(e[1]) & 0x1F)
+        return ANSI_C_SIMPLE.get(e, e)
+    return ANSI_C_ESCAPE.sub(decode, text)
+
+
+def skip_quoted(src: str, i: int) -> int:
+    quote, j = src[i], i + 1
+    while j < len(src):
+        if quote == '"' and src[j] == "\\":
+            j += 2
+            continue
+        if src[j] == quote:
+            return j + 1
+        j += 1
+    return len(src)
+
+
+def find_close(src: str, i: int, opener: str, closer: str) -> int:
+    """Index of the closer matching an opener just before i (len(src) if none)."""
+    depth = 1
+    while i < len(src):
+        c = src[i]
+        if c == "\\":
+            i += 2
+            continue
+        if c in "'\"":
+            i = skip_quoted(src, i)
+            continue
+        if c == opener:
+            depth += 1
+        elif c == closer:
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return len(src)
+
+
+def find_backtick(src: str, i: int) -> int:
+    while i < len(src):
+        if src[i] == "\\":
+            i += 2
+            continue
+        if src[i] == "`":
+            return i
+        i += 1
+    return len(src)
+
+
+def read_dollar(src: str, i: int, word: Word, nested: list[str], in_quotes: bool) -> int:
+    """Read a $-form at src[i] into word; return the index after it."""
+    nxt = src[i + 1] if i + 1 < len(src) else ""
+    if nxt == "(":
+        j = find_close(src, i + 2, "(", ")")
+        nested.append(src[i + 2 : j])
+    elif nxt == "{":
+        j = find_close(src, i + 2, "{", "}")
+        nested.append(src[i + 2 : j])
+    elif nxt == "'" and not in_quotes:
+        j = i + 2
+        while j < len(src) and src[j] != "'":
+            j += 2 if src[j] == "\\" else 1
+        word.quoted = True
+        word.chars.append(ansi_c(src[i + 2 : j]))
+        return j + 1
+    elif nxt == '"' and not in_quotes:
+        return read_double(src, i + 2, word, nested)
+    else:
+        m = SHELL_NAME.match(src, i + 1)
+        if not m:
+            word.chars.append("$")
+            return i + 1
+        j = m.end() - 1
+    word.mark_expansion(in_quotes)
+    word.chars.append(src[i : j + 1])
+    return j + 1
+
+
+def read_double(src: str, i: int, word: Word, nested: list[str]) -> int:
+    """Read a double-quoted span starting after its opening quote."""
+    word.quoted = True
+    while i < len(src):
+        c = src[i]
+        if c == '"':
+            return i + 1
+        if c == "\\":
+            nxt = src[i + 1] if i + 1 < len(src) else ""
+            if nxt == "\n":
+                i += 2
+            elif nxt in ("$", "`", '"', "\\"):
+                word.chars.append(nxt)
+                i += 2
+            else:
+                word.chars.append("\\")
+                i += 1
+        elif c == "$":
+            i = read_dollar(src, i, word, nested, in_quotes=True)
+        elif c == "`":
+            j = find_backtick(src, i + 1)
+            nested.append(src[i + 1 : j])
+            word.mark_expansion(in_quotes=True)
+            word.chars.append(src[i : j + 1])
+            i = j + 1
+        else:
+            word.chars.append(c)
+            i += 1
+    return len(src)
+
+
+def split_commands(src: str) -> tuple[list[list[Word]], list[str]]:
+    """Split src into simple commands the way bash does. Also return texts
+    bash may run as commands: substitutions, heredoc and here-string bodies,
+    and redirection targets. Unclosed quotes or substitutions run to the end."""
+    commands: list[list[Word]] = []
+    nested: list[str] = []
+    state = {"cmd": [], "word": None, "expect": None}
+    heredocs: list[tuple[str, bool]] = []
+
+    def cur() -> Word:
+        if state["word"] is None:
+            state["word"] = Word()
+        return state["word"]
+
+    def end_word() -> None:
+        word, expect = state["word"], state["expect"]
+        if word is None:
+            return
+        state["word"] = state["expect"] = None
+        if expect and expect[0] == "heredoc":
+            heredocs.append((word.value, expect[1]))
+        elif expect:
+            nested.append(word.value)
+        elif word.value in ("{", "}") and not word.quoted:
+            end_command()
+        else:
+            state["cmd"].append(word)
+
+    def end_command() -> None:
+        end_word()
+        if state["cmd"]:
+            commands.append(state["cmd"])
+        state["cmd"], state["expect"] = [], None
+
+    def read_heredoc_bodies(i: int) -> int:
+        for delimiter, strip_tabs in heredocs:
+            lines = []
+            while i < len(src):
+                end = src.find("\n", i)
+                end = len(src) if end < 0 else end
+                line = src[i:end]
+                i = end + 1
+                # bash ends a heredoc only on a line that is exactly the delimiter.
+                if (line.lstrip("\t") if strip_tabs else line) == delimiter:
+                    break
+                lines.append(line)
+            nested.append("\n".join(lines))
+        heredocs.clear()
+        return i
+
+    i, n = 0, len(src)
+    while i < n:
+        c = src[i]
+        if c == "\\":
+            if src.startswith("\\\n", i):
+                i += 2
+                continue
+            word = cur()
+            word.quoted = True
+            word.chars.append(src[i + 1 : i + 2])
+            i += 2
+        elif c == "'":
+            j = src.find("'", i + 1)
+            j = n if j < 0 else j
+            word = cur()
+            word.quoted = True
+            word.chars.append(src[i + 1 : j])
+            i = j + 1
+        elif c == '"':
+            i = read_double(src, i + 1, cur(), nested)
+        elif c == "$":
+            i = read_dollar(src, i, cur(), nested, in_quotes=False)
+        elif c == "`":
+            j = find_backtick(src, i + 1)
+            nested.append(src[i + 1 : j])
+            word = cur()
+            word.mark_expansion(in_quotes=False)
+            word.chars.append(src[i : j + 1])
+            i = j + 1
+        elif c in " \t":
+            end_word()
+            i += 1
+        elif c == "#" and state["word"] is None:
+            j = src.find("\n", i)
+            i = n if j < 0 else j
+        elif c == "\n":
+            end_command()
+            i = read_heredoc_bodies(i + 1)
+        elif c in "<>" and src.startswith("(", i + 1):
+            j = find_close(src, i + 2, "(", ")")
+            nested.append(src[i + 2 : j])
+            word = cur()
+            word.mark_expansion(in_quotes=False)
+            word.chars.append(src[i : j + 1])
+            i = j + 1
+        elif c in "<>" or src.startswith("&>", i):
+            word = state["word"]
+            if word is not None and not word.quoted and word.value.isdigit():
+                state["word"] = None  # file descriptor number, e.g. the 2 in 2>&1
+            else:
+                end_word()
+            op = "&>>" if src.startswith("&>>", i) else "&>" if c == "&" else next(
+                r for r in REDIRECTS if src.startswith(r, i)
+            )
+            i += len(op)
+            if op in ("<<", "<<-"):
+                state["expect"] = ("heredoc", op == "<<-")
+            else:
+                state["expect"] = ("target",)
+        elif c in ";&|()":
+            end_command()
+            i += 1
+        else:
+            word = cur()
+            word.chars.append(c)
+            # Brace expansion ({a,b} or {1..3}) is tracked in this one pass;
+            # a look-ahead per "{" made a run of them quadratic.
+            if c == "{":
+                word.braces.append(False)
+            elif word.braces and (c == "," or src.startswith("..", i)):
+                word.braces[-1] = True
+            elif c == "}" and word.braces and word.braces.pop():
+                word.mark_expansion(in_quotes=False)
+            i += 1
+    end_command()
+    return commands, nested
+
+
+def parse_flags(args: list[Word], short: dict, long: set) -> tuple[list, list[Word]]:
+    """Read gh arguments as pflag does: (name, value text, word holding it)
+    for each flag, and the positional words."""
+    flags, positional = [], []
+    i = 0
+    while i < len(args):
+        word, arg = args[i], args[i].value
+        i += 1
+        if arg == "--":
+            positional.extend(args[i:])
+            break
+        if arg == "-" or not arg.startswith("-"):
+            positional.append(word)
+            continue
+        if arg.startswith("--"):
+            name, eq, value = arg[2:].partition("=")
+            if name not in long:
+                flags.append((name, None, word))
+            elif eq:
+                flags.append((name, value, word))
+            elif i < len(args):
+                flags.append((name, args[i].value, args[i]))
+                i += 1
+            else:
+                flags.append((name, None, None))
+            continue
+        rest = arg[1:]
+        while rest:
+            name = short.get(rest[0])
+            if name is None:
+                rest = rest[1:]
+                continue
+            # pflag: -X=PUT drops the "=", -fX=GET gives -f the value "X=GET".
+            if len(rest) > 2 and rest[1] == "=":
+                flags.append((name, rest[2:], word))
+            elif len(rest) > 1:
+                flags.append((name, rest[1:], word))
+            elif i < len(args):
+                flags.append((name, args[i].value, args[i]))
+                i += 1
+            else:
+                flags.append((name, None, None))
+            break
+    return flags, positional
+
+
+def judge_api(args: list[Word], alone: bool) -> tuple[int, str]:
+    flags, positional = parse_flags(args, API_SHORT, API_LONG)
+    if len(positional) < 2:
+        return PASS, ""
+    endpoint = positional[1]
+    path = endpoint.value.lstrip("/")
+    methods = [(text, word) for name, text, word in flags if name == "method"]
+    fields = [(text, word) for name, text, word in flags if name in ("field", "raw-field")]
+    has_input = any(name == "input" for name, _, _ in flags)
+    if methods:
+        text, word = methods[-1]
+        if text is None or word.expands:
+            return BLOCK, "gh api method not fixed"
+        method = text.upper()
+    else:
+        method = "POST" if fields or has_input else "GET"
+
+    if path == "graphql":
+        if has_input:
+            return BLOCK, "gh api graphql --input"
+        for text, word in fields:
+            if text is not None and text.startswith("query="):
+                query = text[len("query="):]
+                if word.expands or query.startswith("@") or MUTATION.search(query):
+                    return BLOCK, "gh api graphql query is a mutation or can't be read"
+        return PASS, ""
+    if method == "GET":
+        return PASS, ""
+    if endpoint.expands:
+        return BLOCK, "gh api write to an endpoint built from an expansion"
+    if PR_SEGMENT.search(path):
+        if method == "POST" and ALLOWED_ENDPOINT.fullmatch(path):
+            if alone:
+                return PASS, ""
+            return BLOCK, "allowed POST combined with other commands"
+        return BLOCK, f"gh api {method} {endpoint.value}"
+    return PASS, ""
+
+
+def judge_gh(args: list[Word], alone: bool) -> tuple[int, str]:
+    # Word splitting can inject flags (EP="x -X PUT"; gh api $EP). Globs are left
+    # out: they only expand when a matching file exists, and reads use "?".
+    if any(w.splits for w in args):
+        return BLOCK, "gh argument expanded outside quotes"
+    _, positional = parse_flags(args, ANY_SHORT, ANY_LONG)
+    if not positional:
+        return PASS, ""
+    sub = positional[0]
+    if sub.expands:
+        return BLOCK, "gh subcommand built from an expansion"
+    if sub.value == "api":
+        return judge_api(args, alone)
+    if sub.value not in ("pr", "alias") or len(positional) < 2:
+        return PASS, ""
+    action = positional[1]
+    if action.expands:
+        return BLOCK, f"gh {sub.value} subcommand built from an expansion"
+    if sub.value == "alias":
+        if action.value in ("set", "import"):
+            return BLOCK, f"gh alias {action.value}"
+        return PASS, ""
+    if action.value in ("review", "comment"):
+        return BLOCK, f"gh pr {action.value}"
+    if action.value == "merge":
+        flags, _ = parse_flags(args, MERGE_SHORT, MERGE_LONG)
+        pins = [(text, word) for name, text, word in flags if name == "match-head-commit"]
+        if pins:
+            text, word = pins[-1]
+            if text is not None and not word.expands and HEX_SHA.fullmatch(text):
+                return ASK, ""
+        return BLOCK, "gh pr merge without a usable --match-head-commit"
+    return PASS, ""
+
+
+def analyze(src: str, depth: int, seen: set) -> tuple[int, str]:
+    """Verdict for src and for every text bash may run from it."""
+    if depth > MAX_DEPTH:
+        return BLOCK, "nested too deeply to inspect"
+    if src in seen:
+        return PASS, ""
+    seen.add(src)
+    commands, nested = split_commands(src)
+    alone = depth == 0 and len(commands) == 1
+    best = (PASS, "")
+    texts = list(nested)
+    for argv in commands:
+        for k, word in enumerate(argv):
+            if word.value == "gh" or word.value.endswith("/gh"):
+                verdict = judge_gh(argv[k + 1 :], alone)
+                if verdict[0] > best[0]:
+                    best = verdict
+            text = word.value[1:] if word.value.startswith("!") else word.value
+            if NEEDS_PARSE.search(text):
+                texts.append(text)  # quoted text that trap, -c, -x, env -S... may run
+        if best[0] == BLOCK:
+            return best
+    for text in texts:
+        verdict = analyze(text, depth + 1, seen)
+        if verdict[0] > best[0]:
+            best = verdict
+        if best[0] == BLOCK:
+            return best
+    return best
+
+
 def main() -> int:
     try:
         data = json.load(sys.stdin)
@@ -119,6 +578,10 @@ def main() -> int:
         reason = find_pr_write_action(command)
         chained = is_chained_allowed_post(command)
         merge = GH_PR_MERGE.search(command)
+        try:
+            argv_level, argv_reason = analyze(command, 0, set())
+        except Exception:
+            argv_level, argv_reason = PASS, ""  # fall back to the regex checks alone
     except Exception:
         return 0
 
@@ -128,7 +591,10 @@ def main() -> int:
     if reason:
         print(GUIDANCE.format(reason=reason), file=sys.stderr)
         return 2
-    if merge:
+    if argv_level == BLOCK:
+        print(GUIDANCE.format(reason=f"{argv_reason}: {command}"), file=sys.stderr)
+        return 2
+    if merge or argv_level == ASK:
         print(
             json.dumps(
                 {
