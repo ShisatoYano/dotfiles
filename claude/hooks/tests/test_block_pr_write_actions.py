@@ -69,6 +69,9 @@ WAYS_AROUND = [
     ("gh by path in a function passing its arguments", 'h(){ /usr/bin/gh "$@"; }; h pr merge 1 --admin'),
     ("gh run by xargs through a wrapper", "printf '%s\\n' pr merge 1 --admin | xargs env gh"),
     ("action added by braces with no action word", "gh pr --repo {o/r,merge,1} --admin"),
+    ("whole -X flag from a quoted variable", 'M=-XPUT; gh api repos/o/r/pulls/1/merge "$M"'),
+    ("whole query field from a quoted variable", 'Q=-fquery=mutation{x}; gh api graphql "$Q"'),
+    ("write to an endpoint taken whole from a variable", 'gh api "$EP" -X PUT'),
 ]
 
 # Risk 2: everyday commands that only mention gh with an expansion. (why, command)
@@ -79,6 +82,9 @@ DAILY = [
     ("an editor and a file from variables", "$EDITOR $FILE"),
     ("gh only inside a longer word of an expanded name", '"$(ghq root)"/github.com/o/r/run.sh "$ARG"'),
     ("a /gh directory given to ls", "ls ~/.config/gh $HOME"),
+    ("gh as a search word before a substitution", "grep -lw gh $(git ls-files)"),
+    ("gh as a search word before a path with a variable", "rg gh $HOME/dotfiles"),
+    ("read from an endpoint taken whole from a variable", 'gh api "$EP"'),
     (
         "braces in the value of -H on a read",
         "gh api repos/o/r/pulls/1/files --jq '.[] | {f: .filename}' -H{Accept:x,X-A:y}",

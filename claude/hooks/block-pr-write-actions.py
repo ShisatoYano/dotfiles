@@ -18,23 +18,26 @@ The regex check matches the raw command text (it also blocks text that only
 mentions these commands). The argument-level check splits the command the
 way bash does (quotes, $'...', escapes, comments, line continuations,
 heredocs, {var}> redirections, &, newlines) and reads gh's flags the way
-pflag does (-iXPUT, -fX=GET, last value wins). A path ending in /gh is gh
-where a command runs (after assignments and wrappers such as env, nice or
-timeout, or as what xargs runs) and a possible gh elsewhere. A word built
-from an expansion or glob ($X, $(...), {gh,}, g[h]) where a command runs or
-followed (flags skipped) by a gh subcommand is a possible gh too; when a
-possible gh's subcommand is an expansion as well, a literal merge/review/
-comment/alias after it, or the name spelling gh, still blocks. On top of the above it blocks
+pflag does (-iXPUT, -fX=GET, last value wins). gh, or a path ending in /gh,
+is gh where a command runs (after assignments and wrappers such as env, nice
+or timeout, or as what xargs runs) and a possible gh elsewhere, so
+`grep -w gh $F` passes. A word built from an expansion or glob ($X, $(...),
+{gh,}, g[h]) where a command runs or followed (flags skipped) by a gh
+subcommand is a possible gh too; when a possible gh's subcommand is an
+expansion as well, a literal merge/review/comment/alias after it, or the
+name spelling gh, still blocks. On top of the above it blocks
 `gh alias set/import`, a GraphQL query (including one sent to an absolute
 .../graphql URL) read from a file or an expansion, a decisive word built
 from an expansion, word splitting or braces before gh's subcommand or
 action (--repo $X), a merge whose last --match-head-commit is not a literal
-hex sha, gh run by xargs without its subcommand, and, for writes only (gh
-api to a PR path or graphql, gh pr merge), an argument that word splitting
-or a brace starting with "-" could turn into extra flags; reads such as
-`gh pr view $N` are left alone. Quoted text, substitutions and heredoc bodies are checked again
-as commands (trap, -c, rebase -x, env -S, git ! aliases), up to MAX_DEPTH
-levels; deeper nesting blocks. Running past TIME_LIMIT blocks; any other
+hex sha, gh run by xargs without its subcommand, gh api with two or more
+positional words of which one starts with an expansion (even quoted, "$M"
+may be -XPUT), and, for writes only (gh api to a PR path or graphql, gh pr
+merge), an argument that word splitting or a brace starting with "-" could
+turn into extra flags; reads such as `gh pr view $N` are left alone. Quoted
+text, substitutions and heredoc bodies are checked again as commands (trap,
+-c, rebase -x, env -S, git ! aliases), up to MAX_DEPTH levels; deeper
+nesting blocks. Running past TIME_LIMIT blocks; any other
 exception leaves the regex verdict alone.
 
 Exit 2 blocks the tool call and feeds stderr back to the model (Claude Code
@@ -206,6 +209,7 @@ class Word:
         self.brace = False  # brace expansion: {a,b} or {1..3}
         self.brace_flag = False  # ...with an alternative starting with "-", which can inject a flag
         self.glob = False  # unquoted * ? [
+        self.starts_expanded = False  # begins with an expansion, quoted or not: "$M" may be -XPUT
         self.braces: list[list[bool]] = []  # open unquoted "{": [has "," or "..", has "-" alternative]
         self._lead = ""
 
@@ -249,6 +253,8 @@ class Word:
         return self.splits or self.brace_flag
 
     def mark_expansion(self, in_quotes: bool) -> None:
+        # Called before the expansion's text is added, so no text yet means it leads.
+        self.starts_expanded = self.starts_expanded or not self.lead
         self.expands = True
         self.splits = self.splits or not in_quotes
 
@@ -573,6 +579,11 @@ def judge_api(args: list[Word], start: int, injects: bool, alone: bool) -> tuple
         return (BLOCK, "gh api endpoint may come from an expansion") if injects else (PASS, "")
     endpoint = positional[1]
     path = endpoint_path(endpoint.value)
+    # A word starting with an expansion can be a whole flag even when quoted
+    # ("$M" with M=-XPUT). A lone such word only loses gh its endpoint, and as an
+    # endpoint it is blocked below for anything but GET, so it needs a second one.
+    if len(positional) > 2 and any(w.starts_expanded for w in positional[1:]):
+        return BLOCK, "gh api argument may be a flag taken from an expansion"
     if injects:
         # Injected words (e.g. -X PUT) only matter if they can reach the
         # endpoint or the endpoint is one a write could change a PR through.
@@ -743,13 +754,14 @@ def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
         Run.check_time()
         value = word.value
         path_gh = value.endswith("/gh") and not word.unsafe
-        # A /gh path is gh where a command runs (/usr/bin/gh $P $A, xargs env
-        # ./gh). Elsewhere it, and an expanded word in the command position or
-        # before a gh subcommand (flags skipped), may be gh: ls ~/.config/gh
-        # $HOME, X=gh; $X pr merge, env $G -R o/r pr merge.
-        literal = value == "gh" or (path_gh and (k in runs or k in xargs_runs))
+        # gh or a /gh path is gh where a command runs (/usr/bin/gh $P $A, xargs
+        # env ./gh). Elsewhere it, and an expanded word in the command position
+        # or before a gh subcommand (flags skipped), may be gh: grep -w gh $F,
+        # ls ~/.config/gh $HOME, X=gh; $X pr merge, env $G -R o/r pr merge.
+        gh_word = value == "gh" or path_gh
+        literal = gh_word and (k in runs or k in xargs_runs)
         inferred = not literal and (
-            path_gh
+            gh_word
             or (word.unsafe and (k in runs or first_positional_is_subcommand(argv, k + 1)))
         )
         if literal or inferred:
