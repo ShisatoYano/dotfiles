@@ -13,27 +13,34 @@ with the user; this hook makes that boundary a hard system-level guarantee
 instead of relying solely on Skill prose.
 
 Two checks run and the stricter verdict wins, so adding the second can't
-weaken the first. The regex check matches the raw command text (it also
-blocks text that only mentions these commands). The argument-level check
-splits the command the way bash does (quotes, $'...', escapes, comments,
-line continuations, heredocs, &, newlines) and reads gh's flags the way
-pflag does (-iXPUT, -fX=GET, last value wins). On top of the above it blocks
-`gh alias set/import`, a GraphQL query read from a file or an expansion, a
-gh argument with an unquoted $-expansion, substitution or brace expansion
-(word splitting could inject flags; e.g. `gh pr view $N` too), a decisive
-word built from an expansion, and a merge whose last --match-head-commit is
-not a literal hex sha. Quoted text, substitutions and heredoc bodies are
-checked again as commands (trap, -c, rebase -x, env -S, git ! aliases), up
-to MAX_DEPTH levels; deeper nesting is blocked. If this check fails with an
-exception, the regex verdict alone is used.
+weaken the first; it only runs when the regex check hasn't already blocked.
+The regex check matches the raw command text (it also blocks text that only
+mentions these commands). The argument-level check splits the command the
+way bash does (quotes, $'...', escapes, comments, line continuations,
+heredocs, {var}> redirections, &, newlines) and reads gh's flags the way
+pflag does (-iXPUT, -fX=GET, last value wins). A command name built from an
+expansion or glob ($X, $(...), {gh,}, g[h]) is read as gh when a gh
+subcommand follows it. On top of the above it blocks `gh alias set/import`,
+a GraphQL query (including one sent to an absolute .../graphql URL) read
+from a file or an expansion, a decisive word built from an expansion, a
+merge whose last --match-head-commit is not a literal hex sha, gh run by
+xargs without its subcommand, and, for writes only (gh api to a PR path or
+graphql, gh pr merge), an argument that word splitting or a "-" brace
+alternative could turn into extra flags; reads such as `gh pr view $N` are
+left alone. Quoted text, substitutions and heredoc bodies are checked again
+as commands (trap, -c, rebase -x, env -S, git ! aliases), up to MAX_DEPTH
+levels; deeper nesting blocks. Running past TIME_LIMIT blocks; any other
+exception leaves the regex verdict alone.
 
 Exit 2 blocks the tool call and feeds stderr back to the model (Claude Code
 PreToolUse hook contract). Any unexpected error here fails open (exit 0) so a
 bug in this script can't break every Bash call.
 """
 import json
+import os
 import re
 import sys
+import time
 
 GUIDANCE = (
     "PRの状態を変更する操作(gh pr merge/review/comment、およびgh api経由の同等操作)は禁止されています。 "
@@ -129,6 +136,8 @@ def find_pr_write_action(command: str) -> str | None:
 
 PASS, ASK, BLOCK = 0, 1, 2
 MAX_DEPTH = 8
+# A hook that times out lets the command through, so running out of time blocks.
+TIME_LIMIT = 2.0
 
 # pflag value-taking flags. -i is gh api's --include (a boolean), so it is not here.
 API_SHORT = {"X": "method", "f": "raw-field", "F": "field", "H": "header",
@@ -146,12 +155,32 @@ ALLOWED_ENDPOINT = re.compile(
     r"repos/[^/]+/[^/]+/"
     r"(?:pulls/\d+/reviews|pulls/\d+/comments/\d+/replies|issues/\d+/comments)"
 )
+# gh api uses an endpoint containing "://" as an absolute URL.
+URL_PREFIX = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://[^/]*")
 NEEDS_PARSE = re.compile(r"[\s;&|()<>$`'\"\\{}#]")
 SHELL_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*|[0-9@*#?$!-]")
+FD_VARIABLE = re.compile(r"\{[A-Za-z_][A-Za-z0-9_]*\}")
+ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\+?=")
+RESERVED = {"!", "if", "then", "else", "elif", "while", "until", "do", "time", "coproc"}
+GH_SUBCOMMANDS = {"pr", "api", "alias"}
 REDIRECTS = ("<<<", "<<-", "<<", "<>", "<&", "<", ">>", ">&", ">|", ">")
 ANSI_C_ESCAPE = re.compile(r"\\(x[0-9A-Fa-f]{1,2}|u[0-9A-Fa-f]{1,4}|U[0-9A-Fa-f]{1,8}|[0-7]{1,3}|c.|.)", re.S)
 ANSI_C_SIMPLE = {"n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "f": "\f",
                  "v": "\v", "e": "\x1b", "E": "\x1b"}
+
+
+class OutOfTime(Exception):
+    pass
+
+
+class Run:
+    deadline = float("inf")
+    cwd = "."
+
+    @classmethod
+    def check_time(cls) -> None:
+        if time.monotonic() > cls.deadline:
+            raise OutOfTime
 
 
 class Word:
@@ -159,12 +188,25 @@ class Word:
         self.chars: list[str] = []
         self.quoted = False
         self.expands = False  # parameter expansion or substitution, quoted or not
-        self.splits = False  # an expansion outside quotes: bash may turn it into several words
-        self.braces: list[bool] = []  # open unquoted "{", and whether a "," or ".." follows it
+        self.splits = False  # one outside quotes: word splitting may turn it into several words
+        self.brace = False  # brace expansion: {a,b} or {1..3}
+        self.brace_flag = False  # ...with an alternative starting with "-", which can inject a flag
+        self.glob = False  # unquoted * ? [
+        self.braces: list[list[bool]] = []  # open unquoted "{": [has "," or "..", has "-" alternative]
 
     @property
     def value(self) -> str:
         return "".join(self.chars)
+
+    @property
+    def unsafe(self) -> bool:
+        """bash may turn this word into something other than its text."""
+        return self.expands or self.brace or self.glob
+
+    @property
+    def injects(self) -> bool:
+        """bash may turn this word into extra words, flags included."""
+        return self.splits or self.brace_flag
 
     def mark_expansion(self, in_quotes: bool) -> None:
         self.expands = True
@@ -326,6 +368,7 @@ def split_commands(src: str) -> tuple[list[list[Word]], list[str]]:
         for delimiter, strip_tabs in heredocs:
             lines = []
             while i < len(src):
+                Run.check_time()
                 end = src.find("\n", i)
                 end = len(src) if end < 0 else end
                 line = src[i:end]
@@ -340,6 +383,7 @@ def split_commands(src: str) -> tuple[list[list[Word]], list[str]]:
 
     i, n = 0, len(src)
     while i < n:
+        Run.check_time()
         c = src[i]
         if c == "\\":
             if src.startswith("\\\n", i):
@@ -385,8 +429,10 @@ def split_commands(src: str) -> tuple[list[list[Word]], list[str]]:
             i = j + 1
         elif c in "<>" or src.startswith("&>", i):
             word = state["word"]
-            if word is not None and not word.quoted and word.value.isdigit():
-                state["word"] = None  # file descriptor number, e.g. the 2 in 2>&1
+            if word is not None and not word.quoted and (
+                word.value.isdigit() or FD_VARIABLE.fullmatch(word.value)
+            ):
+                state["word"] = None  # fd number or {varname}, e.g. 2>&1, {fd}>file
             else:
                 end_word()
             op = "&>>" if src.startswith("&>>", i) else "&>" if c == "&" else next(
@@ -403,32 +449,46 @@ def split_commands(src: str) -> tuple[list[list[Word]], list[str]]:
         else:
             word = cur()
             word.chars.append(c)
-            # Brace expansion ({a,b} or {1..3}) is tracked in this one pass;
-            # a look-ahead per "{" made a run of them quadratic.
+            # Brace expansion is tracked in this one pass; a look-ahead per "{"
+            # made a run of them quadratic.
+            dash_next = src.startswith("-", i + 1)
             if c == "{":
-                word.braces.append(False)
-            elif word.braces and (c == "," or src.startswith("..", i)):
-                word.braces[-1] = True
-            elif c == "}" and word.braces and word.braces.pop():
-                word.mark_expansion(in_quotes=False)
+                word.braces.append([False, dash_next])
+            elif word.braces and c == ",":
+                word.braces[-1][0] = True
+                word.braces[-1][1] = word.braces[-1][1] or dash_next
+            elif word.braces and src.startswith("..", i):
+                word.braces[-1][0] = True
+            elif c == "}" and word.braces:
+                has_separator, dash = word.braces.pop()
+                if has_separator:
+                    word.brace = True
+                    word.brace_flag = word.brace_flag or dash
+            elif c in "*?[":
+                word.glob = True
             i += 1
     end_command()
     return commands, nested
 
 
-def parse_flags(args: list[Word], short: dict, long: set) -> tuple[list, list[Word]]:
-    """Read gh arguments as pflag does: (name, value text, word holding it)
-    for each flag, and the positional words."""
+def parse_flags(args: list[Word], start: int, short: dict, long: set,
+                stop_after: int = 0) -> tuple[list, list[Word]]:
+    """Read args[start:] as pflag does: (name, value text, word holding it)
+    for each flag, and the positional words (up to stop_after if given)."""
     flags, positional = [], []
-    i = 0
+    i = start
     while i < len(args):
+        Run.check_time()
         word, arg = args[i], args[i].value
         i += 1
         if arg == "--":
-            positional.extend(args[i:])
+            end = i + stop_after - len(positional) if stop_after else len(args)
+            positional.extend(args[i:end])
             break
         if arg == "-" or not arg.startswith("-"):
             positional.append(word)
+            if stop_after and len(positional) >= stop_after:
+                break
             continue
         if arg.startswith("--"):
             name, eq, value = arg[2:].partition("=")
@@ -462,35 +522,48 @@ def parse_flags(args: list[Word], short: dict, long: set) -> tuple[list, list[Wo
     return flags, positional
 
 
-def judge_api(args: list[Word], alone: bool) -> tuple[int, str]:
-    flags, positional = parse_flags(args, API_SHORT, API_LONG)
+def endpoint_path(value: str) -> str:
+    path = URL_PREFIX.sub("", value)
+    return re.split(r"[?#]", path, 1)[0].strip("/")
+
+
+def judge_api(args: list[Word], start: int, injects: bool, alone: bool) -> tuple[int, str]:
+    flags, positional = parse_flags(args, start, API_SHORT, API_LONG)
     if len(positional) < 2:
-        return PASS, ""
+        return (BLOCK, "gh api endpoint may come from an expansion") if injects else (PASS, "")
     endpoint = positional[1]
-    path = endpoint.value.lstrip("/")
+    path = endpoint_path(endpoint.value)
+    if injects:
+        # Injected words (e.g. -X PUT) only matter if they can reach the
+        # endpoint or the endpoint is one a write could change a PR through.
+        end = next(k for k in range(start, len(args)) if args[k] is endpoint)
+        if any(args[k].injects for k in range(start, end + 1)):
+            return BLOCK, "gh api endpoint may come from an expansion"
+        if PR_SEGMENT.search(path) or path == "graphql" or path.endswith("/graphql"):
+            return BLOCK, "gh api argument expanded outside quotes"
     methods = [(text, word) for name, text, word in flags if name == "method"]
     fields = [(text, word) for name, text, word in flags if name in ("field", "raw-field")]
     has_input = any(name == "input" for name, _, _ in flags)
     if methods:
         text, word = methods[-1]
-        if text is None or word.expands:
+        if text is None or word.expands or word.brace:
             return BLOCK, "gh api method not fixed"
         method = text.upper()
     else:
         method = "POST" if fields or has_input else "GET"
 
-    if path == "graphql":
+    if path == "graphql" or path.endswith("/graphql"):
         if has_input:
             return BLOCK, "gh api graphql --input"
         for text, word in fields:
             if text is not None and text.startswith("query="):
                 query = text[len("query="):]
-                if word.expands or query.startswith("@") or MUTATION.search(query):
+                if word.expands or word.brace or query.startswith("@") or MUTATION.search(query):
                     return BLOCK, "gh api graphql query is a mutation or can't be read"
         return PASS, ""
     if method == "GET":
         return PASS, ""
-    if endpoint.expands:
+    if endpoint.expands or endpoint.brace:
         return BLOCK, "gh api write to an endpoint built from an expansion"
     if PR_SEGMENT.search(path):
         if method == "POST" and ALLOWED_ENDPOINT.fullmatch(path):
@@ -501,23 +574,33 @@ def judge_api(args: list[Word], alone: bool) -> tuple[int, str]:
     return PASS, ""
 
 
-def judge_gh(args: list[Word], alone: bool) -> tuple[int, str]:
-    # Word splitting can inject flags (EP="x -X PUT"; gh api $EP). Globs are left
-    # out: they only expand when a matching file exists, and reads use "?".
-    if any(w.splits for w in args):
-        return BLOCK, "gh argument expanded outside quotes"
-    _, positional = parse_flags(args, ANY_SHORT, ANY_LONG)
+def judge_gh(args: list[Word], start: int, injects: bool, alone: bool, via_xargs: bool,
+             inferred: bool = False) -> tuple[int, str]:
+    """Verdict for gh run with args[start:]. injects: one of them may expand
+    into extra words; via_xargs: xargs may append more from its input;
+    inferred: the command word was only possibly gh (an expansion)."""
+    _, positional = parse_flags(args, start, ANY_SHORT, ANY_LONG, stop_after=2)
+    undecided = (BLOCK if via_xargs else PASS, "gh subcommand left to xargs input")
     if not positional:
-        return PASS, ""
+        return undecided
     sub = positional[0]
-    if sub.expands:
+    if sub.unsafe:
+        # `$EDITOR $FILE` is not gh: a guessed gh needs a literal subcommand.
+        if inferred:
+            return PASS, ""
         return BLOCK, "gh subcommand built from an expansion"
-    if sub.value == "api":
-        return judge_api(args, alone)
-    if sub.value not in ("pr", "alias") or len(positional) < 2:
+    if sub.value not in GH_SUBCOMMANDS:
         return PASS, ""
+    # Expansions only matter where they can turn into a write; a read such as
+    # `gh pr view $N` (also mentioned in commit messages) is left alone.
+    if sub.value == "api":
+        if via_xargs:
+            return BLOCK, "gh api arguments added by xargs"
+        return judge_api(args, start, injects, alone)
+    if len(positional) < 2:
+        return undecided
     action = positional[1]
-    if action.expands:
+    if action.unsafe:
         return BLOCK, f"gh {sub.value} subcommand built from an expansion"
     if sub.value == "alias":
         if action.value in ("set", "import"):
@@ -526,7 +609,9 @@ def judge_gh(args: list[Word], alone: bool) -> tuple[int, str]:
     if action.value in ("review", "comment"):
         return BLOCK, f"gh pr {action.value}"
     if action.value == "merge":
-        flags, _ = parse_flags(args, MERGE_SHORT, MERGE_LONG)
+        if injects or via_xargs:
+            return BLOCK, "gh pr merge argument expanded outside quotes or added by xargs"
+        flags, _ = parse_flags(args, start, MERGE_SHORT, MERGE_LONG)
         pins = [(text, word) for name, text, word in flags if name == "match-head-commit"]
         if pins:
             text, word = pins[-1]
@@ -536,8 +621,52 @@ def judge_gh(args: list[Word], alone: bool) -> tuple[int, str]:
     return PASS, ""
 
 
+def is_directory(word: Word) -> bool:
+    # ~/.config/gh is a directory, not a gh binary; running a directory fails anyway.
+    if word.unsafe:
+        return False
+    try:
+        path = os.path.join(Run.cwd, os.path.expanduser(word.value))
+        return os.path.isdir(path)
+    except (OSError, ValueError):
+        return False
+
+
+def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
+    n = len(argv)
+    injects_from = [False] * (n + 1)
+    for k in range(n - 1, -1, -1):
+        injects_from[k] = injects_from[k + 1] or argv[k].injects
+    name = next(
+        (k for k, w in enumerate(argv) if not (ASSIGNMENT.match(w.value) or w.value in RESERVED)),
+        n,
+    )
+    best, via_xargs = (PASS, ""), False
+    for k, word in enumerate(argv):
+        Run.check_time()
+        value = word.value
+        # An expanded word in the command-name position, or one followed by a gh
+        # subcommand, may itself be gh (X=gh; $X pr merge, /usr/bin/g[h] ...).
+        literal = value == "gh" or (value.endswith("/gh") and not is_directory(word))
+        inferred = word.unsafe and (
+            k == name or (k + 1 < n and argv[k + 1].value in GH_SUBCOMMANDS)
+        )
+        if literal or inferred:
+            verdict = judge_gh(
+                argv, k + 1, injects_from[k + 1], alone, via_xargs, inferred=not literal
+            )
+            if verdict[0] > best[0]:
+                best = verdict
+            if best[0] == BLOCK:
+                return best
+        if value.rsplit("/", 1)[-1] in ("xargs", "parallel"):
+            via_xargs = True
+    return best
+
+
 def analyze(src: str, depth: int, seen: set) -> tuple[int, str]:
     """Verdict for src and for every text bash may run from it."""
+    Run.check_time()
     if depth > MAX_DEPTH:
         return BLOCK, "nested too deeply to inspect"
     if src in seen:
@@ -548,16 +677,15 @@ def analyze(src: str, depth: int, seen: set) -> tuple[int, str]:
     best = (PASS, "")
     texts = list(nested)
     for argv in commands:
-        for k, word in enumerate(argv):
-            if word.value == "gh" or word.value.endswith("/gh"):
-                verdict = judge_gh(argv[k + 1 :], alone)
-                if verdict[0] > best[0]:
-                    best = verdict
+        verdict = judge_command(argv, alone)
+        if verdict[0] > best[0]:
+            best = verdict
+        if best[0] == BLOCK:
+            return best
+        for word in argv:
             text = word.value[1:] if word.value.startswith("!") else word.value
             if NEEDS_PARSE.search(text):
                 texts.append(text)  # quoted text that trap, -c, -x, env -S... may run
-        if best[0] == BLOCK:
-            return best
     for text in texts:
         verdict = analyze(text, depth + 1, seen)
         if verdict[0] > best[0]:
@@ -565,6 +693,15 @@ def analyze(src: str, depth: int, seen: set) -> tuple[int, str]:
         if best[0] == BLOCK:
             return best
     return best
+
+
+def argv_check(command: str, cwd: str) -> tuple[int, str]:
+    Run.deadline = time.monotonic() + TIME_LIMIT
+    Run.cwd = cwd
+    try:
+        return analyze(command, 0, set())
+    except OutOfTime:
+        return BLOCK, "argument check ran out of time"
 
 
 def main() -> int:
@@ -578,10 +715,6 @@ def main() -> int:
         reason = find_pr_write_action(command)
         chained = is_chained_allowed_post(command)
         merge = GH_PR_MERGE.search(command)
-        try:
-            argv_level, argv_reason = analyze(command, 0, set())
-        except Exception:
-            argv_level, argv_reason = PASS, ""  # fall back to the regex checks alone
     except Exception:
         return 0
 
@@ -591,6 +724,10 @@ def main() -> int:
     if reason:
         print(GUIDANCE.format(reason=reason), file=sys.stderr)
         return 2
+    try:
+        argv_level, argv_reason = argv_check(command, data.get("cwd") or os.getcwd())
+    except Exception:
+        argv_level, argv_reason = PASS, ""  # fall back to the regex checks alone
     if argv_level == BLOCK:
         print(GUIDANCE.format(reason=f"{argv_reason}: {command}"), file=sys.stderr)
         return 2

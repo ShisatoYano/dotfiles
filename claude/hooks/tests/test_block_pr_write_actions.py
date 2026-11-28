@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 import unittest
 
 CLAUDE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, os.pardir)
@@ -53,6 +54,24 @@ WAYS_AROUND = [
     ("path built from a variable", 'R=o/r; gh api -X PUT "repos/$R/pulls/1/merge"'),
     ("flags injected by word splitting", 'EP="repos/o/r/pulls/1/merge -X PUT"; gh api $EP'),
     ("flags injected by brace expansion", "gh api repos/o/r/pulls/1/merge {-X,PUT}"),
+    ("{var}> redirection is not an argument", "gh pr {fd}>/dev/null merge 1 --admin"),
+    ("command name from a variable", "X=gh; $X pr merge 1 --admin"),
+    ("command name from a glob", "/usr/bin/g[h] pr merge 1 --admin"),
+    ("subcommand given to gh by xargs", "printf '%s\\n' pr merge 1 --admin | xargs gh"),
+    ("GraphQL through an absolute URL", "gh api https://api.github.com/graphql -f query='mutation { x }'"),
+]
+
+# Risk 2: everyday commands that only mention gh with an expansion. (why, command)
+DAILY = [
+    ("commit message naming a read with $N", "git commit -m 'docs: use gh pr view $N for the check'"),
+    ("braces in a mentioned path", "echo 'run gh api repos/o/r/{a,b}'"),
+]
+
+# Risk 1: inputs that once made the argument check quadratic; a hook that times
+# out lets the command through. (why, expected verdict, command)
+SLOW_INPUTS = [
+    ("many gh words, then a merge", "block", "gh " * 40000 + M),
+    ("many gh words, then a pinned merge", "ask", "gh " * 40000 + PIN),
 ]
 
 # Risk 1: forms main already blocks that broke the reverted regex versions in
@@ -134,6 +153,19 @@ class BlockPrWriteActionsTest(unittest.TestCase):
         for why, expected, command in SKILL_PATHS:
             with self.subTest(why):
                 self.assertEqual(run_hook(command)[0], expected)
+
+    def test_daily_mentions_pass(self):
+        for why, command in DAILY:
+            with self.subTest(why):
+                self.assertEqual(run_hook(command), ("pass", ""))
+
+    def test_large_inputs_finish_in_time(self):
+        for why, expected, command in SLOW_INPUTS:
+            with self.subTest(why):
+                start = time.monotonic()
+                verdict = run_hook(command)[0]
+                self.assertLess(time.monotonic() - start, 3.0)
+                self.assertEqual(verdict, expected)
 
     def test_skill_graphql_reads_pass(self):
         commands = skill_graphql_reads()
