@@ -18,11 +18,13 @@ The regex check matches the raw command text (it also blocks text that only
 mentions these commands). The argument-level check splits the command the
 way bash does (quotes, $'...', escapes, comments, line continuations,
 heredocs, {var}> redirections, &, newlines) and reads gh's flags the way
-pflag does (-iXPUT, -fX=GET, last value wins). A path ending in /gh, and a
-word built from an expansion or glob ($X, $(...), {gh,}, g[h]) in the
-command-name position or followed (flags skipped) by a gh subcommand, is
-read as gh; if its subcommand is an expansion too, a literal merge/review/
-comment/alias after it still blocks. On top of the above it blocks
+pflag does (-iXPUT, -fX=GET, last value wins). A path ending in /gh is gh
+where a command runs (after assignments and wrappers such as env, nice or
+timeout, or as what xargs runs) and a possible gh elsewhere. A word built
+from an expansion or glob ($X, $(...), {gh,}, g[h]) where a command runs or
+followed (flags skipped) by a gh subcommand is a possible gh too; when a
+possible gh's subcommand is an expansion as well, a literal merge/review/
+comment/alias after it, or the name spelling gh, still blocks. On top of the above it blocks
 `gh alias set/import`, a GraphQL query (including one sent to an absolute
 .../graphql URL) read from a file or an expansion, a decisive word built
 from an expansion, word splitting or braces before gh's subcommand or
@@ -163,7 +165,13 @@ NEEDS_PARSE = re.compile(r"[\s;&|()<>$`'\"\\{}#]")
 SHELL_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*|[0-9@*#?$!-]")
 FD_VARIABLE = re.compile(r"\{[A-Za-z_][A-Za-z0-9_]*\}")
 ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\+?=")
-RESERVED = {"!", "if", "then", "else", "elif", "while", "until", "do", "time", "coproc"}
+RESERVED = {"!", "if", "then", "else", "elif", "while", "until", "do", "coproc"}
+# Commands that run the command after them, with their options that take a value.
+WRAPPERS = {"env": "uCS", "command": "", "exec": "a", "nohup": "", "nice": "n",
+            "timeout": "sk", "stdbuf": "ioe", "time": "fo", "sudo": "ugCDhprtUT",
+            "setsid": "", "ionice": "cnp"}
+# gh as a word of its own: ${x:-gh}, $(which gh), not ghq or highlight.
+GH_TOKEN = re.compile(r"(?<![A-Za-z0-9_])gh(?![A-Za-z0-9_-])")
 GH_SUBCOMMANDS = {"pr", "api", "alias"}
 GH_ACTIONS = {"merge", "review", "comment", "alias"}
 # xargs/parallel options that take the next word as their value.
@@ -207,6 +215,24 @@ class Word:
         if not self._lead:
             self._lead = next((c[0] for c in self.chars if c), "")
         return self._lead
+
+    def brace_among_flag_letters(self) -> bool:
+        """Whether the first "{" of a "-" word sits among flag letters, where its
+        expansion can make a flag (-{p,X}PUT -> -XPUT), rather than in a flag's
+        value (-H{a,b} is the value of -H)."""
+        if self.lead != "-":
+            return False
+        prefix, size = [], 0
+        for chunk in self.chars:  # bounded so a long word stays linear
+            prefix.append(chunk)
+            size += len(chunk)
+            if size > 64:
+                break
+        text = "".join(prefix)[:64]
+        head = text.split("{", 1)[0]
+        if head.startswith("--"):
+            return "=" not in head
+        return not any(c in ANY_SHORT for c in head[1:])
 
     @property
     def value(self) -> str:
@@ -467,18 +493,17 @@ def split_commands(src: str) -> tuple[list[list[Word]], list[str]]:
             # made a run of them quadratic.
             dash_next = src.startswith("-", i + 1)
             if c == "{":
-                word.braces.append([False, dash_next])
+                word.braces.append([False, dash_next or word.brace_among_flag_letters()])
             elif word.braces and c == ",":
                 word.braces[-1][0] = True
                 word.braces[-1][1] = word.braces[-1][1] or dash_next
             elif word.braces and src.startswith("..", i):
                 word.braces[-1][0] = True
             elif c == "}" and word.braces:
-                has_separator, dash = word.braces.pop()
+                has_separator, injects = word.braces.pop()
                 if has_separator:
                     word.brace = True
-                    # -{p,X}PUT expands to -pPUT -XPUT: a brace in a "-" word injects too.
-                    word.brace_flag = word.brace_flag or dash or word.lead == "-"
+                    word.brace_flag = word.brace_flag or injects
             elif c in "*?[":
                 word.glob = True
             i += 1
@@ -606,7 +631,7 @@ def judge_gh(args: list[Word], start: int, injects: bool, alone: bool, via_xargs
         # literal action later on (`$G $P merge 1`) or an expansion spelling gh
         # (`${x:-gh} "$@"`) does not. A path such as ~/.config/gh $HOME passes.
         name = args[start - 1]
-        if (name.unsafe and "gh" in name.value) or any(
+        if (name.unsafe and GH_TOKEN.search(name.value)) or any(
             args[k].value in GH_ACTIONS for k in range(start, len(args))
         ):
             return BLOCK, "gh and its subcommand both built from expansions"
@@ -614,8 +639,11 @@ def judge_gh(args: list[Word], start: int, injects: bool, alone: bool, via_xargs
     if sub.value not in GH_SUBCOMMANDS:
         return PASS, ""
     # Word splitting or braces before the subcommand or action can add one
-    # (X='o/r merge'; gh pr --repo $X 1).
-    last = positional[1] if sub.value != "api" and len(positional) > 1 else sub
+    # (X='o/r merge'; gh pr --repo $X 1); with no action, any word can.
+    if sub.value == "api":
+        last = sub
+    else:
+        last = positional[1] if len(positional) > 1 else None
     for k in range(start, len(args)):
         if args[k].splits or args[k].brace:
             return BLOCK, f"gh {sub.value} subcommand may come from an expansion"
@@ -667,6 +695,39 @@ def xargs_command(argv: list[Word], k: int) -> int:
     return -1
 
 
+def after_wrapper(argv: list[Word], k: int) -> int:
+    """Index of the command a wrapper (env, nice, timeout...) at argv[k] runs."""
+    wrapper = argv[k].value.rsplit("/", 1)[-1]
+    takes_value = WRAPPERS[wrapper]
+    j = k + 1
+    while j < len(argv):
+        arg = argv[j].value
+        if arg == "--":
+            return j + 1
+        if wrapper == "env" and ASSIGNMENT.match(arg):
+            j += 1
+        elif arg.startswith("-") and arg != "-":
+            j += 2 if len(arg) == 2 and arg[1] in takes_value else 1
+        elif wrapper == "timeout":
+            wrapper = ""  # the duration comes before the command
+            j += 1
+        else:
+            return j
+    return -1
+
+
+def command_positions(argv: list[Word], k: int) -> list[int]:
+    """Where commands start from argv[k] on, following wrappers (env gh ...)."""
+    positions = []
+    while 0 <= k < len(argv):
+        positions.append(k)
+        word = argv[k]
+        if word.unsafe or word.value.rsplit("/", 1)[-1] not in WRAPPERS:
+            break
+        k = after_wrapper(argv, k)
+    return positions
+
+
 def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
     n = len(argv)
     injects_from = [False] * (n + 1)
@@ -676,17 +737,20 @@ def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
         (k for k, w in enumerate(argv) if not (ASSIGNMENT.match(w.value) or w.value in RESERVED)),
         n,
     )
+    runs = set(command_positions(argv, name))
     best, xargs_runs = (PASS, ""), set()
     for k, word in enumerate(argv):
         Run.check_time()
         value = word.value
-        literal = value == "gh"
-        # A path ending in /gh, or an expanded word in the command-name position
-        # or before a gh subcommand (flags skipped), may be gh: /usr/bin/gh,
-        # X=gh; $X pr merge, env $G -R o/r pr merge.
+        path_gh = value.endswith("/gh") and not word.unsafe
+        # A /gh path is gh where a command runs (/usr/bin/gh $P $A, xargs env
+        # ./gh). Elsewhere it, and an expanded word in the command position or
+        # before a gh subcommand (flags skipped), may be gh: ls ~/.config/gh
+        # $HOME, X=gh; $X pr merge, env $G -R o/r pr merge.
+        literal = value == "gh" or (path_gh and (k in runs or k in xargs_runs))
         inferred = not literal and (
-            value.endswith("/gh")
-            or (word.unsafe and (k == name or first_positional_is_subcommand(argv, k + 1)))
+            path_gh
+            or (word.unsafe and (k in runs or first_positional_is_subcommand(argv, k + 1)))
         )
         if literal or inferred:
             verdict = judge_gh(
@@ -697,7 +761,7 @@ def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
             if best[0] == BLOCK:
                 return best
         if value.rsplit("/", 1)[-1] in ("xargs", "parallel"):
-            xargs_runs.add(xargs_command(argv, k))
+            xargs_runs.update(command_positions(argv, xargs_command(argv, k)))
     return best
 
 

@@ -65,6 +65,10 @@ WAYS_AROUND = [
     ("-X made by braces inside one word", "gh api repos/o/r/pulls/1/merge -{p,X}PUT"),
     ("both gh and its subcommand from variables", "G=gh P=pr; $G $P merge 1 --admin"),
     ("flags between an expanded gh and its subcommand", "G=gh; env $G -R o/r pr merge 1 --admin"),
+    ("gh by path with expanded subcommand and action", "P=pr A=merge; /usr/bin/gh $P $A 1 --admin"),
+    ("gh by path in a function passing its arguments", 'h(){ /usr/bin/gh "$@"; }; h pr merge 1 --admin'),
+    ("gh run by xargs through a wrapper", "printf '%s\\n' pr merge 1 --admin | xargs env gh"),
+    ("action added by braces with no action word", "gh pr --repo {o/r,merge,1} --admin"),
 ]
 
 # Risk 2: everyday commands that only mention gh with an expansion. (why, command)
@@ -73,6 +77,12 @@ DAILY = [
     ("braces in a mentioned path", "echo 'run gh api repos/o/r/{a,b}'"),
     ("gh as a search word under xargs", "git ls-files | xargs grep -lw gh"),
     ("an editor and a file from variables", "$EDITOR $FILE"),
+    ("gh only inside a longer word of an expanded name", '"$(ghq root)"/github.com/o/r/run.sh "$ARG"'),
+    ("a /gh directory given to ls", "ls ~/.config/gh $HOME"),
+    (
+        "braces in the value of -H on a read",
+        "gh api repos/o/r/pulls/1/files --jq '.[] | {f: .filename}' -H{Accept:x,X-A:y}",
+    ),
 ]
 
 # Risk 1: a hook that times out lets the command through. These run the
