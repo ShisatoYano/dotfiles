@@ -20,8 +20,9 @@ way bash does (quotes, $'...', escapes, comments, line continuations,
 heredocs, {var}> redirections, &, newlines) and reads gh's flags the way
 pflag does (-iXPUT, -fX=GET, last value wins). gh, or a path ending in /gh,
 is gh where a command runs (after assignments and wrappers such as env, nice
-or timeout, or as what xargs runs) and a possible gh elsewhere, so
-`grep -w gh $F` passes. A word built from an expansion or glob ($X, $(...),
+or timeout, or as what xargs runs) or anywhere after a wrapper, eval,
+builtin, xargs or parallel word, and a possible gh elsewhere, so
+`grep -w gh $F` passes. Values of env -S are checked again as commands. A word built from an expansion or glob ($X, $(...),
 {gh,}, g[h]) where a command runs or followed (flags skipped) by a gh
 subcommand is a possible gh too; when a possible gh's subcommand is an
 expansion as well, a literal merge/review/comment/alias after it, or the
@@ -32,7 +33,7 @@ from an expansion, word splitting or braces before gh's subcommand or
 action (--repo $X), a merge whose last --match-head-commit is not a literal
 hex sha, gh run by xargs without its subcommand, gh api with two or more
 positional words of which one starts with an expansion (even quoted, "$M"
-may be -XPUT), and, for writes only (gh api to a PR path or graphql, gh pr
+may be -XPUT), gh api with an expansion among a flag's letters (-"$M"), and, for writes only (gh api to a PR path or graphql, gh pr
 merge), an argument that word splitting or a brace starting with "-" could
 turn into extra flags; reads such as `gh pr view $N` are left alone. Quoted
 text, substitutions and heredoc bodies are checked again as commands (trap,
@@ -167,12 +168,14 @@ URL_PREFIX = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://[^/]*")
 NEEDS_PARSE = re.compile(r"[\s;&|()<>$`'\"\\{}#]")
 SHELL_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*|[0-9@*#?$!-]")
 FD_VARIABLE = re.compile(r"\{[A-Za-z_][A-Za-z0-9_]*\}")
-ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\+?=")
+ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]*\])?\+?=")
 RESERVED = {"!", "if", "then", "else", "elif", "while", "until", "do", "coproc"}
 # Commands that run the command after them, with their options that take a value.
 WRAPPERS = {"env": "uCS", "command": "", "exec": "a", "nohup": "", "nice": "n",
             "timeout": "sk", "stdbuf": "ioe", "time": "fo", "sudo": "ugCDhprtUT",
             "setsid": "", "ionice": "cnp"}
+# Names that run a later word as a command; a gh anywhere after one is taken as gh.
+RUNNERS = set(WRAPPERS) | {"eval", "builtin", "xargs", "parallel"}
 # gh as a word of its own: ${x:-gh}, $(which gh), not ghq or highlight.
 GH_TOKEN = re.compile(r"(?<![A-Za-z0-9_])gh(?![A-Za-z0-9_-])")
 GH_SUBCOMMANDS = {"pr", "api", "alias"}
@@ -210,6 +213,7 @@ class Word:
         self.brace_flag = False  # ...with an alternative starting with "-", which can inject a flag
         self.glob = False  # unquoted * ? [
         self.starts_expanded = False  # begins with an expansion, quoted or not: "$M" may be -XPUT
+        self.flag_expanded = False  # an expansion among a "-" word's flag letters: -"$M"
         self.braces: list[list[bool]] = []  # open unquoted "{": [has "," or "..", has "-" alternative]
         self._lead = ""
 
@@ -224,19 +228,16 @@ class Word:
         """Whether the first "{" of a "-" word sits among flag letters, where its
         expansion can make a flag (-{p,X}PUT -> -XPUT), rather than in a flag's
         value (-H{a,b} is the value of -H)."""
-        if self.lead != "-":
-            return False
+        return self.lead == "-" and among_flag_letters(self.head().split("{", 1)[0])
+
+    def head(self) -> str:
         prefix, size = [], 0
         for chunk in self.chars:  # bounded so a long word stays linear
             prefix.append(chunk)
             size += len(chunk)
             if size > 64:
                 break
-        text = "".join(prefix)[:64]
-        head = text.split("{", 1)[0]
-        if head.startswith("--"):
-            return "=" not in head
-        return not any(c in ANY_SHORT for c in head[1:])
+        return "".join(prefix)[:64]
 
     @property
     def value(self) -> str:
@@ -255,8 +256,19 @@ class Word:
     def mark_expansion(self, in_quotes: bool) -> None:
         # Called before the expansion's text is added, so no text yet means it leads.
         self.starts_expanded = self.starts_expanded or not self.lead
+        # -"$M" with M=XPUT is -XPUT: an expansion among flag letters builds a flag.
+        if not self.flag_expanded and self.lead == "-":
+            self.flag_expanded = among_flag_letters(self.head())
         self.expands = True
         self.splits = self.splits or not in_quotes
+
+
+def among_flag_letters(head: str) -> bool:
+    """Whether the end of head, the start of a "-" word, is still among flag
+    letters rather than in the value of a flag that takes one."""
+    if head.startswith("--"):
+        return "=" not in head
+    return not any(c in ANY_SHORT for c in head[1:])
 
 
 def ansi_c(text: str) -> str:
@@ -584,6 +596,8 @@ def judge_api(args: list[Word], start: int, injects: bool, alone: bool) -> tuple
     # endpoint it is blocked below for anything but GET, so it needs a second one.
     if len(positional) > 2 and any(w.starts_expanded for w in positional[1:]):
         return BLOCK, "gh api argument may be a flag taken from an expansion"
+    if any(args[k].flag_expanded for k in range(start, len(args))):
+        return BLOCK, "gh api flag built from an expansion"
     if injects:
         # Injected words (e.g. -X PUT) only matter if they can reach the
         # endpoint or the endpoint is one a write could change a PR through.
@@ -715,8 +729,8 @@ def after_wrapper(argv: list[Word], k: int) -> int:
         arg = argv[j].value
         if arg == "--":
             return j + 1
-        if wrapper == "env" and ASSIGNMENT.match(arg):
-            j += 1
+        if (wrapper == "env" and ASSIGNMENT.match(arg)) or arg == "!":
+            j += 1  # time ! gh ...
         elif arg.startswith("-") and arg != "-":
             j += 2 if len(arg) == 2 and arg[1] in takes_value else 1
         elif wrapper == "timeout":
@@ -749,17 +763,19 @@ def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
         n,
     )
     runs = set(command_positions(argv, name))
-    best, xargs_runs = (PASS, ""), set()
+    best, xargs_runs, after_runner = (PASS, ""), set(), False
     for k, word in enumerate(argv):
         Run.check_time()
         value = word.value
         path_gh = value.endswith("/gh") and not word.unsafe
-        # gh or a /gh path is gh where a command runs (/usr/bin/gh $P $A, xargs
-        # env ./gh). Elsewhere it, and an expanded word in the command position
-        # or before a gh subcommand (flags skipped), may be gh: grep -w gh $F,
-        # ls ~/.config/gh $HOME, X=gh; $X pr merge, env $G -R o/r pr merge.
+        # gh or a /gh path is gh where a command runs (/usr/bin/gh $P $A), and
+        # anywhere after a wrapper name: reading each wrapper's options exactly
+        # missed forms such as env --unset X gh or timeout --signal KILL 5 gh.
+        # Elsewhere it, and an expanded word in the command position or before a
+        # gh subcommand (flags skipped), may be gh: grep -w gh $F, ls
+        # ~/.config/gh $HOME, X=gh; $X pr merge, env $G -R o/r pr merge.
         gh_word = value == "gh" or path_gh
-        literal = gh_word and (k in runs or k in xargs_runs)
+        literal = gh_word and (k in runs or k in xargs_runs or after_runner)
         inferred = not literal and (
             gh_word
             or (word.unsafe and (k in runs or first_positional_is_subcommand(argv, k + 1)))
@@ -772,9 +788,30 @@ def judge_command(argv: list[Word], alone: bool) -> tuple[int, str]:
                 best = verdict
             if best[0] == BLOCK:
                 return best
-        if value.rsplit("/", 1)[-1] in ("xargs", "parallel"):
+        base = value.rsplit("/", 1)[-1]
+        if base in ("xargs", "parallel"):
             xargs_runs.update(command_positions(argv, xargs_command(argv, k)))
+        after_runner = after_runner or (not word.unsafe and base in RUNNERS)
     return best
+
+
+def env_split_strings(argv: list[Word]) -> list[str]:
+    """Values of env -S / --split-string, which env splits and runs as a command."""
+    texts = []
+    for k, word in enumerate(argv):
+        if word.unsafe or word.value.rsplit("/", 1)[-1] != "env":
+            continue
+        for j in range(k + 1, len(argv)):
+            arg = argv[j].value
+            if not arg.startswith("-"):
+                break
+            nxt = argv[j + 1].value if j + 1 < len(argv) else ""
+            if arg.startswith("--split-string"):
+                _, eq, text = arg.partition("=")
+                texts.append(text if eq else nxt)
+            elif not arg.startswith("--") and "S" in arg:
+                texts.append(arg[arg.index("S") + 1 :] or nxt)
+    return texts
 
 
 def first_positional_is_subcommand(argv: list[Word], start: int) -> bool:
@@ -800,6 +837,7 @@ def analyze(src: str, depth: int, seen: set) -> tuple[int, str]:
             best = verdict
         if best[0] == BLOCK:
             return best
+        texts.extend(env_split_strings(argv))
         for word in argv:
             text = word.value[1:] if word.value.startswith("!") else word.value
             if NEEDS_PARSE.search(text):

@@ -72,6 +72,13 @@ WAYS_AROUND = [
     ("whole -X flag from a quoted variable", 'M=-XPUT; gh api repos/o/r/pulls/1/merge "$M"'),
     ("whole query field from a quoted variable", 'Q=-fquery=mutation{x}; gh api graphql "$Q"'),
     ("write to an endpoint taken whole from a variable", 'gh api "$EP" -X PUT'),
+    ("wrapper long option with a separate value", "env --unset X gh $S $A 1"),
+    ("timeout option value before the duration", "timeout --signal KILL 5 gh $S $A 1"),
+    ("time with a negated pipeline", "time ! gh $S $A 1"),
+    ("subscripted assignment before gh", "a[0]=x gh $S $A 1"),
+    ("gh run by eval", "eval gh $S $A 1"),
+    ("flag letters from a quoted variable", 'M=XPUT; gh api repos/o/r/pulls/1/merge -"$M"'),
+    ("command given to env -S in the same word", "env -S'gh pr -R o/r merge 1'"),
 ]
 
 # Risk 2: everyday commands that only mention gh with an expansion. (why, command)
